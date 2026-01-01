@@ -3,7 +3,7 @@
 # Note: Requires Rust 1.84+ for edition2024 support (stabilized in 1.84.0)
 # Using Debian-based image for better OpenSSL and package support
 
-FROM rust:nightly AS builder
+FROM rustlang/rust:nightly AS builder
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y \

@@ -5,16 +5,22 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { ReactFlowProvider } from 'reactflow';
 import { CanvasEdge } from '@/components/canvas/CanvasEdge';
 import type { Relationship } from '@/types/relationship';
 
-// Mock ReactFlow
+// Mock ReactFlow hooks
 vi.mock('reactflow', async () => {
   const actual = await vi.importActual('reactflow');
   return {
     ...actual,
     BaseEdge: ({ path }: { path: string }) => <path d={path} data-testid="base-edge" />,
     useEdges: () => [],
+    useNodes: () => [
+      { id: 'table-1', position: { x: 100, y: 100 }, width: 200, height: 150 },
+      { id: 'table-2', position: { x: 300, y: 100 }, width: 200, height: 150 },
+    ],
+    ReactFlowProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   };
 });
 
@@ -27,11 +33,13 @@ describe('CanvasEdge', () => {
     source_column_id: 'col-1',
     target_table_id: 'table-2',
     target_column_id: 'col-2',
-    relationship_type: 'one-to-many',
-    source_cardinality: 'one',
-    target_cardinality: 'many',
+    type: 'one-to-many',
+    source_cardinality: '1',
+    target_cardinality: 'N',
     source_optional: false,
     target_optional: false,
+    model_type: 'conceptual',
+    is_circular: false,
     created_at: '2025-01-01T00:00:00Z',
     last_modified_at: '2025-01-01T00:00:00Z',
   };
@@ -52,12 +60,20 @@ describe('CanvasEdge', () => {
   });
 
   it('should render relationship edge', () => {
-    render(<CanvasEdge {...defaultProps} />);
+    render(
+      <ReactFlowProvider>
+        <CanvasEdge {...defaultProps} />
+      </ReactFlowProvider>
+    );
     expect(screen.getByTestId('base-edge')).toBeInTheDocument();
   });
 
   it('should render crow\'s feet notation for one-to-many relationship', () => {
-    render(<CanvasEdge {...defaultProps} />);
+    render(
+      <ReactFlowProvider>
+        <CanvasEdge {...defaultProps} />
+      </ReactFlowProvider>
+    );
     const edge = screen.getByTestId('base-edge');
     expect(edge).toBeInTheDocument();
     // The edge should render with a path
@@ -67,12 +83,16 @@ describe('CanvasEdge', () => {
   it('should render crow\'s feet notation for many-to-many relationship', () => {
     const manyToManyRel: Relationship = {
       ...mockRelationship,
-      relationship_type: 'many-to-many',
-      source_cardinality: 'many',
-      target_cardinality: 'many',
+      type: 'many-to-many',
+      source_cardinality: 'N',
+      target_cardinality: 'N',
     };
 
-    render(<CanvasEdge {...defaultProps} data={{ relationship: manyToManyRel }} />);
+    render(
+      <ReactFlowProvider>
+        <CanvasEdge {...defaultProps} data={{ relationship: manyToManyRel }} />
+      </ReactFlowProvider>
+    );
     const edge = screen.getByTestId('base-edge');
     expect(edge).toBeInTheDocument();
     expect(edge.getAttribute('d')).toBeTruthy();
@@ -81,12 +101,16 @@ describe('CanvasEdge', () => {
   it('should render single line for one-to-one relationship', () => {
     const oneToOneRel: Relationship = {
       ...mockRelationship,
-      relationship_type: 'one-to-one',
-      source_cardinality: 'one',
-      target_cardinality: 'one',
+      type: 'one-to-one',
+      source_cardinality: '1',
+      target_cardinality: '1',
     };
 
-    render(<CanvasEdge {...defaultProps} data={{ relationship: oneToOneRel }} />);
+    render(
+      <ReactFlowProvider>
+        <CanvasEdge {...defaultProps} data={{ relationship: oneToOneRel }} />
+      </ReactFlowProvider>
+    );
     const edge = screen.getByTestId('base-edge');
     expect(edge).toBeInTheDocument();
     expect(edge.getAttribute('d')).toBeTruthy();
@@ -99,13 +123,21 @@ describe('CanvasEdge', () => {
       target_optional: false,
     };
 
-    render(<CanvasEdge {...defaultProps} data={{ relationship: optionalRel }} />);
+    render(
+      <ReactFlowProvider>
+        <CanvasEdge {...defaultProps} data={{ relationship: optionalRel }} />
+      </ReactFlowProvider>
+    );
     const edge = screen.getByTestId('base-edge');
     expect(edge).toBeInTheDocument();
   });
 
   it('should highlight selected relationship', () => {
-    render(<CanvasEdge {...defaultProps} selected={true} />);
+    render(
+      <ReactFlowProvider>
+        <CanvasEdge {...defaultProps} selected={true} />
+      </ReactFlowProvider>
+    );
     const edge = screen.getByTestId('base-edge');
     expect(edge).toBeInTheDocument();
   });
@@ -115,16 +147,25 @@ describe('CanvasEdge', () => {
       ...mockRelationship,
       source_table_id: 'table-2',
       target_table_id: 'table-1', // Circular reference
+      is_circular: true,
     };
 
-    render(<CanvasEdge {...defaultProps} data={{ relationship: circularRel }} />);
+    render(
+      <ReactFlowProvider>
+        <CanvasEdge {...defaultProps} data={{ relationship: circularRel }} />
+      </ReactFlowProvider>
+    );
     const edge = screen.getByTestId('base-edge');
     expect(edge).toBeInTheDocument();
   });
 
   it('should handle edge click to select relationship', () => {
     const onClick = vi.fn();
-    render(<CanvasEdge {...defaultProps} onClick={onClick} />);
+    render(
+      <ReactFlowProvider>
+        <CanvasEdge {...defaultProps} onClick={onClick} />
+      </ReactFlowProvider>
+    );
     const edge = screen.getByTestId('base-edge');
     edge.click();
     // Note: BaseEdge doesn't handle clicks directly, this is handled by ReactFlow

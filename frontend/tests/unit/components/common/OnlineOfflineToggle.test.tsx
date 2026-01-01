@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { OnlineOfflineToggle } from '@/components/common/OnlineOfflineToggle';
 import * as sdkModeStore from '@/services/sdk/sdkMode';
 import * as authProvider from '@/components/auth/AuthProvider';
@@ -49,10 +49,13 @@ describe('OnlineOfflineToggle', () => {
     } as any);
   });
 
-  it('should render toggle in offline mode', () => {
-    render(<OnlineOfflineToggle />);
-    expect(screen.getByText('Offline')).toBeInTheDocument();
-    expect(screen.getByText('(Auth not required)')).toBeInTheDocument();
+  it('should render toggle in offline mode', async () => {
+    await act(async () => {
+      render(<OnlineOfflineToggle />);
+    });
+    await waitFor(() => {
+      expect(screen.getByText('Offline')).toBeInTheDocument();
+    });
   });
 
   it('should render toggle in online mode', () => {

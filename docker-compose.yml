@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: data-modelling-postgres
+    environment:
+      POSTGRES_USER: data_modelling
+      POSTGRES_PASSWORD: data_modelling_password
+      POSTGRES_DB: data_modelling
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U data_modelling"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - data-modelling-network
+
+  # API Service (Rust)
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: data-modelling-api
+    environment:
+      DATABASE_URL: postgresql://data_modelling:data_modelling_password@postgres:5432/data_modelling
+      RUST_LOG: info
+      API_HOST: 0.0.0.0
+      API_PORT: 8081
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - data-modelling-network
+    restart: unless-stopped
+
+  # Frontend Service (React + Nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Build-time variables (embedded in the app)
+        VITE_API_BASE_URL: http://localhost:8081
+        VITE_WS_BASE_URL: ws://localhost:8081
+    container_name: data-modelling-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - data-modelling-network
+    restart: unless-stopped
+
+networks:
+  data-modelling-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+

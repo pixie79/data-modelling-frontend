@@ -1,0 +1,46 @@
+# Dockerfile for data-modelling-api
+# This assumes the API is available as a Rust crate on crates.io
+
+FROM rust:1.75-alpine AS builder
+
+# Install build dependencies
+RUN apk add --no-cache \
+    musl-dev \
+    openssl-dev \
+    pkgconfig \
+    postgresql-dev
+
+WORKDIR /app
+
+# Install the API from crates.io
+RUN cargo install data-modelling-api --version 1.0.1
+
+# Runtime stage
+FROM alpine:latest
+
+# Install runtime dependencies
+RUN apk add --no-cache \
+    ca-certificates \
+    libgcc \
+    postgresql-libs \
+    curl
+
+# Copy binary from builder
+COPY --from=builder /root/.cargo/bin/data-modelling-api /usr/local/bin/data-modelling-api
+
+# Create non-root user
+RUN addgroup -g 1000 api && \
+    adduser -D -u 1000 -G api api
+
+USER api
+
+WORKDIR /app
+
+EXPOSE 8081
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD curl -f http://localhost:8081/api/v1/health || exit 1
+
+CMD ["data-modelling-api"]
+

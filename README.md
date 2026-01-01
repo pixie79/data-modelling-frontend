@@ -29,7 +29,27 @@ A React-based web application with Electron desktop app support for creating dat
 
 ## Quick Start
 
-### Installation
+### Option 1: Docker Compose (Recommended)
+
+The easiest way to run the full stack (PostgreSQL + API + Frontend):
+
+```bash
+# Start all services
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Access the application
+# Frontend: http://localhost:5173
+# API: http://localhost:8081
+```
+
+See [docker/README.md](docker/README.md) for detailed Docker setup instructions.
+
+### Option 2: Local Development
+
+#### Installation
 
 ```bash
 # Install dependencies
@@ -44,7 +64,7 @@ cp .env.example .env.local
 # Edit .env.local with your API URL if needed
 ```
 
-### Development
+#### Development
 
 ```bash
 # Start development server
@@ -54,6 +74,10 @@ npm run dev
 
 # Application will be available at http://localhost:5173
 ```
+
+**Note**: For local development, you'll need:
+- PostgreSQL running (or use Docker Compose for just PostgreSQL + API)
+- `data-modelling-api` installed from crates.io: `cargo install data-modelling-api`
 
 The development script (`scripts/dev.sh`) will automatically:
 - Check Node.js version

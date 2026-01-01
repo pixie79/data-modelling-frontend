@@ -18,8 +18,11 @@ WORKDIR /app
 # Install the API from crates.io
 # Try vendored OpenSSL first (builds from source, avoids linking issues)
 # Fallback to regular install if vendored feature not available
-RUN cargo install data-modelling-api --version 1.0.1 --features vendored || \
-    cargo install data-modelling-api --version 1.0.1
+# Note: cargo install may install binary with different name, so we check what was installed
+RUN (cargo install data-modelling-api --version 1.0.1 --features vendored || \
+     cargo install data-modelling-api --version 1.0.1) && \
+    ls -la /root/.cargo/bin/ && \
+    find /root/.cargo/bin -name "*data-modelling*" -o -name "*api*" || true
 
 # Runtime stage
 FROM debian:bookworm-slim
@@ -33,7 +36,10 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy binary from builder
-COPY --from=builder /root/.cargo/bin/data-modelling-api /usr/local/bin/data-modelling-api
+# The binary might be named differently, so we copy all binaries and create a symlink
+COPY --from=builder /root/.cargo/bin/ /usr/local/bin/
+RUN chmod +x /usr/local/bin/* && \
+    (ln -sf /usr/local/bin/data-modelling-api /usr/local/bin/api || true)
 
 # Create non-root user
 RUN groupadd -r -g 1000 api && \

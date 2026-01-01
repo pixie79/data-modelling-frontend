@@ -1,50 +1,43 @@
 # Dockerfile for data-modelling-api
 # This assumes the API is available as a Rust crate on crates.io
 # Note: Requires Rust 1.84+ for edition2024 support (stabilized in 1.84.0)
-# Using nightly until 1.84 stable images are available
+# Using Debian-based image for better OpenSSL and package support
 
-FROM rustlang/rust:nightly-alpine AS builder
+FROM rust:nightly-slim AS builder
 
 # Install build dependencies
-RUN apk add --no-cache \
-    musl-dev \
-    openssl-dev \
-    pkgconfig \
-    postgresql-dev \
-    build-base \
-    perl
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    libpq-dev \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Set environment variables for OpenSSL
-# Try to use vendored OpenSSL to avoid static linking issues
-ENV OPENSSL_VENDORED=1
-ENV OPENSSL_STATIC=1
-
 # Install the API from crates.io
-# Note: If vendored feature is available, it will build OpenSSL from source
-# Otherwise, it will use system OpenSSL (may require runtime libs)
+# Try vendored OpenSSL first (builds from source, avoids linking issues)
+# Fallback to regular install if vendored feature not available
 RUN cargo install data-modelling-api --version 1.0.1 --features vendored || \
     cargo install data-modelling-api --version 1.0.1
 
 # Runtime stage
-FROM alpine:latest
+FROM debian:bookworm-slim
 
 # Install runtime dependencies
-# Include openssl if binary is dynamically linked
-RUN apk add --no-cache \
+RUN apt-get update && apt-get install -y \
     ca-certificates \
-    libgcc \
-    postgresql-libs \
-    openssl-libs \
-    curl
+    libssl3 \
+    libpq5 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy binary from builder
 COPY --from=builder /root/.cargo/bin/data-modelling-api /usr/local/bin/data-modelling-api
 
 # Create non-root user
-RUN addgroup -g 1000 api && \
-    adduser -D -u 1000 -G api api
+RUN groupadd -r -g 1000 api && \
+    useradd -r -u 1000 -g api api
 
 USER api
 
@@ -57,4 +50,3 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD curl -f http://localhost:8081/api/v1/health || exit 1
 
 CMD ["data-modelling-api"]
-

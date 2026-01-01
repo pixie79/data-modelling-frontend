@@ -5,6 +5,7 @@
 
 import { browserFileService } from '@/services/platform/browser';
 import { odcsService, type ODCSWorkspace } from '@/services/sdk/odcsService';
+import { useModelStore } from '@/stores/modelStore';
 import type { Workspace, Domain } from '@/types/workspace';
 import type { Table } from '@/types/table';
 import type { Relationship } from '@/types/relationship';
@@ -23,7 +24,13 @@ class LocalFileService {
    * Save workspace to ODCS file (triggers download)
    */
   async saveFile(workspace: Workspace, filename: string = 'workspace.yaml'): Promise<void> {
-    const yamlContent = await odcsService.toYAML(workspace as any);
+    // Include data flow diagrams from model store
+    const { dataFlowDiagrams } = useModelStore.getState();
+    const workspaceWithDiagrams = {
+      ...workspace,
+      data_flow_diagrams: dataFlowDiagrams,
+    };
+    const yamlContent = await odcsService.toYAML(workspaceWithDiagrams as any);
     browserFileService.downloadFile(yamlContent, filename, 'text/yaml');
   }
 
@@ -246,6 +253,12 @@ class LocalFileService {
     }
     if (odcsWorkspace.relationships) {
       (workspace as any).relationships = odcsWorkspace.relationships;
+    }
+    
+    // Update model store with data flow diagrams if present
+    if (odcsWorkspace.data_flow_diagrams && odcsWorkspace.data_flow_diagrams.length > 0) {
+      useModelStore.getState().setDataFlowDiagrams(odcsWorkspace.data_flow_diagrams);
+      workspace.data_flow_diagrams = odcsWorkspace.data_flow_diagrams;
     }
     
     return workspace as Workspace;

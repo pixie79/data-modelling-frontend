@@ -10,12 +10,14 @@ import { sdkLoader } from './sdkLoader';
 import * as yaml from 'js-yaml';
 import type { Table } from '@/types/table';
 import type { Relationship } from '@/types/relationship';
+import type { DataFlowDiagram } from '@/types/workspace';
 
 export interface ODCSWorkspace {
   workspace_id?: string;
   domain_id?: string;
   tables: Table[];
   relationships?: Relationship[];
+  data_flow_diagrams?: DataFlowDiagram[];
   [key: string]: unknown;
 }
 
@@ -166,6 +168,17 @@ class ODCSService {
         if (parsed.relationships && Array.isArray(parsed.relationships)) {
           relationships = parsed.relationships.map((item: any, index: number) => this.normalizeRelationship(item, index));
         }
+        
+        // Parse data flow diagrams if present
+        if (parsed.data_flow_diagrams && Array.isArray(parsed.data_flow_diagrams)) {
+          return {
+            workspace_id: parsed.workspace_id,
+            domain_id: parsed.domain_id,
+            tables,
+            relationships: relationships.length > 0 ? relationships : undefined,
+            data_flow_diagrams: parsed.data_flow_diagrams,
+          };
+        }
       }
       
       return {
@@ -173,6 +186,7 @@ class ODCSService {
         domain_id: parsed.domain_id,
         tables,
         relationships: relationships.length > 0 ? relationships : undefined,
+        data_flow_diagrams: [],
       };
     } catch (error) {
       throw new Error(`Failed to parse YAML: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -274,6 +288,31 @@ class ODCSService {
       
       if (workspace.relationships && workspace.relationships.length > 0) {
         yamlData.relationships = workspace.relationships;
+      }
+      
+      if (workspace.data_flow_diagrams && workspace.data_flow_diagrams.length > 0) {
+        yamlData.data_flow_diagrams = workspace.data_flow_diagrams.map((diagram) => ({
+          id: diagram.id,
+          name: diagram.name,
+          nodes: diagram.nodes.map((node) => ({
+            id: node.id,
+            type: node.type,
+            label: node.label,
+            position_x: node.position_x,
+            position_y: node.position_y,
+            width: node.width,
+            height: node.height,
+            metadata: node.metadata,
+          })),
+          connections: diagram.connections.map((conn) => ({
+            id: conn.id,
+            source_node_id: conn.source_node_id,
+            target_node_id: conn.target_node_id,
+            label: conn.label,
+            metadata: conn.metadata,
+          })),
+          linked_tables: diagram.linked_tables,
+        }));
       }
       
       return yaml.dump(yamlData, {

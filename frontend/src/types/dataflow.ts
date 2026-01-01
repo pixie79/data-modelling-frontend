@@ -11,3 +11,13 @@ export type {
 
 export type DataFlowNodeType = 'source' | 'target' | 'processor' | 'storage';
 
+// Extended node types for specific implementations
+export type DataFlowNodeSubType =
+  | 'database'
+  | 'kafka_topic'
+  | 'api'
+  | 'processor'
+  | 'target'
+  | 'source'
+  | 'storage';
+

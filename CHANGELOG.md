@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2025-01-XX
+
+### Added - Phase 5: Multi-User Collaboration with Real-Time Updates
+- **WebSocket Collaboration**: Real-time collaboration via WebSocket connections
+  - WebSocket client service with automatic reconnection and exponential backoff
+  - JWT authentication for WebSocket connections
+  - Connection status monitoring (connected/disconnected/reconnecting)
+- **Collaboration Service**: Real-time update handling for tables and relationships
+  - Table update broadcasting and receiving
+  - Relationship update broadcasting and receiving
+  - Presence updates (cursor position, selected elements)
+  - Conflict detection and warnings
+  - Last-change-wins conflict resolution strategy
+- **Collaboration Store**: Zustand store for collaboration state management
+  - Participant management (add, update, remove)
+  - Presence tracking with cursor positions and selected elements
+  - Conflict management with conflict warnings
+  - Access control (primary owner per canvas, edit/read permissions)
+- **UI Components**: Collaboration user interface components
+  - PresenceIndicator: Shows who's online and what they're editing
+  - CollaborationStatus: Displays connection status and warnings
+  - ConflictResolver: Handles and displays conflict warnings
+- **React Hooks**: Custom hooks for collaboration features
+  - useWebSocket: Manages WebSocket connections
+  - useCollaboration: Manages collaboration features and real-time updates
+- **ModelEditor Integration**: Full integration of collaboration features
+  - Collaboration components in header
+  - Real-time updates applied to model store
+  - Conflict resolver dialog integration
+  - Online/offline mode awareness
+- **Tests**: Comprehensive test coverage
+  - Unit tests for WebSocket client and collaboration service
+  - Unit tests for collaboration store
+  - Component tests for collaboration UI components
+  - Hook tests for useWebSocket and useCollaboration
+  - Integration tests for real-time collaboration workflow
+  - E2E tests for complete user story 3 workflow
+
+### Changed
+- ModelEditor now includes collaboration status and presence indicators
+- Collaboration features automatically disabled in offline mode
+
+## [0.2.0] - 2025-01-XX
+
 ### Added
 - Initial OpenAPI specification reverse-engineered from frontend code
 - GitHub Actions CI/CD workflow for automated testing and building

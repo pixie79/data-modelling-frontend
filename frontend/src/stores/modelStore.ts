@@ -6,18 +6,21 @@
 import { create } from 'zustand';
 import { tableService } from '@/services/api/tableService';
 import { relationshipService } from '@/services/api/relationshipService';
+import { dataFlowService } from '@/services/api/dataFlowService';
 import type { Table } from '@/types/table';
 import type { Relationship } from '@/types/relationship';
-import type { Domain } from '@/types/workspace';
-import type { CreateTableRequest, CreateRelationshipRequest } from '@/types/api';
+import type { Domain, DataFlowDiagram, DataFlowNode, DataFlowConnection } from '@/types/workspace';
+import type { CreateTableRequest, CreateRelationshipRequest, CreateDataFlowDiagramRequest, UpdateDataFlowDiagramRequest } from '@/types/api';
 
 interface ModelState {
   tables: Table[];
   relationships: Relationship[];
   domains: Domain[];
+  dataFlowDiagrams: DataFlowDiagram[];
   selectedTableId: string | null;
   selectedRelationshipId: string | null;
   selectedDomainId: string | null;
+  selectedDataFlowDiagramId: string | null;
   isLoading: boolean;
   error: string | null;
 
@@ -25,15 +28,26 @@ interface ModelState {
   setTables: (tables: Table[]) => void;
   setRelationships: (relationships: Relationship[]) => void;
   setDomains: (domains: Domain[]) => void;
+  setDataFlowDiagrams: (diagrams: DataFlowDiagram[]) => void;
   addTable: (table: Table) => void;
   updateTable: (tableId: string, updates: Partial<Table>) => void;
   removeTable: (tableId: string) => void;
   addRelationship: (relationship: Relationship) => void;
   updateRelationship: (relationshipId: string, updates: Partial<Relationship>) => void;
   removeRelationship: (relationshipId: string) => void;
+  addDataFlowDiagram: (diagram: DataFlowDiagram) => void;
+  updateDataFlowDiagram: (diagramId: string, updates: Partial<DataFlowDiagram>) => void;
+  removeDataFlowDiagram: (diagramId: string) => void;
+  addDataFlowNode: (diagramId: string, node: DataFlowNode) => void;
+  updateDataFlowNode: (diagramId: string, nodeId: string, updates: Partial<DataFlowNode>) => void;
+  removeDataFlowNode: (diagramId: string, nodeId: string) => void;
+  addDataFlowConnection: (diagramId: string, connection: DataFlowConnection) => void;
+  updateDataFlowConnection: (diagramId: string, connectionId: string, updates: Partial<DataFlowConnection>) => void;
+  removeDataFlowConnection: (diagramId: string, connectionId: string) => void;
   setSelectedTable: (tableId: string | null) => void;
   setSelectedRelationship: (relationshipId: string | null) => void;
   setSelectedDomain: (domainId: string | null) => void;
+  setSelectedDataFlowDiagram: (diagramId: string | null) => void;
   setLoading: (isLoading: boolean) => void;
   setError: (error: string | null) => void;
 
@@ -46,21 +60,34 @@ interface ModelState {
   createRelationship: (domain: string, request: CreateRelationshipRequest) => Promise<Relationship>;
   updateRelationshipRemote: (domain: string, relationshipId: string, updates: Partial<Relationship>) => Promise<Relationship>;
   deleteRelationshipRemote: (domain: string, relationshipId: string) => Promise<void>;
+  
+  // Data Flow Diagram CRUD Operations
+  fetchDataFlowDiagrams: (workspaceId: string) => Promise<void>;
+  createDataFlowDiagramRemote: (workspaceId: string, request: CreateDataFlowDiagramRequest) => Promise<DataFlowDiagram>;
+  updateDataFlowDiagramRemote: (workspaceId: string, diagramId: string, request: UpdateDataFlowDiagramRequest) => Promise<DataFlowDiagram>;
+  deleteDataFlowDiagramRemote: (workspaceId: string, diagramId: string) => Promise<void>;
+  
+  // Link data flow to conceptual tables
+  linkDataFlowToTable: (diagramId: string, tableId: string) => void;
+  unlinkDataFlowFromTable: (diagramId: string, tableId: string) => void;
 }
 
 export const useModelStore = create<ModelState>((set) => ({
   tables: [],
   relationships: [],
   domains: [],
+  dataFlowDiagrams: [],
   selectedTableId: null,
   selectedRelationshipId: null,
   selectedDomainId: null,
+  selectedDataFlowDiagramId: null,
   isLoading: false,
   error: null,
 
   setTables: (tables) => set({ tables }),
   setRelationships: (relationships) => set({ relationships }),
   setDomains: (domains) => set({ domains }),
+  setDataFlowDiagrams: (diagrams) => set({ dataFlowDiagrams: diagrams }),
   addTable: (table) =>
     set((state) => ({
       tables: [...state.tables, table],
@@ -90,9 +117,84 @@ export const useModelStore = create<ModelState>((set) => ({
       selectedRelationshipId:
         state.selectedRelationshipId === relationshipId ? null : state.selectedRelationshipId,
     })),
+  addDataFlowDiagram: (diagram) =>
+    set((state) => ({
+      dataFlowDiagrams: [...state.dataFlowDiagrams, diagram],
+    })),
+  updateDataFlowDiagram: (diagramId, updates) =>
+    set((state) => ({
+      dataFlowDiagrams: state.dataFlowDiagrams.map((d) =>
+        d.id === diagramId ? { ...d, ...updates } : d
+      ),
+    })),
+  removeDataFlowDiagram: (diagramId) =>
+    set((state) => ({
+      dataFlowDiagrams: state.dataFlowDiagrams.filter((d) => d.id !== diagramId),
+      selectedDataFlowDiagramId:
+        state.selectedDataFlowDiagramId === diagramId ? null : state.selectedDataFlowDiagramId,
+    })),
+  addDataFlowNode: (diagramId, node) =>
+    set((state) => ({
+      dataFlowDiagrams: state.dataFlowDiagrams.map((d) =>
+        d.id === diagramId ? { ...d, nodes: [...d.nodes, node] } : d
+      ),
+    })),
+  updateDataFlowNode: (diagramId, nodeId, updates) =>
+    set((state) => ({
+      dataFlowDiagrams: state.dataFlowDiagrams.map((d) =>
+        d.id === diagramId
+          ? {
+              ...d,
+              nodes: d.nodes.map((n) => (n.id === nodeId ? { ...n, ...updates } : n)),
+            }
+          : d
+      ),
+    })),
+  removeDataFlowNode: (diagramId, nodeId) =>
+    set((state) => ({
+      dataFlowDiagrams: state.dataFlowDiagrams.map((d) =>
+        d.id === diagramId
+          ? {
+              ...d,
+              nodes: d.nodes.filter((n) => n.id !== nodeId),
+              connections: d.connections.filter(
+                (c) => c.source_node_id !== nodeId && c.target_node_id !== nodeId
+              ),
+            }
+          : d
+      ),
+    })),
+  addDataFlowConnection: (diagramId, connection) =>
+    set((state) => ({
+      dataFlowDiagrams: state.dataFlowDiagrams.map((d) =>
+        d.id === diagramId ? { ...d, connections: [...d.connections, connection] } : d
+      ),
+    })),
+  updateDataFlowConnection: (diagramId, connectionId, updates) =>
+    set((state) => ({
+      dataFlowDiagrams: state.dataFlowDiagrams.map((d) =>
+        d.id === diagramId
+          ? {
+              ...d,
+              connections: d.connections.map((c) =>
+                c.id === connectionId ? { ...c, ...updates } : c
+              ),
+            }
+          : d
+      ),
+    })),
+  removeDataFlowConnection: (diagramId, connectionId) =>
+    set((state) => ({
+      dataFlowDiagrams: state.dataFlowDiagrams.map((d) =>
+        d.id === diagramId
+          ? { ...d, connections: d.connections.filter((c) => c.id !== connectionId) }
+          : d
+      ),
+    })),
   setSelectedTable: (tableId) => set({ selectedTableId: tableId }),
   setSelectedRelationship: (relationshipId) => set({ selectedRelationshipId: relationshipId }),
   setSelectedDomain: (domainId) => set({ selectedDomainId: domainId }),
+  setSelectedDataFlowDiagram: (diagramId) => set({ selectedDataFlowDiagramId: diagramId }),
   setLoading: (isLoading) => set({ isLoading }),
   setError: (error) => set({ error }),
 
@@ -246,6 +348,109 @@ export const useModelStore = create<ModelState>((set) => ({
       });
       throw error;
     }
+  },
+
+  // Data Flow Diagram CRUD Operations
+  fetchDataFlowDiagrams: async (workspaceId: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const diagrams = await dataFlowService.listDataFlowDiagrams(workspaceId);
+      set({ dataFlowDiagrams: diagrams, isLoading: false });
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to fetch data flow diagrams',
+        isLoading: false,
+      });
+    }
+  },
+
+  createDataFlowDiagramRemote: async (
+    workspaceId: string,
+    request: CreateDataFlowDiagramRequest
+  ) => {
+    set({ isLoading: true, error: null });
+    try {
+      const diagram = await dataFlowService.createDataFlowDiagram(workspaceId, request);
+      set((state) => ({
+        dataFlowDiagrams: [...state.dataFlowDiagrams, diagram],
+        isLoading: false,
+      }));
+      return diagram;
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to create data flow diagram',
+        isLoading: false,
+      });
+      throw error;
+    }
+  },
+
+  updateDataFlowDiagramRemote: async (
+    workspaceId: string,
+    diagramId: string,
+    request: UpdateDataFlowDiagramRequest
+  ) => {
+    set({ isLoading: true, error: null });
+    try {
+      const diagram = await dataFlowService.updateDataFlowDiagram(workspaceId, diagramId, request);
+      set((state) => ({
+        dataFlowDiagrams: state.dataFlowDiagrams.map((d) => (d.id === diagramId ? diagram : d)),
+        isLoading: false,
+      }));
+      return diagram;
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to update data flow diagram',
+        isLoading: false,
+      });
+      throw error;
+    }
+  },
+
+  deleteDataFlowDiagramRemote: async (workspaceId: string, diagramId: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      await dataFlowService.deleteDataFlowDiagram(workspaceId, diagramId);
+      set((state) => ({
+        dataFlowDiagrams: state.dataFlowDiagrams.filter((d) => d.id !== diagramId),
+        selectedDataFlowDiagramId:
+          state.selectedDataFlowDiagramId === diagramId ? null : state.selectedDataFlowDiagramId,
+        isLoading: false,
+      }));
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to delete data flow diagram',
+        isLoading: false,
+      });
+      throw error;
+    }
+  },
+
+  // Link data flow to conceptual tables
+  linkDataFlowToTable: (diagramId: string, tableId: string) => {
+    set((state) => ({
+      dataFlowDiagrams: state.dataFlowDiagrams.map((d) =>
+        d.id === diagramId
+          ? {
+              ...d,
+              linked_tables: [...(d.linked_tables || []), tableId],
+            }
+          : d
+      ),
+    }));
+  },
+
+  unlinkDataFlowFromTable: (diagramId: string, tableId: string) => {
+    set((state) => ({
+      dataFlowDiagrams: state.dataFlowDiagrams.map((d) =>
+        d.id === diagramId
+          ? {
+              ...d,
+              linked_tables: (d.linked_tables || []).filter((id) => id !== tableId),
+            }
+          : d
+      ),
+    }));
   },
 }));
 

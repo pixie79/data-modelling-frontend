@@ -6,6 +6,7 @@
 import { electronFileService as platformFileService, type OpenDialogOptions, type SaveDialogOptions } from '@/services/platform/electron';
 import { odcsService } from '@/services/sdk/odcsService';
 import { getPlatform } from '@/services/platform/platform';
+import { useModelStore } from '@/stores/modelStore';
 import type { Workspace } from '@/types/workspace';
 
 class ElectronFileService {
@@ -18,8 +19,14 @@ class ElectronFileService {
     }
 
     const content = await platformFileService.readFile(path);
-    const workspace = await odcsService.parseYAML(content);
-    return workspace as unknown as Workspace;
+    const odcsWorkspace = await odcsService.parseYAML(content);
+    
+    // Update model store with data flow diagrams if present
+    if (odcsWorkspace.data_flow_diagrams && odcsWorkspace.data_flow_diagrams.length > 0) {
+      useModelStore.getState().setDataFlowDiagrams(odcsWorkspace.data_flow_diagrams);
+    }
+    
+    return odcsWorkspace as unknown as Workspace;
   }
 
   /**
@@ -30,7 +37,13 @@ class ElectronFileService {
       throw new Error('Electron file service can only be used in Electron environment');
     }
 
-    const yamlContent = await odcsService.toYAML(workspace as any);
+    // Include data flow diagrams from model store
+    const { dataFlowDiagrams } = useModelStore.getState();
+    const workspaceWithDiagrams = {
+      ...workspace,
+      data_flow_diagrams: dataFlowDiagrams,
+    };
+    const yamlContent = await odcsService.toYAML(workspaceWithDiagrams as any);
     await platformFileService.writeFile(path, yamlContent);
   }
 

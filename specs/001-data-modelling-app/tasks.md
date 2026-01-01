@@ -176,25 +176,25 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T113 [P] [US2] Unit test for data flow service in frontend/tests/unit/services/api/dataFlowService.test.ts
-- [ ] T114 [P] [US2] Component test for data flow canvas in frontend/tests/unit/components/dataflow/DataFlowCanvas.test.tsx
-- [ ] T115 [P] [US2] Component test for flow node in frontend/tests/unit/components/dataflow/FlowNode.test.tsx
-- [ ] T116 [P] [US2] Component test for flow connection in frontend/tests/unit/components/dataflow/FlowConnection.test.tsx
-- [ ] T117 [P] [US2] Integration test for data flow diagram creation and linking in frontend/tests/integration/dataflow.test.ts
-- [ ] T118 [P] [US2] E2E test for complete user story 2 workflow in frontend/tests/e2e/user-story-2.test.ts
+- [X] T113 [P] [US2] Unit test for data flow service in frontend/tests/unit/services/api/dataFlowService.test.ts ✅ All tests passing
+- [X] T114 [P] [US2] Component test for data flow canvas in frontend/tests/unit/components/dataflow/DataFlowCanvas.test.tsx ✅ All tests passing
+- [X] T115 [P] [US2] Component test for flow node in frontend/tests/unit/components/dataflow/FlowNode.test.tsx ✅ All tests passing
+- [X] T116 [P] [US2] Component test for flow connection in frontend/tests/unit/components/dataflow/FlowConnection.test.tsx ✅ All tests passing
+- [X] T117 [P] [US2] Integration test for data flow diagram creation and linking in frontend/tests/integration/dataflow.test.ts ✅ All tests passing
+- [X] T118 [P] [US2] E2E test for complete user story 2 workflow in frontend/tests/e2e/user-story-2.test.ts ✅ All tests passing
 
 ### Implementation for User Story 2
 
-- [ ] T119 [P] [US2] Create data flow diagram service in frontend/src/services/api/dataFlowService.ts
-- [ ] T120 [US2] Update model store with data flow diagram management in frontend/src/stores/modelStore.ts
-- [ ] T121 [P] [US2] Create data flow canvas component in frontend/src/components/dataflow/DataFlowCanvas.tsx
-- [ ] T122 [P] [US2] Create flow node component with abstract icons in frontend/src/components/dataflow/FlowNode.tsx
-- [ ] T123 [P] [US2] Create flow connection component in frontend/src/components/dataflow/FlowConnection.tsx
-- [ ] T124 [US2] Implement data flow node creation (database, Kafka topic, API, processor, target types) in frontend/src/components/dataflow/FlowNode.tsx
-- [ ] T125 [US2] Implement data flow connection creation with labels and direction in frontend/src/components/dataflow/FlowConnection.tsx
-- [ ] T126 [US2] Implement linking data flow elements to conceptual tables in frontend/src/stores/modelStore.ts
-- [ ] T127 [US2] Implement data flow diagram persistence in workspace save in frontend/src/services/sdk/odcsService.ts
-- [ ] T128 [US2] Integrate data flow diagram view into model editor page in frontend/src/pages/ModelEditor.tsx
+- [X] T119 [P] [US2] Create data flow diagram service in frontend/src/services/api/dataFlowService.ts ✅ Complete
+- [X] T120 [US2] Update model store with data flow diagram management in frontend/src/stores/modelStore.ts ✅ Complete
+- [X] T121 [P] [US2] Create data flow canvas component in frontend/src/components/dataflow/DataFlowCanvas.tsx ✅ Complete
+- [X] T122 [P] [US2] Create flow node component with abstract icons in frontend/src/components/dataflow/FlowNode.tsx ✅ Complete
+- [X] T123 [P] [US2] Create flow connection component in frontend/src/components/dataflow/FlowConnection.tsx ✅ Complete
+- [X] T124 [US2] Implement data flow node creation (database, Kafka topic, API, processor, target types) in frontend/src/components/dataflow/FlowNode.tsx ✅ Complete
+- [X] T125 [US2] Implement data flow connection creation with labels and direction in frontend/src/components/dataflow/FlowConnection.tsx ✅ Complete
+- [X] T126 [US2] Implement linking data flow elements to conceptual tables in frontend/src/stores/modelStore.ts ✅ Complete
+- [X] T127 [US2] Implement data flow diagram persistence in workspace save in frontend/src/services/sdk/odcsService.ts ✅ Complete (via API)
+- [X] T128 [US2] Integrate data flow diagram view into model editor page in frontend/src/pages/ModelEditor.tsx ✅ Complete
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
 
@@ -210,34 +210,34 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T129 [P] [US3] Unit test for WebSocket client service in frontend/tests/unit/services/websocket/websocketClient.test.ts
-- [ ] T130 [P] [US3] Unit test for collaboration service in frontend/tests/unit/services/websocket/collaborationService.test.ts
-- [ ] T131 [P] [US3] Unit test for collaboration store in frontend/tests/unit/stores/collaborationStore.test.ts
-- [ ] T132 [P] [US3] Component test for presence indicator in frontend/tests/unit/components/collaboration/PresenceIndicator.test.tsx
-- [ ] T133 [P] [US3] Component test for collaboration status in frontend/tests/unit/components/collaboration/CollaborationStatus.test.tsx
-- [ ] T134 [P] [US3] Component test for conflict resolver in frontend/tests/unit/components/collaboration/ConflictResolver.test.tsx
-- [ ] T135 [P] [US3] Unit test for useWebSocket hook in frontend/tests/unit/hooks/useWebSocket.test.ts
-- [ ] T136 [P] [US3] Unit test for useCollaboration hook in frontend/tests/unit/hooks/useCollaboration.test.ts
-- [ ] T137 [P] [US3] Integration test for real-time collaboration workflow in frontend/tests/integration/collaboration.test.ts
-- [ ] T138 [P] [US3] E2E test for complete user story 3 workflow in frontend/tests/e2e/user-story-3.test.ts
+- [X] T129 [P] [US3] Unit test for WebSocket client service in frontend/tests/unit/services/websocket/websocketClient.test.ts ✅ Complete
+- [X] T130 [P] [US3] Unit test for collaboration service in frontend/tests/unit/services/websocket/collaborationService.test.ts ✅ Complete
+- [X] T131 [P] [US3] Unit test for collaboration store in frontend/tests/unit/stores/collaborationStore.test.ts ✅ Complete
+- [X] T132 [P] [US3] Component test for presence indicator in frontend/tests/unit/components/collaboration/PresenceIndicator.test.tsx ✅ Complete
+- [X] T133 [P] [US3] Component test for collaboration status in frontend/tests/unit/components/collaboration/CollaborationStatus.test.tsx ✅ Complete
+- [X] T134 [P] [US3] Component test for conflict resolver in frontend/tests/unit/components/collaboration/ConflictResolver.test.tsx ✅ Complete
+- [X] T135 [P] [US3] Unit test for useWebSocket hook in frontend/tests/unit/hooks/useWebSocket.test.ts ✅ Complete
+- [X] T136 [P] [US3] Unit test for useCollaboration hook in frontend/tests/unit/hooks/useCollaboration.test.ts ✅ Complete
+- [X] T137 [P] [US3] Integration test for real-time collaboration workflow in frontend/tests/integration/collaboration.test.ts ✅ Complete
+- [X] T138 [P] [US3] E2E test for complete user story 3 workflow in frontend/tests/e2e/user-story-3.test.ts ✅ Complete
 
 ### Implementation for User Story 3
 
-- [ ] T139 [P] [US3] Create WebSocket client service in frontend/src/services/websocket/websocketClient.ts
-- [ ] T140 [US3] Create collaboration service in frontend/src/services/websocket/collaborationService.ts
-- [ ] T141 [US3] Create collaboration store in frontend/src/stores/collaborationStore.ts using Zustand
-- [ ] T142 [P] [US3] Create presence indicator component in frontend/src/components/collaboration/PresenceIndicator.tsx
-- [ ] T143 [P] [US3] Create collaboration status component in frontend/src/components/collaboration/CollaborationStatus.tsx
-- [ ] T144 [P] [US3] Create conflict resolver component in frontend/src/components/collaboration/ConflictResolver.tsx
-- [ ] T145 [US3] Implement WebSocket connection establishment with JWT authentication in frontend/src/services/websocket/websocketClient.ts
-- [ ] T146 [US3] Implement real-time update handling (table updates, relationship updates) via WebSocket in frontend/src/services/websocket/collaborationService.ts
-- [ ] T147 [US3] Implement last-change-wins conflict resolution strategy in frontend/src/services/websocket/collaborationService.ts
-- [ ] T148 [US3] Implement presence indicator updates (who's online, what they're editing) in frontend/src/components/collaboration/PresenceIndicator.tsx
-- [ ] T149 [US3] Implement primary owner assignment per canvas with read/edit access control in frontend/src/stores/collaborationStore.ts
-- [ ] T150 [US3] Implement simultaneous deletion warning (warn second user table already deleted) in frontend/src/components/collaboration/ConflictResolver.tsx
-- [ ] T151 [US3] Create useWebSocket hook for WebSocket connections in frontend/src/hooks/useWebSocket.ts
-- [ ] T152 [US3] Create useCollaboration hook for collaboration features in frontend/src/hooks/useCollaboration.ts
-- [ ] T153 [US3] Integrate collaboration features into model editor page in frontend/src/pages/ModelEditor.tsx
+- [X] T139 [P] [US3] Create WebSocket client service in frontend/src/services/websocket/websocketClient.ts ✅ Complete
+- [X] T140 [US3] Create collaboration service in frontend/src/services/websocket/collaborationService.ts ✅ Complete
+- [X] T141 [US3] Create collaboration store in frontend/src/stores/collaborationStore.ts using Zustand ✅ Complete
+- [X] T142 [P] [US3] Create presence indicator component in frontend/src/components/collaboration/PresenceIndicator.tsx ✅ Complete
+- [X] T143 [P] [US3] Create collaboration status component in frontend/src/components/collaboration/CollaborationStatus.tsx ✅ Complete
+- [X] T144 [P] [US3] Create conflict resolver component in frontend/src/components/collaboration/ConflictResolver.tsx ✅ Complete
+- [X] T145 [US3] Implement WebSocket connection establishment with JWT authentication in frontend/src/services/websocket/websocketClient.ts ✅ Complete
+- [X] T146 [US3] Implement real-time update handling (table updates, relationship updates) via WebSocket in frontend/src/services/websocket/collaborationService.ts ✅ Complete
+- [X] T147 [US3] Implement last-change-wins conflict resolution strategy in frontend/src/services/websocket/collaborationService.ts ✅ Complete
+- [X] T148 [US3] Implement presence indicator updates (who's online, what they're editing) in frontend/src/components/collaboration/PresenceIndicator.tsx ✅ Complete
+- [X] T149 [US3] Implement primary owner assignment per canvas with read/edit access control in frontend/src/stores/collaborationStore.ts ✅ Complete
+- [X] T150 [US3] Implement simultaneous deletion warning (warn second user table already deleted) in frontend/src/components/collaboration/ConflictResolver.tsx ✅ Complete
+- [X] T151 [US3] Create useWebSocket hook for WebSocket connections in frontend/src/hooks/useWebSocket.ts ✅ Complete
+- [X] T152 [US3] Create useCollaboration hook for collaboration features in frontend/src/hooks/useCollaboration.ts ✅ Complete
+- [X] T153 [US3] Integrate collaboration features into model editor page in frontend/src/pages/ModelEditor.tsx ✅ Complete
 
 **Checkpoint**: At this point, User Stories 1, 2, AND 3 should all work independently
 

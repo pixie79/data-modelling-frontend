@@ -23,7 +23,7 @@ Build a React-based web application with Electron desktop app support for creati
 - Electron Builder 24+ (packaging and distribution)
 - TypeScript 5.3+ (type safety)
 - TailwindCSS 4.1+ (styling)
-- data-modelling-sdk (WASM bindings for Rust SDK)
+- data-modelling-sdk = "1.0.2" (WASM bindings for Rust SDK)
 - WebSocket API (native browser WebSocket for real-time collaboration)
 
 **Storage**: 

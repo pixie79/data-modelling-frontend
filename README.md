@@ -138,12 +138,15 @@ VITE_WS_BASE_URL=ws://localhost:8081
 
 ## WASM SDK Integration
 
-The application uses a WASM build of the `data-modelling-sdk` for offline functionality:
+The application uses a WASM build of the `data-modelling-sdk` (version **1.0.2**) for offline functionality:
 
-1. **Build Process**: The SDK is built using `wasm-pack` and copied to `public/wasm/`
-2. **Automatic Build**: Runs automatically before `npm run build` via `prebuild` script
-3. **Development**: Can be built manually with `npm run build:wasm`
-4. **Fallback**: If WASM SDK is not available, the app uses a JavaScript YAML parser fallback
+1. **SDK Version**: Requires `data-modelling-sdk = "1.0.2"` crate
+2. **Build Process**: The SDK is built using `wasm-pack` and copied to `public/wasm/`
+3. **Automatic Build**: Runs automatically before `npm run build` via `prebuild` script
+4. **Development**: Can be built manually with `npm run build:wasm`
+5. **Fallback**: If WASM SDK is not available, the app uses a JavaScript YAML parser fallback
+
+**Note**: The SDK must be version 1.0.2 or compatible. The API project (`data-modelling-api`) also uses `data-modelling-sdk = "1.0.2"` with features `["api-backend", "git"]`.
 
 ## Offline Mode
 

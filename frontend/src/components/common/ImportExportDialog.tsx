@@ -119,10 +119,12 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({
   const handleExport = async () => {
     setIsProcessing(true);
     try {
-      // TODO: Get current workspace data
+      // Get current workspace data including data flow diagrams
+      const { dataFlowDiagrams } = useModelStore.getState();
       const workspace = {
         tables,
         relationships,
+        data_flow_diagrams: dataFlowDiagrams,
       };
 
       let content: string;

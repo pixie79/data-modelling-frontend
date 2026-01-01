@@ -35,6 +35,7 @@ export interface DataFlowDiagram {
   name: string; // max 255 chars
   nodes: DataFlowNode[];
   connections: DataFlowConnection[];
+  linked_tables?: string[]; // Array of table UUIDs that this flow relates to
   created_at: string; // ISO timestamp
   last_modified_at: string; // ISO timestamp
 }

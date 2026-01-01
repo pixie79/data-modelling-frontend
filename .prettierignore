@@ -1,0 +1,13 @@
+node_modules/
+dist/
+build/
+out/
+coverage/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+*.min.js
+*.bundle.js
+public/
+electron/dist/
+

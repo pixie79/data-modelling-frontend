@@ -1,0 +1,14 @@
+node_modules/
+dist/
+build/
+out/
+coverage/
+*.min.js
+*.bundle.js
+public/
+electron/dist/
+*.config.js
+*.config.ts
+vite.config.ts
+vite.electron.config.ts
+

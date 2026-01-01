@@ -49,8 +49,13 @@ description: "Task list template for feature implementation"
 **Purpose**: Project initialization and basic structure
 
 - [ ] T001 Create project structure per implementation plan
-- [ ] T002 Initialize [language] project with [framework] dependencies
+- [ ] T002 Initialize [language] project with [framework] dependencies (use latest stable versions)
 - [ ] T003 [P] Configure linting and formatting tools
+- [ ] T004 [P] Setup compilation checks and ensure code compiles without errors/warnings
+- [ ] T005 [P] Configure dependency management and security scanning tools
+- [ ] T006 [P] Setup security-first design documentation template
+- [ ] T007 [P] Configure test framework and coverage tools (target 95% coverage)
+- [ ] T008 [P] Setup test coverage reporting and CI/CD integration
 
 ---
 
@@ -153,8 +158,12 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX [P] Documentation updates in docs/
 - [ ] TXXX Code cleanup and refactoring
 - [ ] TXXX Performance optimization across all stories
-- [ ] TXXX [P] Additional unit tests (if requested) in tests/unit/
-- [ ] TXXX Security hardening
+- [ ] TXXX [P] Verify 95% test coverage (lines, branches, functions, statements)
+- [ ] TXXX [P] Remove all TODOs and partial implementations (unless authorized by end user)
+- [ ] TXXX [P] Security hardening and security audit
+- [ ] TXXX [P] Run dependency security scan and update vulnerable packages
+- [ ] TXXX Final linting pass and resolve all linting errors
+- [ ] TXXX Verify all code compiles without errors or warnings
 - [ ] TXXX Run quickstart.md validation
 
 ---

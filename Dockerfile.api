@@ -18,16 +18,26 @@ WORKDIR /app
 # Install the API from crates.io
 # Try vendored OpenSSL first (builds from source, avoids linking issues)
 # Fallback to regular install if vendored feature not available
-RUN set -e; \
-    if cargo install data-modelling-api --version 1.0.1 --features vendored 2>&1; then \
+RUN set -eux && \
+    CARGO_HOME=${CARGO_HOME:-/root/.cargo} && \
+    echo "Cargo home: $CARGO_HOME" && \
+    if cargo install data-modelling-api --version 1.0.1 --features vendored 2>&1 | tee /tmp/install.log; then \
         echo "Installed with vendored feature"; \
     else \
-        echo "Vendored feature failed, trying without"; \
-        cargo install data-modelling-api --version 1.0.1 || exit 1; \
+        echo "Vendored feature failed, trying without" && \
+        cat /tmp/install.log && \
+        cargo install data-modelling-api --version 1.0.1 2>&1 | tee /tmp/install2.log || (cat /tmp/install2.log && exit 1); \
     fi && \
     echo "Checking installed binaries:" && \
-    ls -la /root/.cargo/bin/ 2>/dev/null || echo "Cargo bin directory not found, checking alternative locations" && \
-    find /root -name "*data-modelling*" -o -name "*api" 2>/dev/null | head -10 || true
+    ls -la "$CARGO_HOME/bin/" && \
+    if [ ! -f "$CARGO_HOME/bin/data-modelling-api" ]; then \
+        echo "ERROR: data-modelling-api binary not found in $CARGO_HOME/bin/" && \
+        echo "Contents of $CARGO_HOME/bin/:" && \
+        ls -la "$CARGO_HOME/bin/" && \
+        exit 1; \
+    fi && \
+    echo "Binary found: $CARGO_HOME/bin/data-modelling-api" && \
+    file "$CARGO_HOME/bin/data-modelling-api"
 
 # Runtime stage
 FROM debian:bookworm-slim
@@ -41,8 +51,10 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy binary from builder
-# First check if the directory exists, then copy all binaries
-COPY --from=builder --chmod=755 /root/.cargo/bin/ /usr/local/bin/
+# Copy the specific binary and verify it exists
+COPY --from=builder --chmod=755 /root/.cargo/bin/data-modelling-api /usr/local/bin/data-modelling-api
+RUN chmod +x /usr/local/bin/data-modelling-api && \
+    /usr/local/bin/data-modelling-api --version || echo "Binary copied successfully"
 
 # Create non-root user
 RUN groupadd -r -g 1000 api && \

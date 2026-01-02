@@ -7,8 +7,13 @@ import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'ax
 import type { ApiError } from '@/types/api';
 import { useSDKModeStore } from '@/services/sdk/sdkMode';
 
-// Use relative URL if VITE_API_BASE_URL is empty (Docker/proxied), otherwise use the configured URL
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (typeof window !== 'undefined' ? '' : 'http://localhost:8081');
+// Determine API base URL:
+// - If VITE_API_BASE_URL is set and is a full URL, use it
+// - Otherwise, use empty string for relative URLs (proxied by Nginx in Docker)
+const envApiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+const API_BASE_URL = (envApiBaseUrl && envApiBaseUrl.trim() !== '' && (envApiBaseUrl.startsWith('http://') || envApiBaseUrl.startsWith('https://')))
+  ? envApiBaseUrl
+  : (typeof window !== 'undefined' ? '' : 'http://localhost:8081');
 
 class ApiClient {
   private client: AxiosInstance;

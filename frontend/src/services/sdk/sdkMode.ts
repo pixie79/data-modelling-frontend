@@ -25,12 +25,13 @@ class SDKModeDetector {
   async checkOnlineMode(): Promise<boolean> {
     try {
       // Determine API URL:
-      // - If VITE_API_BASE_URL is set and is a full URL, use it
+      // - If VITE_API_BASE_URL is set and is a full URL (starts with http:// or https://), use it
       // - Otherwise, use relative URL which will be proxied by Nginx (Docker) or direct (dev)
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
       let healthUrl: string;
       
-      if (apiBaseUrl && (apiBaseUrl.startsWith('http://') || apiBaseUrl.startsWith('https://'))) {
+      // Check if apiBaseUrl exists, is not empty, and is a full URL
+      if (apiBaseUrl && apiBaseUrl.trim() !== '' && (apiBaseUrl.startsWith('http://') || apiBaseUrl.startsWith('https://'))) {
         // Full URL provided (development mode or explicit config)
         healthUrl = `${apiBaseUrl}/api/v1/health`;
       } else {
@@ -38,12 +39,16 @@ class SDKModeDetector {
         healthUrl = '/api/v1/health';
       }
       
+      console.log('[SDKMode] Checking API availability at:', healthUrl);
       const response = await fetch(healthUrl, {
         method: 'GET',
         signal: AbortSignal.timeout(2000), // 2 second timeout
       });
-      return response.ok;
-    } catch {
+      const isOk = response.ok;
+      console.log('[SDKMode] API health check result:', isOk, 'status:', response.status);
+      return isOk;
+    } catch (error) {
+      console.error('[SDKMode] API health check failed:', error);
       return false;
     }
   }

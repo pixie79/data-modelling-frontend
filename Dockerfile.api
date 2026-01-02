@@ -18,11 +18,16 @@ WORKDIR /app
 # Install the API from crates.io
 # Try vendored OpenSSL first (builds from source, avoids linking issues)
 # Fallback to regular install if vendored feature not available
-# Note: cargo install may install binary with different name, so we check what was installed
-RUN (cargo install data-modelling-api --version 1.0.1 --features vendored || \
-     cargo install data-modelling-api --version 1.0.1) && \
-    ls -la /root/.cargo/bin/ && \
-    find /root/.cargo/bin -name "*data-modelling*" -o -name "*api*" || true
+RUN set -e; \
+    if cargo install data-modelling-api --version 1.0.1 --features vendored 2>&1; then \
+        echo "Installed with vendored feature"; \
+    else \
+        echo "Vendored feature failed, trying without"; \
+        cargo install data-modelling-api --version 1.0.1 || exit 1; \
+    fi && \
+    echo "Checking installed binaries:" && \
+    ls -la /root/.cargo/bin/ 2>/dev/null || echo "Cargo bin directory not found, checking alternative locations" && \
+    find /root -name "*data-modelling*" -o -name "*api" 2>/dev/null | head -10 || true
 
 # Runtime stage
 FROM debian:bookworm-slim
@@ -36,10 +41,8 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy binary from builder
-# The binary might be named differently, so we copy all binaries and create a symlink
-COPY --from=builder /root/.cargo/bin/ /usr/local/bin/
-RUN chmod +x /usr/local/bin/* && \
-    (ln -sf /usr/local/bin/data-modelling-api /usr/local/bin/api || true)
+# First check if the directory exists, then copy all binaries
+COPY --from=builder --chmod=755 /root/.cargo/bin/ /usr/local/bin/
 
 # Create non-root user
 RUN groupadd -r -g 1000 api && \

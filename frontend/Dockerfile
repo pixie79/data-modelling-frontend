@@ -11,6 +11,8 @@ ARG VITE_WS_BASE_URL=ws://localhost:8081
 # Set environment variables for build
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 ENV VITE_WS_BASE_URL=${VITE_WS_BASE_URL}
+# Use absolute paths for web/Docker builds (not Electron)
+ENV VITE_BASE_PATH=/
 
 # Copy package files
 COPY package*.json ./

@@ -3,8 +3,12 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 
 // https://vitejs.dev/config/
+// Use absolute paths for web/Docker, relative paths for Electron
+// VITE_BASE_PATH can be set to './' for Electron builds, '/' for web builds
+const basePath = process.env.VITE_BASE_PATH || (process.env.VITE_ELECTRON_BUILD === 'true' ? './' : '/');
+
 export default defineConfig({
-  base: './', // Use relative paths for Electron compatibility
+  base: basePath,
   plugins: [react()],
   resolve: {
     alias: {

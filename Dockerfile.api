@@ -23,16 +23,18 @@ RUN set -euxo pipefail && \
     cargo install data-modelling-api --version 1.0.1 2>&1 | tee /tmp/install.log && \
     echo "Checking installed binaries:" && \
     ls -la "$CARGO_HOME/bin/" && \
-    if [ ! -f "$CARGO_HOME/bin/data-modelling-api" ]; then \
-        echo "ERROR: data-modelling-api binary not found in $CARGO_HOME/bin/" && \
+    if [ ! -f "$CARGO_HOME/bin/api" ]; then \
+        echo "ERROR: api binary not found in $CARGO_HOME/bin/" && \
         echo "Install log:" && \
         cat /tmp/install.log && \
         echo "Contents of $CARGO_HOME/bin/:" && \
         ls -la "$CARGO_HOME/bin/" && \
         exit 1; \
     fi && \
-    echo "Binary found: $CARGO_HOME/bin/data-modelling-api" && \
-    file "$CARGO_HOME/bin/data-modelling-api"
+    echo "Binary found: $CARGO_HOME/bin/api" && \
+    file "$CARGO_HOME/bin/api" && \
+    # Create symlink for consistency
+    ln -sf "$CARGO_HOME/bin/api" "$CARGO_HOME/bin/data-modelling-api"
 
 # Runtime stage
 FROM debian:bookworm-slim
@@ -46,8 +48,8 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy binary from builder
-# Copy the specific binary and verify it exists
-COPY --from=builder --chmod=755 /usr/local/cargo/bin/data-modelling-api /usr/local/bin/data-modelling-api
+# The binary is named 'api', copy it and create symlink for consistency
+COPY --from=builder --chmod=755 /usr/local/cargo/bin/api /usr/local/bin/data-modelling-api
 RUN chmod +x /usr/local/bin/data-modelling-api && \
     /usr/local/bin/data-modelling-api --version || echo "Binary copied successfully"
 

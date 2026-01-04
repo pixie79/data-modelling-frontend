@@ -103,7 +103,7 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({
     console.log('[ImportExportDialog] Content length:', content.length);
     console.log('[ImportExportDialog] Content preview:', content.substring(0, 200));
     
-    const { setTables, setRelationships, setDomains, selectedDomainId: initialSelectedDomainId, selectedSystemId, systems, updateSystem, tables: existingTables, domains } = useModelStore.getState();
+    const { setTables, setRelationships, setDomains, setSystems, selectedDomainId: initialSelectedDomainId, selectedSystemId, systems: existingSystems, updateSystem, tables: existingTables, domains } = useModelStore.getState();
     
     try {
       let workspace: ODCSWorkspace | null = null;
@@ -298,15 +298,20 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({
         
         setTables(mergedTables);
         
+        // IMPORTANT: Preserve existing systems - never clear them during import
+        // Systems are domain-specific and should not be affected by ODCS table imports
+        console.log('[ImportExportDialog] Preserving existing systems:', existingSystems.length);
+        
         // If a system is selected, add imported tables to that system
         if (selectedSystemId && newTables.length > 0) {
-          const selectedSystem = systems.find(s => s.id === selectedSystemId);
+          const selectedSystem = existingSystems.find(s => s.id === selectedSystemId);
           if (selectedSystem) {
             const newTableIds = newTables.map(t => t.id);
             const updatedTableIds = [...(selectedSystem.table_ids || []), ...newTableIds];
             // Remove duplicates
             const uniqueTableIds = Array.from(new Set(updatedTableIds));
             updateSystem(selectedSystemId, { table_ids: uniqueTableIds });
+            console.log(`[ImportExportDialog] Added ${newTables.length} table(s) to system "${selectedSystem.name}"`);
           }
         }
         
@@ -340,14 +345,46 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({
       }
       
       // If workspace has domains, add them (but don't replace existing ones)
+      // IMPORTANT: When merging domains, preserve systems from existing domains
       if (workspace && workspace.domains && Array.isArray(workspace.domains) && workspace.domains.length > 0) {
-        const existingDomains = useModelStore.getState().domains || [];
+        const currentState = useModelStore.getState();
+        const existingDomains = currentState.domains || [];
+        const existingSystems = currentState.systems || [];
+        
+        // Merge domains, preserving systems from existing domains
         const newDomains = workspace.domains.filter(
           (domain: any) => !existingDomains.some((d) => d.id === domain.id)
         );
+        
         if (newDomains.length > 0) {
+          // When adding new domains, preserve all existing systems
           setDomains([...existingDomains, ...newDomains]);
+          console.log('[ImportExportDialog] Added new domains, preserving existing systems:', existingSystems.length);
         }
+        
+        // IMPORTANT: Never clear or overwrite systems during ODCS import
+        // Systems are managed separately and should only be modified explicitly
+        // If imported domains have systems embedded, we should merge them, not replace
+        if (workspace.systems && Array.isArray(workspace.systems) && workspace.systems.length > 0) {
+          console.log('[ImportExportDialog] Found systems in imported workspace, merging with existing systems');
+          const importedSystems = workspace.systems;
+          const existingSystemIds = new Set(existingSystems.map(s => s.id));
+          const newSystems = importedSystems.filter((s: any) => !existingSystemIds.has(s.id));
+          
+          if (newSystems.length > 0) {
+            // Only add new systems, never replace existing ones
+            setSystems([...existingSystems, ...newSystems]);
+            console.log(`[ImportExportDialog] Added ${newSystems.length} new system(s), preserved ${existingSystems.length} existing system(s)`);
+          } else {
+            console.log('[ImportExportDialog] No new systems to add, all imported systems already exist');
+          }
+        } else {
+          // Ensure existing systems are preserved even if imported workspace has no systems
+          console.log('[ImportExportDialog] No systems in imported workspace, preserving existing systems:', existingSystems.length);
+        }
+      } else {
+        // Even if no domains are imported, ensure systems are preserved
+        console.log('[ImportExportDialog] No domains in imported workspace, preserving existing systems:', existingSystems.length);
       }
     } catch (error) {
       throw new Error(

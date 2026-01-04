@@ -15,6 +15,7 @@ export interface CreateSystemDialogProps {
   onCreated: (systemId: string) => void;
   domainId: string;
   editingSystemId?: string | null; // If provided, edit mode is enabled
+  linkTableId?: string | null; // If provided, link this table to the created system
 }
 
 export const CreateSystemDialog: React.FC<CreateSystemDialogProps> = ({
@@ -23,6 +24,7 @@ export const CreateSystemDialog: React.FC<CreateSystemDialogProps> = ({
   onCreated,
   domainId,
   editingSystemId,
+  linkTableId,
 }) => {
   const { addSystem, updateSystem, systems } = useModelStore();
   const { addToast } = useUIStore();
@@ -97,7 +99,7 @@ export const CreateSystemDialog: React.FC<CreateSystemDialogProps> = ({
           connection_string: connectionString.trim() || undefined,
           created_at: new Date().toISOString(),
           last_modified_at: new Date().toISOString(),
-          table_ids: [],
+          table_ids: linkTableId ? [linkTableId] : [],
           asset_ids: [],
         };
 

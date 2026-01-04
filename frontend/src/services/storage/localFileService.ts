@@ -125,13 +125,13 @@ class LocalFileService {
 
       // Expected structure: workspace-folder/domain-folder/file.yaml
       // First part is workspace name, second part is domain name (folder), rest is file path
-      const wsName = pathParts[0];
-      const domainName = pathParts[1];
-      const fileBaseName = pathParts[pathParts.length - 1]?.toLowerCase();
+        const wsName = pathParts[0];
+        const domainName = pathParts[1];
+        const fileBaseName = pathParts[pathParts.length - 1]?.toLowerCase();
 
-      if (!wsName || !domainName || !fileBaseName) {
-        continue;
-      }
+        if (!wsName || !domainName || !fileBaseName) {
+          continue;
+        }
 
       // Don't treat files as domains - only treat folder names as domains
       // If the "domain name" is actually a file (has extension), skip it
@@ -143,13 +143,13 @@ class LocalFileService {
       
       if (isDomainNameAFile) {
         // This is a file at root level, not a domain folder - skip it
-        continue;
-      }
+          continue;
+        }
 
-      workspaceName = wsName;
+        workspaceName = wsName;
 
-      // Create domain entry if it doesn't exist
-      if (!domains.has(domainName)) {
+        // Create domain entry if it doesn't exist
+        if (!domains.has(domainName)) {
         domains.set(domainName, { 
           name: domainName, 
           files: {
@@ -160,20 +160,20 @@ class LocalFileService {
             dmnFiles: [],
           } 
         });
-      }
+        }
 
-      const domain = domains.get(domainName);
-      if (!domain) {
-        continue;
-      }
-      
+        const domain = domains.get(domainName);
+        if (!domain) {
+          continue;
+        }
+        
       // Load domain.yaml, tables.yaml, relationships.yaml, systems.yaml, and individual asset files
       if (fileBaseName === 'domain.yaml' || fileBaseName === 'domain.yml') {
         domain.files.domain = file;
       } else if (fileBaseName === 'tables.yaml' || fileBaseName === 'tables.yml') {
-        domain.files.tables = file;
-      } else if (fileBaseName === 'relationships.yaml' || fileBaseName === 'relationships.yml') {
-        domain.files.relationships = file;
+          domain.files.tables = file;
+        } else if (fileBaseName === 'relationships.yaml' || fileBaseName === 'relationships.yml') {
+          domain.files.relationships = file;
       } else if (fileBaseName === 'systems.yaml' || fileBaseName === 'systems.yml') {
         domain.files.systems = file;
       } else if (fileBaseName.endsWith('.odcs.yaml') || fileBaseName.endsWith('.odcs.yml')) {
@@ -241,13 +241,62 @@ class LocalFileService {
     // Process each domain folder
     let domainIndex = 0;
     for (const [domainName, domainData] of domainMap.entries()) {
-      // Load domain.yaml if present to get the actual domain ID
+      // Load domain.yaml if present to get the actual domain ID, systems, and relationships
+      // domain.yaml now contains domain metadata, systems, and relationships (merged structure)
       let domainMetadata: Partial<DomainType> = {};
+      let domainSystems: System[] = [];
+      let domainRelationships: Relationship[] = [];
+      
       if (domainData.files.domain) {
         try {
           const domainContent = await browserFileService.readFile(domainData.files.domain);
-          domainMetadata = yaml.load(domainContent) as any;
-          console.log(`[LocalFileService] Loaded domain.yaml for ${domainName}:`, domainMetadata);
+          const parsed = yaml.load(domainContent) as any;
+          console.log(`[LocalFileService] Loaded domain.yaml for ${domainName}:`, parsed);
+          
+          // Extract domain metadata
+          domainMetadata = {
+            id: parsed?.id,
+            name: parsed?.name,
+            description: parsed?.description,
+            owner: parsed?.owner,
+            created_at: parsed?.created_at,
+            last_modified_at: parsed?.last_modified_at,
+            view_positions: parsed?.view_positions,
+          };
+          
+          // Extract systems from domain.yaml (merged structure)
+          if (parsed?.systems && Array.isArray(parsed.systems)) {
+            // Check if it's an array of full system objects or just IDs (backward compatibility)
+            if (parsed.systems.length > 0 && typeof parsed.systems[0] === 'object' && parsed.systems[0].id) {
+              // Full system objects
+              domainSystems = parsed.systems.map((system: any) => ({
+                ...system,
+                workspace_id: workspaceId,
+                domain_id: parsed?.id || domainId, // Use domain ID from domain.yaml
+              }));
+              console.log(`[LocalFileService] Loaded ${domainSystems.length} system(s) from domain.yaml`);
+            } else {
+              // Just IDs - fall back to separate systems.yaml file (backward compatibility)
+              console.log(`[LocalFileService] Found system IDs in domain.yaml, checking for systems.yaml (backward compatibility)`);
+            }
+          }
+          
+          // Extract relationships from domain.yaml (merged structure)
+          if (parsed?.relationships && Array.isArray(parsed.relationships)) {
+            // Check if it's an array of full relationship objects or just IDs (backward compatibility)
+            if (parsed.relationships.length > 0 && typeof parsed.relationships[0] === 'object' && parsed.relationships[0].id) {
+              // Full relationship objects
+              domainRelationships = parsed.relationships.map((rel: any) => ({
+                ...rel,
+                workspace_id: workspaceId,
+                domain_id: parsed?.id || domainId, // Use domain ID from domain.yaml
+              }));
+              console.log(`[LocalFileService] Loaded ${domainRelationships.length} relationship(s) from domain.yaml`);
+            } else {
+              // Just IDs - fall back to separate relationships.yaml file (backward compatibility)
+              console.log(`[LocalFileService] Found relationship IDs in domain.yaml, checking for relationships.yaml (backward compatibility)`);
+            }
+          }
         } catch (error) {
           console.warn(`Failed to load domain.yaml from ${domainName}:`, error);
         }
@@ -257,29 +306,31 @@ class LocalFileService {
       const domainId = domainMetadata.id || `domain-${workspaceId}-${domainIndex++}`;
       console.log(`[LocalFileService] Using domain ID for ${domainName}: ${domainId} (from domain.yaml: ${domainMetadata.id || 'generated'})`);
 
-      // Load systems.yaml if present
-      if (domainData.files.systems) {
+      // If systems weren't loaded from domain.yaml, try loading from systems.yaml (backward compatibility)
+      if (domainSystems.length === 0 && domainData.files.systems) {
         try {
-          console.log(`[LocalFileService] Loading systems.yaml from domain: ${domainName}`);
+          console.log(`[LocalFileService] Loading systems.yaml from domain: ${domainName} (backward compatibility)`);
           const systemsContent = await browserFileService.readFile(domainData.files.systems);
           const parsed = yaml.load(systemsContent) as any;
           console.log(`[LocalFileService] Parsed systems.yaml:`, parsed);
           if (parsed?.systems && Array.isArray(parsed.systems)) {
-            const domainSystems = parsed.systems.map((system: any) => ({
+            domainSystems = parsed.systems.map((system: any) => ({
               ...system,
               workspace_id: workspaceId,
-              domain_id: domainId, // Use the actual domain ID (from domain.yaml or generated)
+              domain_id: domainId,
             }));
-            console.log(`[LocalFileService] Loaded ${domainSystems.length} system(s) from ${domainName} with domain_id: ${domainId}:`, domainSystems.map(s => ({ id: s.id, name: s.name, domain_id: s.domain_id })));
-            allSystems.push(...domainSystems);
+            console.log(`[LocalFileService] Loaded ${domainSystems.length} system(s) from systems.yaml`);
           } else {
             console.warn(`[LocalFileService] No systems array found in systems.yaml for ${domainName}, parsed:`, parsed);
           }
         } catch (error) {
           console.error(`[LocalFileService] Failed to load systems.yaml from ${domainName}:`, error);
         }
-      } else {
-        console.log(`[LocalFileService] No systems.yaml file found for domain: ${domainName}`);
+      }
+      
+      // Add systems to allSystems
+      if (domainSystems.length > 0) {
+        allSystems.push(...domainSystems);
       }
 
       // Load tables.yaml if present
@@ -303,10 +354,10 @@ class LocalFileService {
         }
       }
 
-      // Load relationships.yaml if present
-      if (domainData.files.relationships) {
+      // If relationships weren't loaded from domain.yaml, try loading from relationships.yaml (backward compatibility)
+      if (domainRelationships.length === 0 && domainData.files.relationships) {
         try {
-          console.log(`[LocalFileService] Loading relationships.yaml from domain: ${domainName}`);
+          console.log(`[LocalFileService] Loading relationships.yaml from domain: ${domainName} (backward compatibility)`);
           console.log(`[LocalFileService] File object:`, {
             name: domainData.files.relationships.name,
             size: domainData.files.relationships.size,
@@ -340,14 +391,13 @@ class LocalFileService {
             }
             
             if (parsed?.relationships && Array.isArray(parsed.relationships)) {
-              // Update relationships with workspace and domain IDs
-              const domainRelationships = parsed.relationships.map((rel: any) => ({
-                ...rel,
-                workspace_id: workspaceId,
-                domain_id: domainId,
-              }));
-              console.log(`[LocalFileService] Loaded ${domainRelationships.length} relationship(s) from ${domainName}`);
-              allRelationships.push(...domainRelationships);
+            // Update relationships with workspace and domain IDs
+              domainRelationships = parsed.relationships.map((rel: any) => ({
+              ...rel,
+              workspace_id: workspaceId,
+              domain_id: domainId,
+            }));
+              console.log(`[LocalFileService] Loaded ${domainRelationships.length} relationship(s) from relationships.yaml`);
             } else {
               console.warn(`[LocalFileService] No relationships array found in relationships.yaml for ${domainName}, parsed:`, parsed);
             }
@@ -357,8 +407,11 @@ class LocalFileService {
           console.error(`[LocalFileService] Error details:`, error instanceof Error ? error.message : String(error));
           console.error(`[LocalFileService] Error stack:`, error instanceof Error ? error.stack : 'No stack');
         }
-      } else {
-        console.log(`[LocalFileService] No relationships.yaml file found for domain: ${domainName}`);
+      }
+      
+      // Add relationships to allRelationships
+      if (domainRelationships.length > 0) {
+        allRelationships.push(...domainRelationships);
       }
 
       // Load individual ODCS table files
@@ -382,37 +435,91 @@ class LocalFileService {
               // Try to link tables to systems based on filename or metadata
               // Check if filename contains a system name
               const fileNameLower = file.name.toLowerCase();
+              const domainSystems = allSystems.filter(s => s.domain_id === domainId);
+              console.log(`[LocalFileService] Attempting to link tables from ${file.name} to systems. Available systems in domain:`, domainSystems.map(s => ({ id: s.id, name: s.name })));
+              
               for (const table of domainTables) {
-                // Try to find matching system by name in filename
-                for (const system of allSystems) {
-                  const systemNameLower = system.name.toLowerCase().replace(/\s+/g, '');
-                  // Check if system name appears in filename (e.g., "GlobalBetSystem.odcs.yaml" contains "GlobalBetSystem")
-                  if (fileNameLower.includes(systemNameLower) || fileNameLower.includes(system.name.toLowerCase())) {
-                    if (!system.table_ids) {
-                      system.table_ids = [];
-                    }
-                    if (!system.table_ids.includes(table.id)) {
-                      system.table_ids.push(table.id);
-                      console.log(`[LocalFileService] Linked table ${table.name || table.id} to system ${system.name} based on filename`);
-                    }
-                  }
-                }
+                let linked = false;
                 
-                // Also check table metadata for system_id
+                // Debug: Log table metadata to see if system_id is present
+                console.log(`[LocalFileService] Table "${table.name}" metadata:`, {
+                  hasMetadata: !!table.metadata,
+                  metadataKeys: table.metadata ? Object.keys(table.metadata) : [],
+                  system_id: table.metadata?.system_id,
+                  fullMetadata: table.metadata,
+                });
+                
+                // PRIORITY 1: Check table metadata for system_id first (most reliable)
                 if (table.metadata?.system_id) {
                   const systemId = table.metadata.system_id;
-                  const system = allSystems.find(s => s.id === systemId);
+                  const system = domainSystems.find(s => s.id === systemId);
                   if (system) {
                     if (!system.table_ids) {
                       system.table_ids = [];
                     }
                     if (!system.table_ids.includes(table.id)) {
                       system.table_ids.push(table.id);
-                      console.log(`[LocalFileService] Linked table ${table.name || table.id} to system ${system.name} based on metadata.system_id`);
+                      console.log(`[LocalFileService] ✓ Linked table "${table.name || table.id}" to system "${system.name}" (${system.id}) based on metadata.system_id (PRIORITY)`);
+                      linked = true;
+                    } else {
+                      console.log(`[LocalFileService] Table "${table.name || table.id}" already linked to system "${system.name}" (${system.id})`);
+                      linked = true;
+                    }
+                  } else {
+                    console.warn(`[LocalFileService] Table "${table.name || table.id}" has metadata.system_id="${systemId}" but no matching system found in domain`);
+                  }
+                }
+                
+                // PRIORITY 2: Try to find matching system by name in filename (fallback)
+                if (!linked) {
+                  for (const system of domainSystems) {
+                    const systemNameLower = system.name.toLowerCase().replace(/\s+/g, '');
+                    // Check if system name appears in filename (e.g., "GlobalBetSystem.odcs.yaml" contains "GlobalBetSystem")
+                    // Also try matching table name to system name
+                    const tableNameLower = (table.name || '').toLowerCase().replace(/\s+/g, '');
+                    if (fileNameLower.includes(systemNameLower) || 
+                        fileNameLower.includes(system.name.toLowerCase()) ||
+                        tableNameLower === systemNameLower ||
+                        tableNameLower.includes(systemNameLower) ||
+                        systemNameLower.includes(tableNameLower)) {
+                      if (!system.table_ids) {
+                        system.table_ids = [];
+                      }
+                      if (!system.table_ids.includes(table.id)) {
+                        system.table_ids.push(table.id);
+                        console.log(`[LocalFileService] ✓ Linked table "${table.name || table.id}" to system "${system.name}" (${system.id}) based on filename/name matching (fallback)`);
+                        linked = true;
+                        break; // Only link to one system
+                      }
                     }
                   }
                 }
+                
+                // Fallback: If no match found and there are systems in the domain, link to the first system
+                if (!linked && domainSystems.length > 0) {
+                  const fallbackSystem = domainSystems[0];
+                  if (!fallbackSystem.table_ids) {
+                    fallbackSystem.table_ids = [];
+                  }
+                  if (!fallbackSystem.table_ids.includes(table.id)) {
+                    fallbackSystem.table_ids.push(table.id);
+                    console.log(`[LocalFileService] ⚠ Linked table "${table.name || table.id}" to first system "${fallbackSystem.name}" (${fallbackSystem.id}) as fallback (no name match found)`);
+                    linked = true;
+                  }
+                }
+                
+                if (!linked) {
+                  console.warn(`[LocalFileService] ⚠ Could not link table "${table.name || table.id}" to any system. Filename: ${file.name}, Domain has ${domainSystems.length} system(s)`);
+                }
               }
+              
+              // Log system table_ids after linking
+              console.log(`[LocalFileService] System table_ids after linking ${file.name}:`, domainSystems.map(s => ({ 
+                id: s.id, 
+                name: s.name, 
+                table_ids: s.table_ids || [],
+                table_count: (s.table_ids || []).length
+              })));
               
               allTables.push(...domainTables);
             } else {
@@ -564,7 +671,12 @@ class LocalFileService {
     }
     if (allSystems.length > 0) {
       (workspace as any).systems = allSystems;
-      console.log(`[LocalFileService] Added ${allSystems.length} system(s) to workspace:`, allSystems.map(s => s.name || s.id));
+      console.log(`[LocalFileService] Added ${allSystems.length} system(s) to workspace:`, allSystems.map(s => ({ 
+        id: s.id, 
+        name: s.name, 
+        table_ids: s.table_ids || [],
+        table_count: (s.table_ids || []).length 
+      })));
     } else {
       console.log(`[LocalFileService] No systems to add to workspace (allSystems.length = ${allSystems.length})`);
     }

@@ -1,5 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, nativeImage } from 'electron';
-import { readFile, writeFile, mkdir, readdir } from 'fs/promises';
+import { readFile, writeFile, mkdir, readdir, unlink } from 'fs/promises';
 import { existsSync, statSync } from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
@@ -233,6 +233,20 @@ ipcMain.handle('read-directory', async (_event, dirPath: string) => {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error(`[Electron] Failed to read directory: ${dirPath}`, errorMessage);
     throw new Error(`Failed to read directory ${dirPath}: ${errorMessage}`);
+  }
+});
+
+ipcMain.handle('delete-file', async (_event, filePath: string) => {
+  try {
+    await unlink(filePath);
+    console.log(`[Electron] Deleted file: ${filePath}`);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    // Don't throw if file doesn't exist (already deleted)
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      console.error(`[Electron] Failed to delete file: ${filePath}`, errorMessage);
+      throw new Error(`Failed to delete file ${filePath}: ${errorMessage}`);
+    }
   }
 });
 

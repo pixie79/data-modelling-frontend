@@ -10,6 +10,7 @@ import { workspaceService } from '@/services/api/workspaceService';
 import { useSDKModeStore } from '@/services/sdk/sdkMode';
 import { HelpText } from '@/components/common/HelpText';
 import { CreateDomainDialog } from './CreateDomainDialog';
+import { MoveResourcesDialog } from './MoveResourcesDialog';
 import { EditorModal } from '@/components/editors/EditorModal';
 import { bpmnService } from '@/services/sdk/bpmnService';
 import { getPlatform } from '@/services/platform/platform';
@@ -30,6 +31,7 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
   const [showSaveMenu, setShowSaveMenu] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showMoveResourcesDialog, setShowMoveResourcesDialog] = useState(false);
 
   const handleTabClick = (domainId: string) => {
     setSelectedDomain(domainId);
@@ -595,6 +597,18 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
           + Add Domain
         </button>
         
+        {/* Move Resources button */}
+        {selectedDomainId && (
+          <button
+            onClick={() => setShowMoveResourcesDialog(true)}
+            className="ml-2 px-3 py-1 text-sm font-medium text-purple-700 bg-purple-50 rounded hover:bg-purple-100 transition-colors border border-purple-200"
+            aria-label="Move Resources"
+            title="Move tables, compute assets, or systems between systems and domains"
+          >
+            Move Resources
+          </button>
+        )}
+        
         {/* Save/Load Domain buttons - only in offline mode */}
         {mode === 'offline' && getPlatform() === 'electron' && (
           <div className="ml-2 flex items-center gap-2">
@@ -741,6 +755,15 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
               }
             },
           }}
+        />
+      )}
+
+      {/* Move Resources Dialog */}
+      {selectedDomainId && (
+        <MoveResourcesDialog
+          isOpen={showMoveResourcesDialog}
+          onClose={() => setShowMoveResourcesDialog(false)}
+          domainId={selectedDomainId}
         />
       )}
     </>

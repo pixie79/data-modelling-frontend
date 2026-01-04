@@ -31,6 +31,7 @@ import { TableViewActions } from '@/components/views/TableViewActions';
 import { NodeViewActions } from '@/components/views/NodeViewActions';
 import { TableMetadataModal } from '@/components/table/TableMetadataModal';
 import { CreateSystemDialog } from '@/components/system/CreateSystemDialog';
+import { UnlinkedTablesDialog } from '@/components/system/UnlinkedTablesDialog';
 import { ComputeAssetEditor } from '@/components/asset/ComputeAssetEditor';
 import { RelationshipEditor } from '@/components/relationship/RelationshipEditor';
 import { EditorModal } from '@/components/editors/EditorModal';
@@ -97,6 +98,9 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
   // State for compute asset edit dialog
   const [editingAssetId, setEditingAssetId] = React.useState<string | null>(null);
   const [showAssetEditDialog, setShowAssetEditDialog] = React.useState(false);
+  
+  // State for unlinked tables dialog
+  const [showUnlinkedTablesDialog, setShowUnlinkedTablesDialog] = React.useState(false);
   
   // State for relationship editor
   const [editingRelationshipId, setEditingRelationshipId] = React.useState<string | null>(null);
@@ -370,6 +374,19 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
     return filtered;
   }, [systems, domainId]);
 
+  // Find unlinked tables (tables that don't appear in any system's table_ids)
+  const unlinkedTables = useMemo(() => {
+    const allTableIdsInSystems = new Set(
+      domainSystems.flatMap((s) => s.table_ids || [])
+    );
+    
+    return tables.filter(
+      (t) =>
+        t.primary_domain_id === domainId &&
+        !allTableIdsInSystems.has(t.id)
+    );
+  }, [tables, domainSystems, domainId]);
+
   // Get compute assets for current domain
   const domainComputeAssets = useMemo(() => {
     let assets = computeAssets.filter((a) => a.domain_id === domainId);
@@ -501,6 +518,8 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
               onEdit: handleAssetEdit,
               onDelete: handleAssetDelete,
               onExport: handleAssetExport,
+              onBPMNClick: handleAssetBPMNClick,
+              onDMNClick: handleAssetDMNClick,
             },
             selected: false,
           };
@@ -719,7 +738,24 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
       
       {/* Create/Import System button - only in Systems view */}
       {currentView === 'systems' && (
-        <SystemsViewActions domainId={domainId} />
+        <>
+          <SystemsViewActions domainId={domainId} />
+          {/* Show unlinked tables notification */}
+          {unlinkedTables.length > 0 && (
+            <div className="absolute top-4 right-4 z-10">
+              <button
+                onClick={() => setShowUnlinkedTablesDialog(true)}
+                className="px-4 py-2 bg-yellow-500 text-white rounded-lg shadow-lg hover:bg-yellow-600 transition-colors flex items-center gap-2 text-sm font-medium"
+                title={`${unlinkedTables.length} table${unlinkedTables.length !== 1 ? 's' : ''} not linked to any system`}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                {unlinkedTables.length} Unlinked Table{unlinkedTables.length !== 1 ? 's' : ''}
+              </button>
+            </div>
+          )}
+        </>
       )}
       
       {/* Create/Import Table buttons - only in Process, Operational, and Analytical views */}
@@ -861,6 +897,13 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
           }}
         />
       )}
+
+      {/* Unlinked Tables Dialog */}
+      <UnlinkedTablesDialog
+        isOpen={showUnlinkedTablesDialog}
+        onClose={() => setShowUnlinkedTablesDialog(false)}
+        domainId={domainId}
+      />
     </div>
   );
 };

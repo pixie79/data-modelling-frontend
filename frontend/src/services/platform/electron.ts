@@ -35,6 +35,7 @@ declare global {
       writeFile: (path: string, data: string) => Promise<void>;
       ensureDirectory: (path: string) => Promise<boolean>;
       readDirectory: (path: string) => Promise<Array<{ name: string; path: string }>>;
+      deleteFile: (path: string) => Promise<void>;
       showOpenDialog: (options: OpenDialogOptions) => Promise<OpenDialogReturnValue>;
       showSaveDialog: (options: SaveDialogOptions) => Promise<SaveDialogReturnValue>;
       openExternal: (url: string) => Promise<void>;
@@ -85,6 +86,16 @@ export const electronFileService = {
       throw new Error('Electron API not available');
     }
     return window.electronAPI.readDirectory(path);
+  },
+
+  /**
+   * Delete a file
+   */
+  async deleteFile(path: string): Promise<void> {
+    if (!window.electronAPI) {
+      throw new Error('Electron API not available');
+    }
+    return window.electronAPI.deleteFile(path);
   },
 
   /**

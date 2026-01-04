@@ -242,7 +242,7 @@ class ODCSService {
               const now = new Date().toISOString();
               const workspaceId = normalized.workspace_id || generateUUID();
               
-              // Clean tables (remove complex nested objects)
+              // Clean tables (remove complex nested objects, but preserve metadata including system_id)
               const cleanedTables = Array.isArray(normalized.tables) 
                 ? normalized.tables.map((table: any) => {
                     const cleaned: any = {
@@ -272,6 +272,13 @@ class ODCSService {
                     if (table.description) cleaned.description = table.description;
                     if (Array.isArray(table.tags)) cleaned.tags = table.tags;
                     if (table.data_level) cleaned.data_level = table.data_level;
+                    // IMPORTANT: Preserve metadata (including system_id) when saving
+                    if (table.metadata && typeof table.metadata === 'object') {
+                      cleaned.metadata = { ...table.metadata };
+                      if (table.metadata.system_id) {
+                        console.log(`[ODCSService] Preserving system_id="${table.metadata.system_id}" in metadata for table "${table.name}"`);
+                      }
+                    }
                     return cleaned;
                   })
                 : [];

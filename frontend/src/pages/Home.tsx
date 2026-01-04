@@ -177,12 +177,22 @@ const Home: React.FC = () => {
       // Set systems
       if ((workspace as any).systems) {
         const systemsToSet = (workspace as any).systems;
-        console.log(`[Home] Setting ${systemsToSet.length} system(s) in model store:`, systemsToSet.map((s: any) => ({ id: s.id, name: s.name })));
+        console.log(`[Home] Setting ${systemsToSet.length} system(s) in model store:`, systemsToSet.map((s: any) => ({ 
+          id: s.id, 
+          name: s.name, 
+          table_ids: s.table_ids || [],
+          table_count: (s.table_ids || []).length 
+        })));
         modelStore.setSystems(systemsToSet);
         // Wait a tick to ensure state update
         await new Promise(resolve => setTimeout(resolve, 0));
         const systemsAfterSet = useModelStore.getState().systems;
-        console.log(`[Home] Systems in store after setting: ${systemsAfterSet.length}`, systemsAfterSet.map((s: any) => ({ id: s.id, name: s.name })));
+        console.log(`[Home] Systems in store after setting: ${systemsAfterSet.length}`, systemsAfterSet.map((s: any) => ({ 
+          id: s.id, 
+          name: s.name, 
+          table_ids: s.table_ids || [],
+          table_count: (s.table_ids || []).length 
+        })));
         if (systemsAfterSet.length === 0) {
           console.error(`[Home] ERROR: Systems were not persisted! Expected ${systemsToSet.length}, got ${systemsAfterSet.length}`);
         }

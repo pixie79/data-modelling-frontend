@@ -16,6 +16,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   readDirectory: async (path: string): Promise<Array<{ name: string; path: string }>> => {
     return await ipcRenderer.invoke('read-directory', path);
   },
+  deleteFile: async (path: string): Promise<void> => {
+    return await ipcRenderer.invoke('delete-file', path);
+  },
   showOpenDialog: async (options: {
     title?: string;
     defaultPath?: string;

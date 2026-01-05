@@ -4,7 +4,29 @@
 
 **⚠️ IMPORTANT: This application currently only supports OFFLINE MODE.**
 
-### Electron Desktop Application
+### Option 1: Docker (Web Version)
+
+Build and run the web version using Docker:
+
+```bash
+# Build and start the frontend service
+docker-compose up -d
+
+# View logs
+docker-compose logs -f frontend
+
+# Access the application
+# Web: http://localhost:5173
+```
+
+The Docker build automatically:
+- Clones and builds the latest Rust SDK as WASM
+- Builds the React frontend application
+- Serves via Nginx
+
+See [docker/README.md](./docker/README.md) for detailed Docker setup instructions.
+
+### Option 2: Electron Desktop Application
 
 ```bash
 cd frontend

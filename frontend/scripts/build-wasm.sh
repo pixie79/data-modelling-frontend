@@ -18,7 +18,7 @@ done
 
 WASM_OUT_DIR="$FRONTEND_DIR/public/wasm"
 
-echo "Building WASM SDK (requires data-modelling-sdk version 1.6.2+)..."
+echo "Building WASM SDK (requires data-modelling-sdk version 1.7.0+)..."
 
 # Check if SDK directory exists
 if [ -z "$SDK_DIR" ]; then
@@ -29,7 +29,7 @@ if [ -z "$SDK_DIR" ]; then
   echo "     - $FRONTEND_DIR/../data-modelling-sdk"
   echo ""
       echo "   The WASM SDK is optional - offline mode will use a JavaScript YAML parser fallback."
-      echo "   To build the SDK, ensure data-modelling-sdk (version 1.6.2+) is available and contains Cargo.toml"
+      echo "   To build the SDK, ensure data-modelling-sdk (version 1.7.0+) is available and contains Cargo.toml"
   exit 0  # Exit successfully - this is not a fatal error
 fi
 
@@ -40,13 +40,13 @@ if [ -f "$SDK_DIR/Cargo.toml" ]; then
   SDK_VERSION=$(grep -E '^version\s*=' "$SDK_DIR/Cargo.toml" | head -1 | sed 's/.*version\s*=\s*"\([^"]*\)".*/\1/' || echo "")
   if [ -n "$SDK_VERSION" ]; then
     echo "   SDK version: $SDK_VERSION"
-    # Check if version is 1.6.2 or higher
-    if [ "$(printf '%s\n' "1.6.2" "$SDK_VERSION" | sort -V | head -n1)" != "1.6.2" ]; then
-      echo "   ⚠️  Warning: Expected version 1.6.2+, found $SDK_VERSION"
-      echo "   The application requires data-modelling-sdk >= \"1.6.2\" for enhanced AVRO/Protobuf/JSON Schema export/import support"
+    # Check if version is 1.7.0 or higher
+    if [ "$(printf '%s\n' "1.7.0" "$SDK_VERSION" | sort -V | head -n1)" != "1.7.0" ]; then
+      echo "   ⚠️  Warning: Expected version 1.7.0+, found $SDK_VERSION"
+      echo "   The application requires data-modelling-sdk >= \"1.7.0\" for enhanced AVRO/Protobuf/JSON Schema export/import support"
       echo "   Some features may not work correctly with older SDK versions"
     else
-      echo "   ✅ SDK version $SDK_VERSION meets requirements (>= 1.6.2)"
+      echo "   ✅ SDK version $SDK_VERSION meets requirements (>= 1.7.0)"
     fi
   fi
 fi
@@ -58,10 +58,10 @@ if ! command -v wasm-pack &> /dev/null; then
   exit 1
 fi
 
-# Build WASM SDK
+# Build WASM SDK with wasm and openapi features
 cd "$SDK_DIR"
 echo "Building WASM module in $SDK_DIR..."
-wasm-pack build --target web --out-dir pkg --features wasm
+wasm-pack build --target web --out-dir pkg --features wasm,openapi
 
 # Create wasm output directory if it doesn't exist
 mkdir -p "$WASM_OUT_DIR"

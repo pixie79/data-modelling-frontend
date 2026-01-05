@@ -9,7 +9,6 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useSDKModeStore } from '@/services/sdk/sdkMode';
 import { sdkModeDetector } from '@/services/sdk/sdkMode';
-import { OnlineOfflineToggle } from '@/components/common/OnlineOfflineToggle';
 import { localFileService } from '@/services/storage/localFileService';
 import { useUIStore } from '@/stores/uiStore';
 import { isElectron, getAssetPath } from '@/services/platform/platform';
@@ -297,7 +296,6 @@ const Home: React.FC = () => {
           <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between">
               <h1 className="text-3xl font-bold text-gray-900">Data Modelling Application</h1>
-              <OnlineOfflineToggle />
             </div>
             <p className="mt-2 text-sm text-gray-600">Offline Mode - Working locally without API</p>
           </div>
@@ -333,13 +331,11 @@ const Home: React.FC = () => {
                       e.preventDefault();
                       const formData = new FormData(e.target as HTMLFormElement);
                       const name = formData.get('name') as string;
-                      const type = formData.get('type') as 'personal' | 'shared';
                       
                       try {
                         const workspace = {
                           id: `offline-${Date.now()}`,
                           name,
-                          type,
                           owner_id: 'offline-user',
                           created_at: new Date().toISOString(),
                           last_modified_at: new Date().toISOString(),
@@ -366,19 +362,6 @@ const Home: React.FC = () => {
                         required
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
-                    </div>
-                    <div className="mb-4">
-                      <label htmlFor="workspace-type-offline" className="block text-sm font-medium text-gray-700 mb-2">
-                        Workspace Type
-                      </label>
-                      <select
-                        id="workspace-type-offline"
-                        name="type"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="personal">Personal</option>
-                        <option value="shared">Shared</option>
-                      </select>
                     </div>
                     <div className="flex justify-end gap-2">
                       <button
@@ -410,9 +393,6 @@ const Home: React.FC = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8">
-          <div className="mb-4">
-            <OnlineOfflineToggle />
-          </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Data Modelling Application</h1>
           <p className="text-gray-600 mb-6">Online mode requires authentication. Please log in to continue.</p>
           <button
@@ -589,7 +569,6 @@ const Home: React.FC = () => {
               />
               <h1 className="text-3xl font-bold text-gray-900">Open Data Modelling</h1>
             </div>
-            <OnlineOfflineToggle />
           </div>
           {selectedProfileEmail && (
             <p className="mt-2 text-sm text-gray-600">Using profile: {selectedProfileEmail}</p>
@@ -621,12 +600,10 @@ const Home: React.FC = () => {
                     e.preventDefault();
                     const formData = new FormData(e.target as HTMLFormElement);
                     const name = formData.get('name') as string;
-                    const type = formData.get('type') as 'personal' | 'shared';
                     
                     try {
                       const workspace = await createWorkspace({
                         name,
-                        type,
                       });
                       setShowCreateDialog(false);
                       navigate(`/workspace/${workspace.id}`);
@@ -651,19 +628,6 @@ const Home: React.FC = () => {
                       required
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                  </div>
-                  <div className="mb-4">
-                    <label htmlFor="workspace-type" className="block text-sm font-medium text-gray-700 mb-2">
-                      Workspace Type
-                    </label>
-                    <select
-                      id="workspace-type"
-                      name="type"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="personal">Personal</option>
-                      <option value="shared">Shared</option>
-                    </select>
                   </div>
                   <div className="flex justify-end gap-2">
                     <button

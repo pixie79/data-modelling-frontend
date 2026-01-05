@@ -1,126 +1,157 @@
 # Docker Setup Guide
 
+## Overview
+
+This Docker setup builds and runs the frontend application in **offline mode only**. No API server or database is required.
+
 ## Quick Start
 
 ```bash
-# Start all services
+# Build and start the frontend service
 docker-compose up -d
 
 # View logs
-docker-compose logs -f
+docker-compose logs -f frontend
 
-# Stop all services
+# Stop the service
 docker-compose down
-
-# Stop and remove volumes (WARNING: deletes all data)
-docker-compose down -v
 ```
 
-## PostgreSQL Connection Issues
+## What's Included
 
-If you see errors like:
+- **Frontend Service**: React application with Nginx serving static files
+- **WASM SDK**: Built from the latest Rust SDK during Docker build
+- **Offline Mode**: Application operates entirely offline (no API required)
+
+## Building
+
+The Dockerfile uses a multi-stage build:
+
+1. **Rust Builder Stage**: Builds the latest WASM SDK from source
+2. **Node Builder Stage**: Builds the React frontend application
+3. **Nginx Stage**: Serves the built application
+
+### Building with Latest SDK
+
+The Dockerfile automatically:
+- Clones the latest `data-modelling-sdk` repository
+- Builds WASM using `wasm-pack`
+- Copies WASM files to the frontend build
+
+**Note**: If the SDK repository is not available, the build will continue using any existing WASM files or skip WASM build.
+
+### Custom SDK Version
+
+To use a specific SDK version, modify the Dockerfile:
+
+```dockerfile
+# In rust-builder stage, checkout specific version
+RUN git clone https://github.com/pixie79/data-modelling-sdk.git . && \
+    git checkout v1.6.2 && \
+    wasm-pack build --target web --out-dir pkg --features wasm
 ```
-FATAL: password authentication failed for user "postgres"
-DETAIL: Role "postgres" does not exist.
-```
-
-This usually means there's an old PostgreSQL volume with a different user configuration. To fix:
-
-```bash
-# Stop containers
-docker-compose down
-
-# Remove the PostgreSQL volume
-docker volume rm data-modelling-api_postgres_data
-
-# Or remove all volumes
-docker-compose down -v
-
-# Restart containers (will recreate volume with correct user)
-docker-compose up -d
-```
-
-**Note**: Removing volumes will delete all database data. Make sure to backup if needed.
 
 ## Configuration
 
 ### Environment Variables
 
-Create a `docker-compose.override.yml` file (it's gitignored) to override settings:
+The application runs in offline mode by default. You can override this:
+
+```yaml
+# docker-compose.override.yml
+services:
+  frontend:
+    build:
+      args:
+        VITE_OFFLINE_MODE: "true"  # Set to "false" to enable online mode (requires API)
+```
+
+### Port Configuration
+
+Default port mapping:
+- Host port `5173` → Container port `80`
+
+To change the port, update `docker-compose.yml`:
 
 ```yaml
 services:
-  api:
-    environment:
-      GITHUB_CLIENT_ID: your-client-id
-      GITHUB_CLIENT_SECRET: your-client-secret
-      JWT_SECRET: your-secure-jwt-secret-at-least-32-characters-long
-      RUST_LOG: debug
+  frontend:
+    ports:
+      - "8080:80"  # Change host port to 8080
 ```
 
-### PostgreSQL Credentials
+## Accessing the Application
 
-Default credentials (set in `docker-compose.yml`):
-- User: `data_modelling`
-- Password: `data_modelling_password`
-- Database: `data_modelling`
-
-To change these, update `docker-compose.yml` and recreate the volume.
+Once started, access the application at:
+- **URL**: http://localhost:5173
 
 ## Troubleshooting
 
-### API won't start
-- Check PostgreSQL is healthy: `docker-compose ps`
-- Check API logs: `docker-compose logs api`
-- Verify `JWT_SECRET` is at least 32 characters
+### Build Fails - SDK Not Found
 
-### Frontend can't connect to API
-- Verify API is healthy: `curl http://localhost:8081/api/v1/health`
+If the SDK repository is not accessible during build:
+
+1. **Option 1**: Ensure the SDK repository is publicly accessible
+2. **Option 2**: Copy WASM files manually before building:
+   ```bash
+   # Build WASM SDK locally first
+   cd frontend
+   npm run build:wasm
+   
+   # Then build Docker image
+   docker-compose build
+   ```
+
+### WASM Files Not Loading
+
+- Check browser console for WASM loading errors
+- Verify WASM files exist: `docker exec data-modelling-frontend ls -la /usr/share/nginx/html/wasm/`
 - Check Nginx logs: `docker-compose logs frontend`
-- Verify `VITE_API_BASE_URL` is empty (uses relative URLs)
-- Access frontend at: `http://localhost:5173`
+- Verify WASM MIME type is configured in nginx
 
-### Database connection errors
-- Verify PostgreSQL is running: `docker-compose ps postgres`
-- Check connection string matches credentials
-- Use port 5433 to connect from outside Docker: `postgresql://data_modelling:data_modelling_password@localhost:5433/data_modelling`
-- Recreate volume if user mismatch (see above)
+### Application Shows Blank Screen
 
-## Network
-
-All services are on the `data-modelling-network` bridge network:
-- `postgres:5432` - PostgreSQL database
-- `api:8081` - API service
-- `frontend:80` - Frontend (Nginx)
-
-## Volumes
-
-- `postgres_data` - PostgreSQL data directory
-  - Location: `/var/lib/postgresql/data/pgdata`
-  - Persists database data between container restarts
-
-## Health Checks
-
-- **PostgreSQL**: `pg_isready -U data_modelling` (every 10s)
-- **API**: `curl -f http://localhost:8081/api/v1/health` (every 30s)
-- **Frontend**: Depends on API health check
-
-## Ports
-
-- `5433` - PostgreSQL (host → container, container port 5432)
-- `8082` - API (host → container, container port 8081)
-- `5174` - Frontend (host → container, mapped to container port 80)
-
-**Note**: These are alternative ports to avoid conflicts with other services. The container internal ports remain unchanged.
+- Check Nginx logs: `docker-compose logs frontend`
+- Verify build completed successfully: `docker-compose build --no-cache frontend`
+- Check browser console for JavaScript errors
 
 ## Development
 
-For local development with hot reload, uncomment volumes in `docker-compose.override.yml`:
+For local development with hot reload, use the development server instead:
 
-```yaml
-frontend:
-  volumes:
-    - ./frontend/src:/app/src:ro
+```bash
+cd frontend
+npm install
+npm run build:wasm
+npm run dev
 ```
 
-Note: This requires the frontend Dockerfile to support volume mounting.
+Docker is primarily for production builds and deployment.
+
+## Production Deployment
+
+For production deployment:
+
+1. Build the image:
+   ```bash
+   docker-compose build frontend
+   ```
+
+2. Tag and push to registry:
+   ```bash
+   docker tag data-modelling-frontend:latest your-registry/data-modelling-frontend:latest
+   docker push your-registry/data-modelling-frontend:latest
+   ```
+
+3. Run in production:
+   ```bash
+   docker run -d -p 80:80 --name data-modelling-frontend your-registry/data-modelling-frontend:latest
+   ```
+
+## Network
+
+The frontend service uses a bridge network (`data-modelling-network`) for potential future services, but currently operates standalone.
+
+## Volumes
+
+No persistent volumes are required for offline mode. All data is stored locally in the browser/Electron app.

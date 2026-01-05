@@ -10,7 +10,7 @@ import { cadsService } from '@/services/sdk/cadsService';
 import { bpmnService } from '@/services/sdk/bpmnService';
 import { dmnService } from '@/services/sdk/dmnService';
 import * as yaml from 'js-yaml';
-import type { Workspace } from '@/types/workspace';
+import type { Workspace, WorkspaceMetadata } from '@/types/workspace';
 import type { Domain as DomainType } from '@/types/domain';
 import type { Table } from '@/types/table';
 import type { Relationship } from '@/types/relationship';
@@ -19,6 +19,7 @@ import type { DataProduct } from '@/types/odps';
 import type { ComputeAsset } from '@/types/cads';
 import type { BPMNProcess } from '@/types/bpmn';
 import type { DMNDecision } from '@/types/dmn';
+import { indexedDBStorage } from './indexedDBStorage';
 
 class LocalFileService {
   /**
@@ -66,7 +67,7 @@ class LocalFileService {
    * 
    * Only YAML files are loaded - all other file types are ignored.
    */
-  private parseFolderStructure(files: FileList): {
+  private async parseFolderStructure(files: FileList): Promise<{
     domains: Map<string, { 
       name: string; 
       files: { 
@@ -82,7 +83,8 @@ class LocalFileService {
       } 
     }>;
     workspaceName: string;
-  } {
+    workspaceMetadata?: WorkspaceMetadata;
+  }> {
     const domains = new Map<string, { 
       name: string; 
       files: { 
@@ -98,6 +100,7 @@ class LocalFileService {
       } 
     }>();
     let workspaceName = 'Untitled Workspace';
+    let workspaceMetadata: WorkspaceMetadata | undefined;
 
     // Group files by directory (domain)
     for (let i = 0; i < files.length; i++) {
@@ -116,6 +119,21 @@ class LocalFileService {
       }
 
       const pathParts = file.webkitRelativePath.split('/');
+      
+      // Check for workspace.yaml at root level (pathParts.length === 2 means workspace-folder/workspace.yaml)
+      if (pathParts.length === 2 && (fileName === 'workspace.yaml' || fileName === 'workspace.yml')) {
+        try {
+          const content = await browserFileService.readFile(file);
+          workspaceMetadata = yaml.load(content) as WorkspaceMetadata;
+          console.log(`[LocalFileService] Found workspace.yaml:`, workspaceMetadata);
+          if (workspaceMetadata?.name) {
+            workspaceName = workspaceMetadata.name;
+          }
+        } catch (error) {
+          console.warn(`[LocalFileService] Failed to parse workspace.yaml:`, error);
+        }
+        continue;
+      }
       
       // Skip root level files - we only want files in domain subfolders
       // A file must be in a subfolder to belong to a domain
@@ -200,7 +218,7 @@ class LocalFileService {
       // All other files in domain folders are ignored
     }
 
-    return { domains, workspaceName };
+    return { domains, workspaceName, workspaceMetadata };
   }
 
   /**
@@ -222,13 +240,14 @@ class LocalFileService {
    */
   async loadWorkspaceFromFolder(files: FileList): Promise<Workspace> {
     // Parse folder structure - only YAML files are processed
-    const { domains: domainMap, workspaceName } = this.parseFolderStructure(files);
+    const { domains: domainMap, workspaceName, workspaceMetadata } = await this.parseFolderStructure(files);
     
     if (domainMap.size === 0) {
       throw new Error('No domain folders found. Expected structure: workspace-folder/domain-folder/tables.yaml and relationships.yaml. Only YAML files are loaded.');
     }
 
-    const workspaceId = `workspace-${Date.now()}`;
+    // Use workspace ID from workspace.yaml if available, otherwise generate one
+    const workspaceId = workspaceMetadata?.id || `workspace-${Date.now()}`;
     const domains: DomainType[] = [];
     const allTables: Table[] = [];
     const allRelationships: Relationship[] = [];
@@ -237,6 +256,15 @@ class LocalFileService {
     const allAssets: ComputeAsset[] = [];
     const allBpmnProcesses: BPMNProcess[] = [];
     const allDmnDecisions: DMNDecision[] = [];
+
+    // Create domain ID map from workspace.yaml if available
+    const domainIdMap = new Map<string, string>();
+    if (workspaceMetadata?.domains) {
+      for (const domainMeta of workspaceMetadata.domains) {
+        domainIdMap.set(domainMeta.name, domainMeta.id);
+      }
+      console.log(`[LocalFileService] Loaded ${domainIdMap.size} domain ID(s) from workspace.yaml`);
+    }
 
     // Process each domain folder
     let domainIndex = 0;
@@ -653,7 +681,6 @@ class LocalFileService {
     } = {
       id: workspaceId,
       name: workspaceName,
-      type: 'personal',
       owner_id: 'offline-user',
       created_at: new Date().toISOString(),
       last_modified_at: new Date().toISOString(),
@@ -734,7 +761,6 @@ class LocalFileService {
     const workspace: Workspace & { tables?: any[]; relationships?: any[] } = {
       id: workspaceId,
       name: file.name.replace(/\.(yaml|yml)$/i, '') || 'Untitled Workspace',
-      type: 'personal',
       owner_id: 'offline-user',
       created_at: new Date().toISOString(),
       last_modified_at: new Date().toISOString(),
@@ -870,6 +896,152 @@ class LocalFileService {
   async saveDMNDecision(_workspaceId: string, _domainId: string, decision: DMNDecision): Promise<void> {
     const xmlContent = await dmnService.toXML(decision);
     browserFileService.downloadFile(xmlContent, `${decision.name}.dmn`, 'application/xml');
+  }
+
+  /**
+   * Save domain folder structure
+   * Uses File System Access API if available, otherwise downloads ZIP
+   */
+  async saveDomainFolder(
+    workspaceName: string,
+    domain: DomainType,
+    tables: Table[],
+    products: DataProduct[],
+    assets: ComputeAsset[],
+    bpmnProcesses: BPMNProcess[],
+    dmnDecisions: DMNDecision[],
+    systems: System[] = [],
+    relationships: Relationship[] = []
+  ): Promise<void> {
+    const domainName = domain.name;
+    const files: Array<{ path: string; content: string; mimeType?: string }> = [];
+
+    // Build domain.yaml with systems and relationships
+    const domainDefinition: any = {
+      id: domain.id,
+      workspace_id: domain.workspace_id,
+      name: domain.name,
+      description: domain.description || undefined,
+      owner: domain.owner || undefined,
+      created_at: domain.created_at || new Date().toISOString(),
+      last_modified_at: domain.last_modified_at || new Date().toISOString(),
+    };
+
+    if (systems.length > 0) {
+      domainDefinition.systems = systems;
+    }
+    if (relationships.length > 0) {
+      domainDefinition.relationships = relationships;
+    }
+    if (tables.length > 0) {
+      domainDefinition.tables = tables.map(t => t.id);
+    }
+    if (products.length > 0) {
+      domainDefinition.products = products.map(p => p.id);
+    }
+    if (assets.length > 0) {
+      domainDefinition.assets = assets.map(a => a.id);
+    }
+    if (bpmnProcesses.length > 0) {
+      domainDefinition.processes = bpmnProcesses.map(p => p.id);
+    }
+    if (dmnDecisions.length > 0) {
+      domainDefinition.decisions = dmnDecisions.map(d => d.id);
+    }
+    if ((domain as any).view_positions) {
+      domainDefinition.view_positions = (domain as any).view_positions;
+    }
+
+    Object.keys(domainDefinition).forEach(key => {
+      if (domainDefinition[key] === undefined) {
+        delete domainDefinition[key];
+      }
+    });
+
+    const domainYaml = yaml.dump(domainDefinition, {
+      indent: 2,
+      lineWidth: -1,
+      quotingType: '"',
+      forceQuotes: false,
+    });
+    files.push({ path: `${domainName}/domain.yaml`, content: domainYaml });
+
+    // Add table files
+    for (const table of tables) {
+      const tableYaml = await odcsService.toYAML({ tables: [table] } as any);
+      files.push({ path: `${domainName}/${table.name}.odcs.yaml`, content: tableYaml });
+    }
+
+    // Add product files
+    for (const product of products) {
+      const productYaml = await odpsService.toYAML(product);
+      files.push({ path: `${domainName}/${product.name}.odps.yaml`, content: productYaml });
+    }
+
+    // Add asset files
+    for (const asset of assets) {
+      const assetYaml = await cadsService.toYAML(asset);
+      files.push({ path: `${domainName}/${asset.name}.cads.yaml`, content: assetYaml });
+    }
+
+    // Add BPMN files
+    for (const process of bpmnProcesses) {
+      const fileName = process.name ? `${process.name}.bpmn` : `process_${process.id}.bpmn`;
+      const xmlContent = await bpmnService.toXML(process);
+      files.push({ path: `${domainName}/${fileName}`, content: xmlContent, mimeType: 'application/xml' });
+    }
+
+    // Add DMN files
+    for (const decision of dmnDecisions) {
+      const fileName = decision.name ? `${decision.name}.dmn` : `decision_${decision.id}.dmn`;
+      const xmlContent = await dmnService.toXML(decision);
+      files.push({ path: `${domainName}/${fileName}`, content: xmlContent, mimeType: 'application/xml' });
+    }
+
+    // Try File System Access API first
+    const directoryHandle = browserFileService.getCachedDirectoryHandle(workspaceName);
+    if (directoryHandle) {
+      try {
+        await browserFileService.saveFilesToDirectory(directoryHandle, files);
+        console.log(`[LocalFileService] Saved domain folder using File System Access API: ${domainName}`);
+        return;
+      } catch (error) {
+        console.warn('[LocalFileService] File System Access API failed, falling back to ZIP:', error);
+      }
+    }
+
+    // Fall back to ZIP download
+    await browserFileService.downloadZip(files, `${workspaceName}-${domainName}.zip`);
+    console.log(`[LocalFileService] Downloaded domain folder as ZIP: ${domainName}`);
+  }
+
+  /**
+   * Save workspace.yaml file
+   * Uses File System Access API if available, otherwise downloads file
+   */
+  async saveWorkspaceMetadata(workspaceName: string, metadata: WorkspaceMetadata): Promise<void> {
+    const yamlContent = yaml.dump(metadata, {
+      indent: 2,
+      lineWidth: -1,
+      quotingType: '"',
+      forceQuotes: false,
+    });
+
+    // Try File System Access API first
+    const directoryHandle = browserFileService.getCachedDirectoryHandle(workspaceName);
+    if (directoryHandle) {
+      try {
+        await browserFileService.saveFileToDirectory(directoryHandle, 'workspace.yaml', yamlContent);
+        console.log('[LocalFileService] Saved workspace.yaml using File System Access API');
+        return;
+      } catch (error) {
+        console.warn('[LocalFileService] File System Access API failed, falling back to download:', error);
+      }
+    }
+
+    // Fall back to download
+    browserFileService.downloadFile(yamlContent, 'workspace.yaml', 'text/yaml');
+    console.log('[LocalFileService] Downloaded workspace.yaml');
   }
 }
 

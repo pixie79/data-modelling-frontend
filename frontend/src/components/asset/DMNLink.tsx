@@ -114,9 +114,11 @@ export const DMNLink: React.FC<DMNLinkProps> = ({ assetId, domainId, currentLink
           {domainDMNDecisions.map((decision) => (
             <label
               key={decision.id}
+              htmlFor={`dmn-decision-${decision.id}`}
               className="flex items-center gap-2 p-2 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50"
             >
               <input
+                id={`dmn-decision-${decision.id}`}
                 type="radio"
                 name={`dmn-link-${assetId}`}
                 checked={decision.id === currentLinkId}

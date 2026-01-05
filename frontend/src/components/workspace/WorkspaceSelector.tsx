@@ -76,10 +76,10 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({ className 
                   <span
                     className={`
                       px-2 py-1 text-xs rounded
-                      ${workspace.type === 'shared' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}
+                      bg-gray-100 text-gray-800
                     `}
                   >
-                    {workspace.type === 'shared' ? 'Shared' : 'Personal'}
+                    Workspace
                   </span>
                 </div>
                 {workspace.domains && workspace.domains.length > 0 && (

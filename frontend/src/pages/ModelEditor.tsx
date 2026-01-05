@@ -20,7 +20,6 @@ import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useModelStore } from '@/stores/modelStore';
 import { workspaceService } from '@/services/api/workspaceService';
 import { Loading } from '@/components/common/Loading';
-import { OnlineOfflineToggle } from '@/components/common/OnlineOfflineToggle';
 import { useSDKModeStore } from '@/services/sdk/sdkMode';
 import { useUIStore } from '@/stores/uiStore';
 import { useCollaboration } from '@/hooks/useCollaboration';
@@ -327,6 +326,10 @@ const ModelEditor: React.FC = () => {
         last_modified_at: domain.last_modified_at,
       } as any;
       
+      // Extract workspace path from domain path (parent directory)
+      const pathParts = domainPath.split(/[/\\]/).filter(Boolean);
+      const workspacePath = pathParts.slice(0, -1).join('/');
+      
       // Save domain folder
       await electronFileService.saveDomainFolder(
         domainPath,
@@ -339,6 +342,23 @@ const ModelEditor: React.FC = () => {
         domainSystems,
         domainRelationships
       );
+      
+      // Save workspace.yaml with all domain IDs
+      if (workspacePath && workspaceId) {
+        const modelStore = useModelStore.getState();
+        const allDomains = modelStore.domains;
+        const workspaceMetadata = {
+          id: workspaceId,
+          name: workspaceId, // Use workspaceId as name if workspace name not available
+          created_at: new Date().toISOString(),
+          last_modified_at: new Date().toISOString(),
+          domains: allDomains.map(d => ({
+            id: d.id,
+            name: d.name,
+          })),
+        };
+        await electronFileService.saveWorkspaceMetadata(workspacePath, workspaceMetadata);
+      }
       
       addToast({
         type: 'success',
@@ -620,10 +640,9 @@ const ModelEditor: React.FC = () => {
         </div>
       )}
       
-      {/* Mode Toggle and Domain Selector */}
+      {/* Domain Selector */}
       <div className="bg-gray-50 border-b border-gray-200 px-4 py-2">
         <div className="flex items-center justify-between">
-          <OnlineOfflineToggle />
           <DomainSelector workspaceId={workspaceId ?? ''} />
         </div>
       </div>

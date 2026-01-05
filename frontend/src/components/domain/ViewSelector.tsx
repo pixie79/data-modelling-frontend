@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useModelStore, type ViewMode } from '@/stores/modelStore';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { HelpText } from '@/components/common/HelpText';
@@ -24,7 +25,7 @@ const VIEW_MODES: Array<{ value: ViewMode; label: string; description: string }>
   },
   {
     value: 'process',
-    label: 'Process View',
+    label: 'System Process View',
     description: 'Detailed ETL processes within systems',
   },
   {
@@ -45,6 +46,7 @@ const VIEW_MODES: Array<{ value: ViewMode; label: string; description: string }>
 ];
 
 export const ViewSelector: React.FC<ViewSelectorProps> = ({ domainId }) => {
+  const navigate = useNavigate();
   const { currentView, setCurrentView, systems, selectedSystemId } = useModelStore();
   const { manualSave, pendingChanges, autoSaveEnabled, setAutoSaveEnabled } = useWorkspaceStore();
   const { addToast } = useUIStore();
@@ -72,43 +74,49 @@ export const ViewSelector: React.FC<ViewSelectorProps> = ({ domainId }) => {
   };
 
   const handleCloseApp = () => {
-    if (getPlatform() !== 'electron') {
-      // In browser mode, just show a message
-      addToast({
-        type: 'info',
-        message: 'Close button is only available in Electron app',
-      });
-      return;
-    }
-
+    const platform = getPlatform();
+    
     // Check for pending changes - show confirmation dialog with options
     if (pendingChanges) {
       setShowExitConfirm(true);
     } else {
       // No pending changes, close immediately
-      closeElectronApp().catch((error) => {
-        console.error('Failed to close app:', error);
-        addToast({
-          type: 'error',
-          message: 'Failed to close application',
+      if (platform === 'electron') {
+        closeElectronApp().catch((error) => {
+          console.error('Failed to close app:', error);
+          addToast({
+            type: 'error',
+            message: 'Failed to close application',
+          });
         });
-      });
+      } else {
+        // Browser mode: Navigate back to workspace selection
+        navigate('/');
+      }
     }
   };
 
   const handleExitWithSave = async () => {
     setIsClosing(true);
     setShowExitConfirm(false);
+    const platform = getPlatform();
+    
     try {
       await manualSave();
       // Small delay to show save feedback
       await new Promise(resolve => setTimeout(resolve, 500));
-      await closeElectronApp();
+      
+      if (platform === 'electron') {
+        await closeElectronApp();
+      } else {
+        // Browser mode: Navigate back to workspace selection
+        navigate('/');
+      }
     } catch (error) {
       console.error('Failed to save before closing:', error);
       addToast({
         type: 'error',
-        message: 'Failed to save changes. Application will not close.',
+        message: 'Failed to save changes. Workspace will not close.',
       });
       setIsClosing(false);
     }
@@ -117,16 +125,23 @@ export const ViewSelector: React.FC<ViewSelectorProps> = ({ domainId }) => {
   const handleExitWithoutSave = async () => {
     setShowExitConfirm(false);
     setIsClosing(true);
+    const platform = getPlatform();
+    
     try {
-      await closeElectronApp();
+      if (platform === 'electron') {
+        await closeElectronApp();
+      } else {
+        // Browser mode: Navigate back to workspace selection
+        navigate('/');
+      }
     } catch (error) {
-      console.error('Failed to close app:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to close application';
+      console.error('Failed to close workspace:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to close workspace';
       addToast({
         type: 'error',
-        message: errorMessage.includes('not available') || errorMessage.includes('not a function')
+        message: platform === 'electron' && (errorMessage.includes('not available') || errorMessage.includes('not a function'))
           ? 'Close app feature requires rebuilding Electron. Please rebuild the app.'
-          : 'Failed to close application',
+          : 'Failed to close workspace',
       });
       setIsClosing(false);
     }
@@ -228,31 +243,29 @@ export const ViewSelector: React.FC<ViewSelectorProps> = ({ domainId }) => {
           )}
         </button>
 
-        {/* Exit/Close Button - only in Electron */}
-        {getPlatform() === 'electron' && (
-          <button
-            onClick={handleCloseApp}
-            disabled={isClosing}
-            className={`
-              px-3 py-1 text-sm font-medium rounded transition-colors flex items-center gap-1
-              bg-red-600 text-white hover:bg-red-700
-              ${isClosing ? 'opacity-50 cursor-not-allowed' : ''}
-            `}
-            title="Close application"
-          >
-            {isClosing ? (
-              <>
-                <span className="animate-spin">⏳</span>
-                <span>Closing...</span>
-              </>
-            ) : (
-              <>
-                <span>✕</span>
-                <span>Exit</span>
-              </>
-            )}
-          </button>
-        )}
+        {/* Exit/Close Button - available in both Electron and Browser */}
+        <button
+          onClick={handleCloseApp}
+          disabled={isClosing}
+          className={`
+            px-3 py-1 text-sm font-medium rounded transition-colors flex items-center gap-1
+            bg-red-600 text-white hover:bg-red-700
+            ${isClosing ? 'opacity-50 cursor-not-allowed' : ''}
+          `}
+          title={getPlatform() === 'electron' ? 'Close application' : 'Close workspace and return to workspace selection'}
+        >
+          {isClosing ? (
+            <>
+              <span className="animate-spin">⏳</span>
+              <span>{getPlatform() === 'electron' ? 'Closing...' : 'Closing...'}</span>
+            </>
+          ) : (
+            <>
+              <span>✕</span>
+              <span>Exit</span>
+            </>
+          )}
+        </button>
         
         <HelpText
           text="View modes are filters/views of the same domain data. Process, Operational, and Analytical views require systems to exist. Switch between views to see different perspectives of your domain."
@@ -263,13 +276,19 @@ export const ViewSelector: React.FC<ViewSelectorProps> = ({ domainId }) => {
       {/* Exit Confirmation Dialog */}
       <ConfirmDialog
         isOpen={showExitConfirm}
-        onClose={() => setShowExitConfirm(false)}
+        onClose={() => {
+          setShowExitConfirm(false);
+          setIsClosing(false);
+        }}
         title="Unsaved Changes"
-        message="You have unsaved changes. What would you like to do?"
+        message={`You have unsaved changes. What would you like to do?${getPlatform() === 'browser' ? ' Closing the workspace will return you to workspace selection.' : ''}`}
         actions={[
           {
             label: 'Cancel',
-            onClick: () => {},
+            onClick: () => {
+              setShowExitConfirm(false);
+              setIsClosing(false);
+            },
             variant: 'secondary',
           },
           {

@@ -43,15 +43,17 @@ export const CreateTableDialog: React.FC<CreateTableDialogProps> = ({
   const [alias, setAlias] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  // Reset form when dialog opens/closes
+  // Reset form when dialog closes (but preserve import format settings)
   useEffect(() => {
     if (!isOpen) {
+      // Only reset import mode and content, not format settings
       setImportMode(false);
       setImportYaml('');
       setImportFile(null);
       setName('');
       setAlias('');
       setError(null);
+      // Preserve importFormat, sqlDialect, and openapiFormat for next use
     }
   }, [isOpen]);
 

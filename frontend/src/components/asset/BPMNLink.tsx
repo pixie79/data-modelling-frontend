@@ -114,9 +114,11 @@ export const BPMNLink: React.FC<BPMNLinkProps> = ({ assetId, domainId, currentLi
           {domainBPMNProcesses.map((process) => (
             <label
               key={process.id}
+              htmlFor={`bpmn-process-${process.id}`}
               className="flex items-center gap-2 p-2 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50"
             >
               <input
+                id={`bpmn-process-${process.id}`}
                 type="radio"
                 name={`bpmn-link-${assetId}`}
                 checked={process.id === currentLinkId}

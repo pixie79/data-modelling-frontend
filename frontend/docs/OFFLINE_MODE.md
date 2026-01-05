@@ -21,7 +21,7 @@ The application uses WASM SDK directly in the browser/Electron:
 
 ### WASM SDK Build
 
-The SDK (version **1.6.2+**) is automatically built as part of the application build process:
+The SDK (version **1.7.0+**) is automatically built as part of the application build process:
 
 ```bash
 # Build WASM SDK manually

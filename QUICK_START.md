@@ -2,9 +2,20 @@
 
 **⚠️ IMPORTANT: This application currently only supports OFFLINE MODE.**
 
-## Electron Desktop Application
+## Quick Start Options
 
-### Quick Start
+### Option 1: Docker (Web Version)
+
+Build and run using Docker (automatically builds latest SDK):
+
+```bash
+docker-compose up -d
+# Access at http://localhost:5173
+```
+
+See [docker/README.md](./docker/README.md) for details.
+
+### Option 2: Electron Desktop Application
 
 ```bash
 cd frontend

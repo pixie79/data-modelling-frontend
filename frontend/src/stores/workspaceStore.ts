@@ -137,7 +137,6 @@ export const useWorkspaceStore = create<WorkspaceState>()(
               return profile.domains.map((domain) => ({
                 id: `${profile.email}:${domain}`,
                 name: `${profile.email} - ${domain}`,
-                type: 'personal' as const,
                 owner_id: profile.email,
                 created_at: new Date().toISOString(),
                 last_modified_at: new Date().toISOString(),
@@ -167,7 +166,6 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             const workspace = {
               id: workspaceId,
               name: info.email,
-              type: 'personal' as const,
               owner_id: info.email,
               created_at: new Date().toISOString(),
               last_modified_at: new Date().toISOString(),
@@ -215,7 +213,6 @@ export const useWorkspaceStore = create<WorkspaceState>()(
               const newWorkspace: Workspace = {
                 id: generateUUID(),
                 name: request.name || 'Untitled Workspace',
-                type: request.type || 'personal',
                 owner_id: 'offline-user',
                 created_at: new Date().toISOString(),
                 last_modified_at: new Date().toISOString(),
@@ -297,7 +294,6 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             const workspace: Workspace = {
               id: `${result.email}:${result.domain}`,
               name: `${result.email} - ${result.domain}`,
-              type: 'personal' as const,
               owner_id: result.email,
               created_at: new Date().toISOString(),
               last_modified_at: new Date().toISOString(),
@@ -470,6 +466,26 @@ export const useWorkspaceStore = create<WorkspaceState>()(
                       allDomainsSaved = false;
                     }
                   }
+                  
+                  // Save workspace.yaml with all domain IDs after saving all domains
+                  if (allDomainsSaved && workspacePath && workspace.id) {
+                    try {
+                      const workspaceMetadata = {
+                        id: workspace.id,
+                        name: workspace.name || workspace.id,
+                        created_at: workspace.created_at || new Date().toISOString(),
+                        last_modified_at: new Date().toISOString(),
+                        domains: domains.map(d => ({
+                          id: d.id,
+                          name: d.name,
+                        })),
+                      };
+                      await electronFileServiceModule.electronFileService.saveWorkspaceMetadata(workspacePath, workspaceMetadata);
+                    } catch (error) {
+                      console.error(`Failed to save workspace.yaml:`, error);
+                      // Don't fail auto-save if workspace.yaml save fails
+                    }
+                  }
                 }
                 
                 if (allDomainsSaved && domains.length > 0) {
@@ -480,11 +496,105 @@ export const useWorkspaceStore = create<WorkspaceState>()(
                   set({ pendingChanges: false, lastSavedAt: new Date().toISOString() });
                 }
               } else {
-                // Browser: Don't auto-trigger downloads - user should manually save
-                // Auto-save downloads are annoying in browser mode
-                // Just mark as saved in memory (localStorage persists the state)
-                set({ pendingChanges: false, lastSavedAt: new Date().toISOString() });
-                // Don't show toast - silent auto-save in browser mode
+                // Browser: Use IndexedDB for auto-save
+                try {
+                  const { indexedDBStorage } = await import('@/services/storage/indexedDBStorage');
+                  const { localFileService } = await import('@/services/storage/localFileService');
+                  
+                  // Save workspace state to IndexedDB
+                  await indexedDBStorage.saveWorkspace(
+                    workspace.id,
+                    workspace.name || workspace.id,
+                    {
+                      workspace,
+                      domains,
+                      tables,
+                      relationships,
+                      systems,
+                      products,
+                      assets,
+                      bpmnProcesses,
+                      dmnDecisions,
+                    }
+                  );
+                  
+                  // Try to save domain folders to disk if directory handle is cached
+                  // This allows auto-save to persist to the same location selected during manual save
+                  const { browserFileService } = await import('@/services/platform/browser');
+                  const directoryHandle = browserFileService.getCachedDirectoryHandle(workspace.name || workspace.id);
+                  
+                  if (directoryHandle) {
+                    try {
+                      // Verify directory handle is still valid by checking permissions
+                      const permissionStatus = await directoryHandle.queryPermission({ mode: 'readwrite' });
+                      
+                      if (permissionStatus === 'granted') {
+                        // Save each domain folder using File System Access API
+                        for (const domain of domains) {
+                          const domainTables = tables.filter(t => t.primary_domain_id === domain.id);
+                          const domainProducts = products.filter(p => p.domain_id === domain.id);
+                          const domainAssets = assets.filter(a => a.primary_domain_id === domain.id);
+                          const domainBpmn = bpmnProcesses.filter(p => p.primary_domain_id === domain.id);
+                          const domainDmn = dmnDecisions.filter(d => d.primary_domain_id === domain.id);
+                          const domainSystems = systems.filter(s => s.domain_id === domain.id);
+                          const domainRelationships = relationships.filter(r => r.domain_id === domain.id);
+                          
+                          await localFileService.saveDomainFolder(
+                            workspace.name || workspace.id,
+                            domain,
+                            domainTables,
+                            domainProducts,
+                            domainAssets,
+                            domainBpmn,
+                            domainDmn,
+                            domainSystems,
+                            domainRelationships
+                          );
+                        }
+                        
+                        // Save workspace.yaml
+                        const workspaceMetadata = {
+                          id: workspace.id,
+                          name: workspace.name || workspace.id,
+                          created_at: workspace.created_at || new Date().toISOString(),
+                          last_modified_at: new Date().toISOString(),
+                          domains: domains.map(d => ({ id: d.id, name: d.name })),
+                        };
+                        await localFileService.saveWorkspaceMetadata(workspace.name || workspace.id, workspaceMetadata);
+                        
+                        console.log('[WorkspaceStore] Auto-saved to disk (directory handle cached)');
+                      } else if (permissionStatus === 'prompt') {
+                        // Permission was revoked - request again
+                        console.log('[WorkspaceStore] Directory permission revoked, requesting again...');
+                        const newHandle = await browserFileService.requestDirectoryAccess(workspace.name || workspace.id);
+                        if (newHandle) {
+                          // Retry save with new handle
+                          // Note: This will be saved in the next auto-save cycle
+                          console.log('[WorkspaceStore] Directory access re-granted, will save in next cycle');
+                        }
+                      } else {
+                        // Permission denied - clear cached handle
+                        console.warn('[WorkspaceStore] Directory permission denied, clearing cached handle');
+                        // Note: We can't directly clear the cache from here, but it will be handled on next manual save
+                      }
+                    } catch (error) {
+                      // Handle stale directory handle errors
+                      console.warn('[WorkspaceStore] Failed to save to disk during auto-save:', error);
+                      // Continue - IndexedDB save already succeeded
+                    }
+                  } else {
+                    // No cached directory handle - auto-save only to IndexedDB
+                    // User needs to manually save first to grant directory access
+                    console.log('[WorkspaceStore] No cached directory handle - auto-save to IndexedDB only');
+                  }
+                  
+                  set({ pendingChanges: false, lastSavedAt: new Date().toISOString() });
+                  console.log('[WorkspaceStore] Auto-saved to IndexedDB');
+                } catch (error) {
+                  console.error('[WorkspaceStore] Failed to auto-save to IndexedDB:', error);
+                  // Still mark as saved to avoid repeated attempts
+                  set({ pendingChanges: false, lastSavedAt: new Date().toISOString() });
+                }
               }
             } else {
               // In online mode, sync to remote
@@ -513,7 +623,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         },
 
         manualSave: async () => {
-          // Same as autoSave but always shows feedback
+          // Manual save - always prompts for location in browser mode
           const state = get();
           if (!state.currentWorkspaceId) {
             const uiStoreModule = await import('@/stores/uiStore');
@@ -524,25 +634,114 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             return;
           }
 
-          // Force pendingChanges to true to ensure save happens
-          set({ pendingChanges: true });
-          
-          // Call autoSave which will handle the actual save
-          await get().autoSave();
-          
-          const uiStoreModule = await import('@/stores/uiStore');
+          const workspace = state.workspaces.find((w) => w.id === state.currentWorkspaceId);
+          if (!workspace) {
+            const uiStoreModule = await import('@/stores/uiStore');
+            uiStoreModule.useUIStore.getState().addToast({
+              type: 'warning',
+              message: 'Workspace not found.',
+            });
+            return;
+          }
+
           const mode = await useSDKModeStore.getState().getMode();
+          const platform = getPlatform();
+          const uiStoreModule = await import('@/stores/uiStore');
           
-          if (mode === 'offline' && getPlatform() === 'electron') {
-            uiStoreModule.useUIStore.getState().addToast({
-              type: 'success',
-              message: 'Domains saved successfully',
-            });
-          } else if (mode === 'online') {
-            uiStoreModule.useUIStore.getState().addToast({
-              type: 'success',
-              message: 'Workspace synced to server',
-            });
+          if (mode === 'offline' && platform === 'browser') {
+            // Browser mode: Always prompt for directory access
+            try {
+              const { browserFileService } = await import('@/services/platform/browser');
+              const { localFileService } = await import('@/services/storage/localFileService');
+              const modelStoreModule = await import('@/stores/modelStore');
+              const { tables, relationships, domains, products, computeAssets, bpmnProcesses, dmnDecisions, systems } = modelStoreModule.useModelStore.getState();
+              
+              // Always request directory access (prompt user)
+              const directoryHandle = await browserFileService.requestDirectoryAccess(workspace.name || workspace.id);
+              
+              if (!directoryHandle) {
+                // User cancelled - offer ZIP download instead
+                const useZip = window.confirm(
+                  'Directory access was cancelled. Would you like to download a ZIP file with all domains instead?'
+                );
+                
+                if (!useZip) {
+                  return;
+                }
+                // Note: Directory handle is not cached if user cancels, so auto-save will use IndexedDB only
+              }
+              // Directory handle is automatically cached by requestDirectoryAccess if granted
+              // This allows auto-save to use the same directory in future saves
+
+              // Save each domain
+              for (const domain of domains) {
+                const domainTables = tables.filter(t => t.primary_domain_id === domain.id);
+                const domainProducts = products.filter(p => p.domain_id === domain.id);
+                const domainAssets = computeAssets.filter(a => a.primary_domain_id === domain.id);
+                const domainBpmn = bpmnProcesses.filter(p => p.primary_domain_id === domain.id);
+                const domainDmn = dmnDecisions.filter(d => d.primary_domain_id === domain.id);
+                const domainSystems = systems.filter(s => s.domain_id === domain.id);
+                const domainRelationships = relationships.filter(r => r.domain_id === domain.id);
+
+                await localFileService.saveDomainFolder(
+                  workspace.name || workspace.id,
+                  domain,
+                  domainTables,
+                  domainProducts,
+                  domainAssets,
+                  domainBpmn,
+                  domainDmn,
+                  domainSystems,
+                  domainRelationships
+                );
+              }
+
+              // Save workspace.yaml if we have directory access
+              if (directoryHandle) {
+                const workspaceMetadata = {
+                  id: workspace.id,
+                  name: workspace.name || workspace.id,
+                  created_at: workspace.created_at || new Date().toISOString(),
+                  last_modified_at: new Date().toISOString(),
+                  domains: domains.map(d => ({ id: d.id, name: d.name })),
+                };
+                await localFileService.saveWorkspaceMetadata(workspace.name || workspace.id, workspaceMetadata);
+              }
+
+              set({ pendingChanges: false, lastSavedAt: new Date().toISOString() });
+              
+              uiStoreModule.useUIStore.getState().addToast({
+                type: 'success',
+                message: directoryHandle
+                  ? `Saved all ${domains.length} domain(s) to directory`
+                  : `Downloaded all ${domains.length} domain(s) as ZIP files`,
+              });
+            } catch (error) {
+              console.error('Failed to manually save workspace:', error);
+              uiStoreModule.useUIStore.getState().addToast({
+                type: 'error',
+                message: `Failed to save: ${error instanceof Error ? error.message : 'Unknown error'}`,
+              });
+            }
+          } else {
+            // Electron mode or online mode: Use existing autoSave logic
+            // Force pendingChanges to true to ensure save happens
+            set({ pendingChanges: true });
+            
+            // Call autoSave which will handle the actual save
+            await get().autoSave();
+            
+            if (mode === 'offline' && platform === 'electron') {
+              uiStoreModule.useUIStore.getState().addToast({
+                type: 'success',
+                message: 'Domains saved successfully',
+              });
+            } else if (mode === 'online') {
+              uiStoreModule.useUIStore.getState().addToast({
+                type: 'success',
+                message: 'Workspace synced to server',
+              });
+            }
           }
         },
 

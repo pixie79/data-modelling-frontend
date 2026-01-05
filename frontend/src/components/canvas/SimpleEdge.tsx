@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { BaseEdge, EdgeLabelRenderer, EdgeProps, useEdges, useNodes, getSmoothStepPath } from 'reactflow';
+import { BaseEdge, EdgeLabelRenderer, EdgeProps, useEdges, useNodes } from 'reactflow';
 import type { Relationship } from '@/types/relationship';
 
 interface SimpleEdgeData {
@@ -44,13 +44,14 @@ export const SimpleEdge: React.FC<EdgeProps<SimpleEdgeData>> = ({
   };
 
   // Check if a point is inside a node bounding box
-  const isPointInNode = (x: number, y: number, nodeId: string): boolean => {
-    const bounds = getNodeBounds(nodeId);
-    if (!bounds) return false;
-    
-    return x >= bounds.x && x <= bounds.x + bounds.width &&
-           y >= bounds.y && y <= bounds.y + bounds.height;
-  };
+  // Note: Currently unused but kept for future routing logic
+  // const isPointInNode = (x: number, y: number, nodeId: string): boolean => {
+  //   const bounds = getNodeBounds(nodeId);
+  //   if (!bounds) return false;
+  //   
+  //   return x >= bounds.x && x <= bounds.x + bounds.width &&
+  //          y >= bounds.y && y <= bounds.y + bounds.height;
+  // };
 
   // Calculate perpendicular offset from node (similar to CardinalityEdge)
   const perpendicularOffset = 30;

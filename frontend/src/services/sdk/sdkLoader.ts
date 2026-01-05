@@ -3,7 +3,7 @@
  * Loads and initializes the data-modelling-sdk WASM module
  */
 
-// SDK module type definition (SDK 1.6.2+)
+// SDK module type definition (SDK 1.7.0+)
 interface SDKModule {
   init(): Promise<void>;
   // ODCS methods
@@ -31,7 +31,7 @@ interface SDKModule {
   // SQL Import/Export methods (SDK 1.6.1+)
   import_from_sql?(sql: string, dialect: string): string;
   export_to_sql?(json: string, dialect: string): string;
-  // AVRO/Protobuf/JSON Schema methods (SDK 1.6.2+)
+  // AVRO/Protobuf/JSON Schema methods (SDK 1.7.0+)
   import_from_avro?(avro: string): string;
   export_to_avro?(json: string): string;
   import_from_protobuf?(protobuf: string): string;
@@ -121,7 +121,7 @@ class SDKLoader {
       console.log('[SDKLoader] Available WASM module methods:', allMethods);
       console.log('[SDKLoader] Module keys:', Object.keys(module));
       
-      // Verify SDK 1.6.2+ bindings
+      // Verify SDK 1.7.0+ bindings
       this.verifySDKBindings(module);
       
       return module;
@@ -175,7 +175,7 @@ class SDKLoader {
   }
 
   /**
-   * Verify SDK 1.6.2+ bindings are available
+   * Verify SDK 1.7.0+ bindings are available
    */
   private verifySDKBindings(module: SDKModule): void {
     // Core methods from SDK 1.5.0+ (using actual exported method names)
@@ -194,8 +194,8 @@ class SDKLoader {
       'export_to_sql',
     ];
 
-    // SDK 1.6.2+ specific methods (enhanced AVRO/Protobuf/JSON Schema support)
-    const v162Methods = [
+    // SDK 1.7.0+ specific methods (enhanced AVRO/Protobuf/JSON Schema support)
+    const v170Methods = [
       'import_from_avro',
       'export_to_avro',
       'import_from_protobuf',
@@ -206,7 +206,7 @@ class SDKLoader {
 
     const missingCoreMethods: string[] = [];
     const missingV161Methods: string[] = [];
-    const missingV162Methods: string[] = [];
+    const missingV170Methods: string[] = [];
 
     for (const method of coreMethods) {
       if (typeof (module as any)[method] !== 'function') {
@@ -220,9 +220,9 @@ class SDKLoader {
       }
     }
 
-    for (const method of v162Methods) {
+    for (const method of v170Methods) {
       if (typeof (module as any)[method] !== 'function') {
-        missingV162Methods.push(method);
+        missingV170Methods.push(method);
       }
     }
 
@@ -237,18 +237,18 @@ class SDKLoader {
       console.warn('[SDKLoader] Current SDK may not support Databricks SQL syntax natively');
     }
 
-    if (missingV162Methods.length > 0) {
-      console.warn('[SDKLoader] SDK 1.6.2+ methods not available:', missingV162Methods);
-      console.warn('[SDKLoader] Enhanced AVRO/Protobuf/JSON Schema export/import requires SDK version >= 1.6.2');
+    if (missingV170Methods.length > 0) {
+      console.warn('[SDKLoader] SDK 1.7.0+ methods not available:', missingV170Methods);
+      console.warn('[SDKLoader] Enhanced AVRO/Protobuf/JSON Schema export/import requires SDK version >= 1.7.0');
       console.warn('[SDKLoader] Current SDK may not have enhanced schema export/import support');
     }
 
-    if (missingCoreMethods.length === 0 && missingV161Methods.length === 0 && missingV162Methods.length === 0) {
-      console.log('[SDKLoader] SDK 1.6.2+ bindings verified successfully');
-    } else if (missingCoreMethods.length === 0 && missingV161Methods.length === 0 && missingV162Methods.length > 0) {
-      console.log('[SDKLoader] SDK 1.6.1+ core bindings verified, but 1.6.2+ features are missing');
+    if (missingCoreMethods.length === 0 && missingV161Methods.length === 0 && missingV170Methods.length === 0) {
+      console.log('[SDKLoader] SDK 1.7.0+ bindings verified successfully');
+    } else if (missingCoreMethods.length === 0 && missingV161Methods.length === 0 && missingV170Methods.length > 0) {
+      console.log('[SDKLoader] SDK 1.6.1+ core bindings verified, but 1.7.0+ features are missing');
       console.log('[SDKLoader] Available methods:', Object.keys(module).filter(key => typeof (module as any)[key] === 'function'));
-      console.log('[SDKLoader] Missing 1.6.2+ methods:', missingV162Methods);
+      console.log('[SDKLoader] Missing 1.7.0+ methods:', missingV170Methods);
     } else if (missingCoreMethods.length === 0 && missingV161Methods.length > 0) {
       console.log('[SDKLoader] SDK 1.5.0+ core bindings verified, but 1.6.1+ features are missing');
       console.log('[SDKLoader] Available methods:', Object.keys(module).filter(key => typeof (module as any)[key] === 'function'));

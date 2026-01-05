@@ -7,7 +7,7 @@
     "test": "tests"
   },
   "scripts": {
-    "build:wasm": "sh scripts/build-wasm.sh || echo 'WASM SDK build skipped (SDK not found or wasm-pack not installed)'",
+    "build:wasm": "bash scripts/build-wasm.sh || echo 'WASM SDK build skipped (SDK not found or wasm-pack not installed)'",
     "prebuild": "npm run build:wasm || true",
     "dev": "vite",
     "build": "tsc && vite build",
@@ -37,10 +37,12 @@
   "dependencies": {
     "@tanstack/react-query": "^5.90.16",
     "@types/js-yaml": "^4.0.9",
+    "@types/jszip": "^3.4.0",
     "axios": "^1.13.2",
     "bpmn-js": "^18.9.1",
     "dmn-js": "^17.5.0",
     "js-yaml": "^4.1.1",
+    "jszip": "^3.10.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^7.11.0",

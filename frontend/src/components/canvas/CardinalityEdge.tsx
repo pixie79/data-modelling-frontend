@@ -605,7 +605,6 @@ export const CardinalityEdge: React.FC<EdgeProps<CardinalityEdgeData>> = ({
 
   // Debug logging (reduced - only log if there's an issue)
   if (import.meta.env.DEV && cardinality && !showStartCrowfoot && !showEndCrowfoot && !showStartLine && !showEndLine) {
-    // eslint-disable-next-line no-console
     console.warn('[CardinalityEdge] Cardinality set but no symbols rendered:', {
       id,
       cardinality,

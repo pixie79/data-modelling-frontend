@@ -1,0 +1,3 @@
+[submodule "data-modelling-sdk"]
+	path = data-modelling-sdk
+	url = https://github.com/pixie79/data-modelling-sdk.git

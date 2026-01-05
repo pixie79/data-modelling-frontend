@@ -8,8 +8,25 @@ module.exports = {
   globals: {
     console: 'readonly',
     crypto: 'readonly',
+    window: 'readonly',
+    setTimeout: 'readonly',
+    clearTimeout: 'readonly',
     setInterval: 'readonly',
     clearInterval: 'readonly',
+    File: 'readonly',
+    CustomEvent: 'readonly',
+    EventListener: 'readonly',
+    confirm: 'readonly',
+    module: 'readonly',
+    process: 'readonly',
+    __dirname: 'readonly',
+  },
+  parserOptions: {
+    ecmaVersion: 2020,
+    sourceType: 'module',
+    ecmaFeatures: {
+      jsx: true,
+    },
   },
   extends: [
     'eslint:recommended',

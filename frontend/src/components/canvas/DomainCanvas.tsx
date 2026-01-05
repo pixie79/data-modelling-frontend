@@ -76,7 +76,6 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
     getFilteredTables,
     updateSystem,
     removeSystem,
-    updateComputeAsset,
     removeComputeAsset,
     removeTable,
     updateBPMNProcess,
@@ -626,7 +625,15 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
   // Track previous data to only update nodes when actual data changes (not positions)
-  const prevDataRef = React.useRef<{ tableIds: string[]; assetIds: string[]; systemIds: string[]; currentView: ViewMode }>({
+  interface PrevDataRef {
+    tableIds: string[];
+    assetIds: string[];
+    systemIds: string[];
+    currentView: ViewMode;
+    tableDataHash?: string;
+  }
+  
+  const prevDataRef = React.useRef<PrevDataRef>({
     tableIds: [],
     assetIds: [],
     systemIds: [],
@@ -649,7 +656,7 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
     const prevAssetIds = prevDataRef.current.assetIds;
     const prevSystemIds = prevDataRef.current.systemIds;
     const prevView = prevDataRef.current.currentView;
-    const prevTableDataHash = (prevDataRef.current as any).tableDataHash || '';
+    const prevTableDataHash = prevDataRef.current.tableDataHash || '';
 
     // Check if data actually changed (items added/removed) or view changed
     const tablesChanged =
@@ -688,7 +695,7 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
         systemIds: currentSystemIds,
         currentView,
         tableDataHash: currentTableDataHash,
-      } as any;
+      };
     }
     // Note: We don't update positions from store when data hasn't changed
     // ReactFlow manages positions during drag, and positions are saved via onNodeDragStop
@@ -740,9 +747,9 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
       {currentView === 'systems' && (
         <>
           <SystemsViewActions domainId={domainId} />
-          {/* Show unlinked tables notification */}
+          {/* Show unlinked tables notification - positioned below SystemsViewActions */}
           {unlinkedTables.length > 0 && (
-            <div className="absolute top-4 right-4 z-10">
+            <div className="absolute top-20 right-4 z-10">
               <button
                 onClick={() => setShowUnlinkedTablesDialog(true)}
                 className="px-4 py-2 bg-yellow-500 text-white rounded-lg shadow-lg hover:bg-yellow-600 transition-colors flex items-center gap-2 text-sm font-medium"

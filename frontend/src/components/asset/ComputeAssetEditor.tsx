@@ -124,10 +124,11 @@ export const ComputeAssetEditor: React.FC<ComputeAssetEditorProps> = ({
       <div className="space-y-4 max-h-[80vh] overflow-y-auto">
         {/* Basic Information */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="compute-asset-name" className="block text-sm font-medium text-gray-700 mb-2">
             Name <span className="text-red-500">*</span>
           </label>
           <input
+            id="compute-asset-name"
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}

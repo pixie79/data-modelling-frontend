@@ -76,10 +76,10 @@ export const WorkspaceList: React.FC<WorkspaceListProps> = ({ className = '', on
                 <span
                   className={`
                     px-2 py-1 text-xs rounded
-                    ${workspace.type === 'shared' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}
+                    bg-gray-100 text-gray-800
                   `}
                 >
-                  {workspace.type === 'shared' ? 'Shared' : 'Personal'}
+                  Workspace
                 </span>
               </div>
               <div className="flex items-center gap-4 mt-1">

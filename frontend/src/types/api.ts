@@ -41,7 +41,6 @@ export interface GetWorkspaceResponse {
 
 export interface CreateWorkspaceRequest {
   name: string;
-  type: 'personal' | 'shared';
 }
 
 export interface CreateWorkspaceResponse {
@@ -50,7 +49,6 @@ export interface CreateWorkspaceResponse {
 
 export interface UpdateWorkspaceRequest {
   name?: string;
-  type?: 'personal' | 'shared';
 }
 
 export interface UpdateWorkspaceResponse {

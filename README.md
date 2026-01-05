@@ -31,7 +31,24 @@ A domain-centric data modelling application built with React and Electron. Creat
 
 ## Quick Start
 
-### Local Development (Electron App)
+### Option 1: Docker (Web Version)
+
+Build and run the web version using Docker:
+
+```bash
+# Build and start the frontend service
+docker-compose up -d
+
+# View logs
+docker-compose logs -f frontend
+
+# Access the application
+# Web: http://localhost:5173
+```
+
+See [docker/README.md](docker/README.md) for detailed Docker setup instructions.
+
+### Option 2: Local Development (Electron App)
 
 #### Installation
 

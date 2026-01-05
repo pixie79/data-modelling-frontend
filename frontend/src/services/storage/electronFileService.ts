@@ -12,7 +12,7 @@ import { dmnService } from '@/services/sdk/dmnService';
 import { getPlatform } from '@/services/platform/platform';
 import * as yaml from 'js-yaml';
 // Legacy data flow diagrams removed - replaced by BPMN processes
-import type { Workspace } from '@/types/workspace';
+import type { Workspace, WorkspaceMetadata } from '@/types/workspace';
 import type { Domain as DomainType } from '@/types/domain';
 import type { Table } from '@/types/table';
 import type { DataProduct } from '@/types/odps';
@@ -423,6 +423,24 @@ class ElectronFileService {
       throw new Error('Electron file service can only be used in Electron environment');
     }
 
+    // Extract workspace path from domain path (parent directory)
+    const pathParts = domainPath.split(/[/\\]/).filter(Boolean);
+    const domainName = pathParts[pathParts.length - 1];
+    const workspacePath = pathParts.slice(0, -1).join('/');
+    
+    // Try to load workspace.yaml to get domain ID
+    let workspaceMetadata: WorkspaceMetadata | null = null;
+    if (workspacePath) {
+      try {
+        workspaceMetadata = await this.loadWorkspaceMetadata(workspacePath);
+      } catch (error) {
+        console.log(`[ElectronFileService] Could not load workspace.yaml from ${workspacePath}:`, error);
+      }
+    }
+    
+    // Get domain ID from workspace.yaml if available
+    const domainIdFromWorkspace = workspaceMetadata?.domains?.find(d => d.name === domainName)?.id;
+
     // Load domain.yaml - parse as simple YAML, not ODCS
     // domain.yaml now contains domain metadata, systems, and relationships (merged structure)
     const domainYamlPath = joinPath(domainPath, 'domain.yaml');
@@ -435,11 +453,15 @@ class ElectronFileService {
       // Parse domain.yaml as simple YAML, not ODCS format
       const parsed = yaml.load(domainContent) as any;
       
-      // Extract domain metadata
+      // Extract domain metadata - use ID from workspace.yaml if available, then domain.yaml, otherwise generate
+      const domainId = domainIdFromWorkspace || parsed?.id || `domain-${Date.now()}`;
+      const source = domainIdFromWorkspace ? 'workspace.yaml' : (parsed?.id ? 'domain.yaml' : 'generated');
+      console.log(`[ElectronFileService] Using domain ID for ${domainName}: ${domainId} (from ${source})`);
+      
       domain = {
-        id: parsed?.id || '',
+        id: domainId,
         workspace_id: parsed?.workspace_id || '',
-        name: parsed?.name || '',
+        name: parsed?.name || domainName,
         description: parsed?.description,
         owner: parsed?.owner,
         created_at: parsed?.created_at || new Date().toISOString(),
@@ -820,6 +842,45 @@ class ElectronFileService {
     // Note: systems and relationships are now saved in domain.yaml (merged structure)
     // We no longer save separate systems.yaml and relationships.yaml files
     // This simplifies domain management as systems and relationships are sub-items of domains
+  }
+
+  /**
+   * Save workspace.yaml file at workspace root
+   * Contains domain IDs to avoid regenerating them on each load
+   */
+  async saveWorkspaceMetadata(workspacePath: string, workspace: WorkspaceMetadata): Promise<void> {
+    if (getPlatform() !== 'electron') {
+      throw new Error('Electron file service can only be used in Electron environment');
+    }
+
+    const workspaceYamlPath = joinPath(workspacePath, 'workspace.yaml');
+    const yamlContent = yaml.dump(workspace, { indent: 2 });
+    
+    await platformFileService.writeFile(workspaceYamlPath, yamlContent);
+    console.log(`[ElectronFileService] Saved workspace.yaml to ${workspaceYamlPath}`);
+  }
+
+  /**
+   * Load workspace.yaml file from workspace root
+   * Returns null if file doesn't exist (backward compatibility)
+   */
+  async loadWorkspaceMetadata(workspacePath: string): Promise<WorkspaceMetadata | null> {
+    if (getPlatform() !== 'electron') {
+      throw new Error('Electron file service can only be used in Electron environment');
+    }
+
+    const workspaceYamlPath = joinPath(workspacePath, 'workspace.yaml');
+    
+    try {
+      const content = await platformFileService.readFile(workspaceYamlPath);
+      const parsed = yaml.load(content) as WorkspaceMetadata;
+      console.log(`[ElectronFileService] Loaded workspace.yaml from ${workspaceYamlPath}`);
+      return parsed;
+    } catch (error) {
+      // File doesn't exist - backward compatibility
+      console.log(`[ElectronFileService] workspace.yaml not found at ${workspaceYamlPath} - will generate domain IDs`);
+      return null;
+    }
   }
 
   /**

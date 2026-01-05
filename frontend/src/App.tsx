@@ -59,7 +59,7 @@ function App() {
       if (isElectron || isOffline) {
         // Try to load WASM to check if it's available
         try {
-          const module = await sdkLoader.load();
+          await sdkLoader.load();
           const isActuallyLoaded = sdkLoader.isActuallyLoaded();
           
           if (!isActuallyLoaded) {

@@ -36,8 +36,8 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({ workspaceI
       setWorkspaceName(ws.name);
     }
 
-    // Load collaborators for shared workspaces
-    if (ws?.type === 'shared') {
+    // Load collaborators (if needed in future)
+    if (false) { // Disabled - offline mode only
       loadCollaborators();
     }
   }, [workspaceId, workspaces]);
@@ -74,43 +74,6 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({ workspaceI
     }
   };
 
-  const handleConvertToShared = async () => {
-    setIsLoading(true);
-    try {
-      await workspaceService.convertToShared(workspaceId);
-      addToast({
-        type: 'success',
-        message: 'Workspace converted to shared',
-      });
-      await loadCollaborators();
-    } catch (error) {
-      addToast({
-        type: 'error',
-        message: 'Failed to convert workspace',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleConvertToPersonal = async () => {
-    setIsLoading(true);
-    try {
-      await workspaceService.convertToPersonal(workspaceId);
-      addToast({
-        type: 'success',
-        message: 'Workspace converted to personal',
-      });
-      setCollaborators([]);
-    } catch (error) {
-      addToast({
-        type: 'error',
-        message: 'Failed to convert workspace',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleAddCollaborator = async () => {
     if (!newCollaboratorEmail.trim()) {
@@ -220,29 +183,8 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({ workspaceI
           </div>
         )}
 
-        {/* Workspace Type Conversion */}
-        <div className="mb-6">
-          {workspace.type === 'personal' ? (
-            <button
-              onClick={handleConvertToShared}
-              disabled={isLoading}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
-            >
-              Convert to Shared Workspace
-            </button>
-          ) : (
-            <button
-              onClick={handleConvertToPersonal}
-              disabled={isLoading}
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50"
-            >
-              Convert to Personal Workspace
-            </button>
-          )}
-        </div>
-
-        {/* Collaborators Section (for shared workspaces) */}
-        {workspace.type === 'shared' && (
+        {/* Collaborators Section (disabled - offline mode only) */}
+        {false && (
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Collaborators</h3>
 

@@ -31,9 +31,6 @@ import { WorkspaceSettings } from '@/components/workspace/WorkspaceSettings';
 import { VersionHistory } from '@/components/workspace/VersionHistory';
 import { ImportExportDialog } from '@/components/common/ImportExportDialog';
 import { ModelNavbar } from '@/components/navbar/ModelNavbar';
-import { electronFileService } from '@/services/storage/electronFileService';
-import { getPlatform } from '@/services/platform/platform';
-import { electronFileService as platformFileService } from '@/services/platform/electron';
 
 const ModelEditor: React.FC = () => {
   const { workspaceId, domainId } = useParams<{ workspaceId: string; domainId?: string }>();
@@ -69,129 +66,13 @@ const ModelEditor: React.FC = () => {
   const [showCreateTableDialog, setShowCreateTableDialog] = useState(false);
   const [showCreateSystemDialog, setShowCreateSystemDialog] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
 
-  // Save Domain handler for offline mode
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  // @ts-expect-error - Unused function kept for potential future use
-  const _handleSaveDomain = async () => {
-    if (getPlatform() !== 'electron') {
-      addToast({
-        type: 'error',
-        message: 'Save Domain is only available in Electron offline mode',
-      });
-      return;
-    }
-
-    if (!selectedDomainId || !workspaceId) {
-      addToast({
-        type: 'error',
-        message: 'Please select a domain and workspace first',
-      });
-      return;
-    }
-
-    try {
-      const modelStore = useModelStore.getState();
-      const domain = modelStore.domains.find((d) => d.id === selectedDomainId);
-      
-      if (!domain) {
-        addToast({
-          type: 'error',
-          message: 'Domain not found',
-        });
-        return;
-      }
-
-      // Show folder selection dialog
-      const result = await platformFileService.showOpenDialog({
-        properties: ['openDirectory'],
-        title: 'Select Domain Folder to Save',
-      });
-
-      if (result.canceled || !result.filePaths || result.filePaths.length === 0) {
-        return;
-      }
-
-      const domainPath = result.filePaths[0];
-      
-      // Get all domain assets
-      const domainTables = modelStore.tables.filter((t) => t.primary_domain_id === selectedDomainId);
-      const domainProducts = modelStore.products.filter((p) => p.domain_id === selectedDomainId);
-      const domainAssets = modelStore.computeAssets.filter((a) => a.domain_id === selectedDomainId);
-      const domainBpmnProcesses = modelStore.bpmnProcesses.filter((p) => p.domain_id === selectedDomainId);
-      const domainDmnDecisions = modelStore.dmnDecisions.filter((d) => d.domain_id === selectedDomainId);
-      const domainSystems = modelStore.systems.filter((s) => s.domain_id === selectedDomainId);
-      const domainRelationships = modelStore.relationships.filter((r) => r.domain_id === selectedDomainId);
-      
-      // Convert domain to DomainType format
-      const domainType = {
-        id: domain.id,
-        workspace_id: domain.workspace_id || '',
-        name: domain.name,
-        description: domain.description,
-        owner: domain.owner,
-        created_at: domain.created_at,
-        last_modified_at: domain.last_modified_at,
-      } as any;
-      
-      if (!domainPath) {
-        setIsLoading(false);
-        return;
-      }
-      // Extract workspace path from domain path (parent directory)
-      const pathParts = domainPath.split(/[/\\]/).filter(Boolean);
-      const workspacePath = pathParts.slice(0, -1).join('/');
-      
-      // Save domain folder
-      await electronFileService.saveDomainFolder(
-        domainPath,
-        domainType,
-        domainTables,
-        domainProducts,
-        domainAssets,
-        domainBpmnProcesses,
-        domainDmnDecisions,
-        domainSystems,
-        domainRelationships
-      );
-      
-      // Save workspace.yaml with all domain IDs
-      if (workspacePath && workspaceId) {
-        const modelStore = useModelStore.getState();
-        const allDomains = modelStore.domains;
-        const workspaceMetadata = {
-          id: workspaceId,
-          name: workspaceId, // Use workspaceId as name if workspace name not available
-          created_at: new Date().toISOString(),
-          last_modified_at: new Date().toISOString(),
-          domains: allDomains.map(d => ({
-            id: d.id,
-            name: d.name,
-          })),
-        };
-        await electronFileService.saveWorkspaceMetadata(workspacePath, workspaceMetadata);
-      }
-      
-      addToast({
-        type: 'success',
-        message: `Saved domain: ${domain.name}`,
-      });
-    } catch (err) {
-      console.error('Failed to save domain:', err);
-      addToast({
-        type: 'error',
-        message: `Failed to save domain: ${err instanceof Error ? err.message : 'Unknown error'}`,
-      });
-    }
-  };
-  
   // Initialize collaboration
   useCollaboration({
     workspaceId: workspaceId ?? '',
     enabled: mode === 'online' && !!workspaceId,
   });
-  
+
   // Show conflict resolver when conflicts exist
   useEffect(() => {
     if (conflicts.length > 0) {
@@ -229,7 +110,7 @@ const ModelEditor: React.FC = () => {
     const handleBeforeUnload = async (e: BeforeUnloadEvent) => {
       const { handleBrowserRefresh } = useWorkspaceStore.getState();
       const { pendingChanges } = useWorkspaceStore.getState();
-      
+
       if (pendingChanges) {
         const result = await handleBrowserRefresh();
         if (result.hasLocalChanges || result.hasRemoteChanges) {
@@ -268,58 +149,84 @@ const ModelEditor: React.FC = () => {
           if (workspace) {
             // Set current workspace
             setCurrentWorkspace(workspace.id);
-            
+
             // Load all assets from workspace
             // Workspace loaded from file may have all assets stored separately
             const workspaceData = workspace as any;
-            
+
             // Load tables
             if (workspaceData.tables && Array.isArray(workspaceData.tables)) {
-              console.log(`[ModelEditor] Loading ${workspaceData.tables.length} table(s) from workspace`);
+              console.log(
+                `[ModelEditor] Loading ${workspaceData.tables.length} table(s) from workspace`
+              );
               setTables(workspaceData.tables);
             }
-            
+
             // Load relationships
             if (workspaceData.relationships && Array.isArray(workspaceData.relationships)) {
-              console.log(`[ModelEditor] Loading ${workspaceData.relationships.length} relationship(s) from workspace`);
+              console.log(
+                `[ModelEditor] Loading ${workspaceData.relationships.length} relationship(s) from workspace`
+              );
               setRelationships(workspaceData.relationships);
             }
-            
+
             // Load systems
             if (workspaceData.systems && Array.isArray(workspaceData.systems)) {
-              console.log(`[ModelEditor] Loading ${workspaceData.systems.length} system(s) from workspace`);
-              console.log(`[ModelEditor] Systems domain_ids:`, workspaceData.systems.map((s: any) => ({ id: s.id, name: s.name, domain_id: s.domain_id })));
-              console.log(`[ModelEditor] Workspace domains:`, workspace.domains?.map((d: any) => ({ id: d.id, name: d.name })));
+              console.log(
+                `[ModelEditor] Loading ${workspaceData.systems.length} system(s) from workspace`
+              );
+              console.log(
+                `[ModelEditor] Systems domain_ids:`,
+                workspaceData.systems.map((s: any) => ({
+                  id: s.id,
+                  name: s.name,
+                  domain_id: s.domain_id,
+                }))
+              );
+              console.log(
+                `[ModelEditor] Workspace domains:`,
+                workspace.domains?.map((d: any) => ({ id: d.id, name: d.name }))
+              );
               setSystems(workspaceData.systems);
             }
-            
+
             // Load products
             if (workspaceData.products && Array.isArray(workspaceData.products)) {
-              console.log(`[ModelEditor] Loading ${workspaceData.products.length} product(s) from workspace`);
+              console.log(
+                `[ModelEditor] Loading ${workspaceData.products.length} product(s) from workspace`
+              );
               setProducts(workspaceData.products);
             }
-            
+
             // Load assets
             if (workspaceData.assets && Array.isArray(workspaceData.assets)) {
-              console.log(`[ModelEditor] Loading ${workspaceData.assets.length} asset(s) from workspace`);
+              console.log(
+                `[ModelEditor] Loading ${workspaceData.assets.length} asset(s) from workspace`
+              );
               setComputeAssets(workspaceData.assets);
             }
-            
+
             // Load BPMN processes
             if (workspaceData.bpmnProcesses && Array.isArray(workspaceData.bpmnProcesses)) {
-              console.log(`[ModelEditor] Loading ${workspaceData.bpmnProcesses.length} BPMN process(es) from workspace`);
+              console.log(
+                `[ModelEditor] Loading ${workspaceData.bpmnProcesses.length} BPMN process(es) from workspace`
+              );
               setBPMNProcesses(workspaceData.bpmnProcesses);
             }
-            
+
             // Load DMN decisions
             if (workspaceData.dmnDecisions && Array.isArray(workspaceData.dmnDecisions)) {
-              console.log(`[ModelEditor] Loading ${workspaceData.dmnDecisions.length} DMN decision(s) from workspace`);
+              console.log(
+                `[ModelEditor] Loading ${workspaceData.dmnDecisions.length} DMN decision(s) from workspace`
+              );
               setDMNDecisions(workspaceData.dmnDecisions);
             }
-            
+
             // Set domains from workspace
             if (workspace.domains && workspace.domains.length > 0) {
-              console.log(`[ModelEditor] Loading ${workspace.domains.length} domain(s) from workspace`);
+              console.log(
+                `[ModelEditor] Loading ${workspace.domains.length} domain(s) from workspace`
+              );
               setDomains(workspace.domains);
               const firstDomain = workspace.domains[0];
               if (firstDomain) {
@@ -340,7 +247,7 @@ const ModelEditor: React.FC = () => {
               setDomains([defaultDomain]);
               setSelectedDomain(defaultDomain.id);
             }
-            
+
             addToast({
               type: 'success',
               message: `Loaded workspace: ${workspace.name || workspaceId}`,
@@ -381,10 +288,7 @@ const ModelEditor: React.FC = () => {
           await loadDomainAssets(workspaceId, selectedDomain);
         } else {
           // Fallback: fetch tables and relationships separately
-          await Promise.all([
-            fetchTables(selectedDomain),
-            fetchRelationships(selectedDomain),
-          ]);
+          await Promise.all([fetchTables(selectedDomain), fetchRelationships(selectedDomain)]);
         }
       } catch (err) {
         // In offline mode, API errors are expected
@@ -401,9 +305,15 @@ const ModelEditor: React.FC = () => {
     };
 
     loadWorkspace();
-  }, [workspaceId, domainId, fetchWorkspace, fetchTables, fetchRelationships, loadDomainAssets, setSelectedDomain]);
-
-
+  }, [
+    workspaceId,
+    domainId,
+    fetchWorkspace,
+    fetchTables,
+    fetchRelationships,
+    loadDomainAssets,
+    setSelectedDomain,
+  ]);
 
   if (isLoading) {
     return (
@@ -439,11 +349,15 @@ const ModelEditor: React.FC = () => {
       {/* Navbar */}
       <ModelNavbar
         onShowSettings={() => setShowWorkspaceSettings(!showWorkspaceSettings)}
-        onShowVersionHistory={mode === 'online' && workspaceId ? () => setShowVersionHistory(!showVersionHistory) : undefined}
+        onShowVersionHistory={
+          mode === 'online' && workspaceId
+            ? () => setShowVersionHistory(!showVersionHistory)
+            : undefined
+        }
         workspaceId={workspaceId}
         domainId={selectedDomainId}
       />
-      
+
       {/* Collaboration Status - moved below navbar */}
       {mode === 'online' && workspaceId && (
         <div className="bg-gray-50 border-b border-gray-200 px-4 py-1">
@@ -453,7 +367,7 @@ const ModelEditor: React.FC = () => {
           </div>
         </div>
       )}
-      
+
       {/* Domain Selector */}
       <div className="bg-gray-50 border-b border-gray-200 px-4 py-2">
         <div className="flex items-center justify-between">
@@ -463,7 +377,7 @@ const ModelEditor: React.FC = () => {
 
       {/* Domain Tabs */}
       <DomainTabs workspaceId={workspaceId ?? ''} />
-      
+
       {/* View Selector */}
       {selectedDomainId && <ViewSelector domainId={selectedDomainId} />}
 
@@ -497,7 +411,12 @@ const ModelEditor: React.FC = () => {
                 aria-label="Close"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             </div>
@@ -518,7 +437,12 @@ const ModelEditor: React.FC = () => {
                 aria-label="Close"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             </div>
@@ -548,12 +472,12 @@ const ModelEditor: React.FC = () => {
             y: Math.max(50, window.innerHeight / 2 - 300),
           }}
         >
-          <TableEditor 
-            tableId={selectedTableId} 
+          <TableEditor
+            tableId={selectedTableId}
             workspaceId={workspaceId ?? ''}
             onClose={async () => {
               // Small delay to ensure canvas updates before closing
-              await new Promise(resolve => setTimeout(resolve, 150));
+              await new Promise((resolve) => setTimeout(resolve, 150));
               setShowTableEditor(false);
               setSelectedTable(null);
             }}

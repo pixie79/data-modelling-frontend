@@ -14,6 +14,7 @@ export interface DraggableModalProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
   showCloseButton?: boolean;
   initialPosition?: { x: number; y: number };
+  noPadding?: boolean;
 }
 
 export const DraggableModal: React.FC<DraggableModalProps> = ({
@@ -24,6 +25,7 @@ export const DraggableModal: React.FC<DraggableModalProps> = ({
   size = 'md',
   showCloseButton = true,
   initialPosition,
+  noPadding = false,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
@@ -232,7 +234,7 @@ export const DraggableModal: React.FC<DraggableModalProps> = ({
         {/* Content - scrollable */}
         <div
           id={descriptionId}
-          className="flex-1 overflow-y-auto p-6"
+          className={`flex-1 overflow-y-auto ${noPadding ? '' : 'p-6'}`}
           style={{
             maxHeight: 'calc(90vh - 80px)',
             scrollbarWidth: 'thin',

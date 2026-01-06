@@ -22,14 +22,23 @@ import { authService } from '@/services/api/authService';
 const Home: React.FC = () => {
   const navigate = useNavigate();
   const { isAuthenticated, isLoading, login } = useAuth();
-  const { workspaces, setCurrentWorkspace, addWorkspace, fetchWorkspaces, isLoading: workspacesLoading, createWorkspace } = useWorkspaceStore();
+  const {
+    workspaces,
+    setCurrentWorkspace,
+    addWorkspace,
+    fetchWorkspaces,
+    isLoading: workspacesLoading,
+    createWorkspace,
+  } = useWorkspaceStore();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const { mode, initialize } = useSDKModeStore();
   const [modeLoading, setModeLoading] = useState(true);
   const [isCheckingLogin, setIsCheckingLogin] = useState(false);
   const [hasFetchedWorkspaces, setHasFetchedWorkspaces] = useState(false);
   const [selectedProfileEmail, setSelectedProfileEmail] = useState<string | null>(null);
-  const [availableProfiles, setAvailableProfiles] = useState<Array<{ email: string; domains: string[] }>>([]);
+  const [availableProfiles, setAvailableProfiles] = useState<
+    Array<{ email: string; domains: string[] }>
+  >([]);
   const [availableEmails, setAvailableEmails] = useState<string[]>([]);
   const { addToast } = useUIStore();
 
@@ -45,7 +54,12 @@ const Home: React.FC = () => {
   // Load available emails from session when authenticated and online (only once)
   // This happens right after authentication, before workspace selection
   useEffect(() => {
-    if (isAuthenticated && mode === 'online' && availableEmails.length === 0 && !selectedProfileEmail) {
+    if (
+      isAuthenticated &&
+      mode === 'online' &&
+      availableEmails.length === 0 &&
+      !selectedProfileEmail
+    ) {
       const loadEmails = async () => {
         try {
           // Get available emails from auth status (session)
@@ -75,7 +89,14 @@ const Home: React.FC = () => {
 
   // Load profiles when email is selected (for workspace selection)
   useEffect(() => {
-    if (isAuthenticated && mode === 'online' && selectedProfileEmail && !hasFetchedWorkspaces && !workspacesLoading && availableProfiles.length === 0) {
+    if (
+      isAuthenticated &&
+      mode === 'online' &&
+      selectedProfileEmail &&
+      !hasFetchedWorkspaces &&
+      !workspacesLoading &&
+      availableProfiles.length === 0
+    ) {
       const loadProfiles = async () => {
         try {
           const profiles = await workspaceService.listProfiles();
@@ -94,7 +115,15 @@ const Home: React.FC = () => {
       };
       loadProfiles();
     }
-  }, [isAuthenticated, mode, selectedProfileEmail, hasFetchedWorkspaces, workspacesLoading, availableProfiles.length, fetchWorkspaces]);
+  }, [
+    isAuthenticated,
+    mode,
+    selectedProfileEmail,
+    hasFetchedWorkspaces,
+    workspacesLoading,
+    availableProfiles.length,
+    fetchWorkspaces,
+  ]);
 
   // When email is selected, proceed to workspace selection
   // This triggers profile loading and workspace fetching
@@ -131,106 +160,130 @@ const Home: React.FC = () => {
       });
 
       const workspace = await localFileService.loadWorkspaceFromFolder(files);
-      
+
       // Populate model store with loaded data
       const { useModelStore } = await import('@/stores/modelStore');
       const modelStore = useModelStore.getState();
-      
+
       // Set domains
       if ((workspace as any).domains) {
         modelStore.setDomains((workspace as any).domains);
       }
-      
+
       // Set tables
       if ((workspace as any).tables) {
         const tablesToSet = (workspace as any).tables;
-        console.log(`[Home] Setting ${tablesToSet.length} table(s) in model store:`, tablesToSet.map((t: any) => ({ 
-          id: t.id, 
-          name: t.name, 
-          primary_domain_id: t.primary_domain_id, 
-          visible_domains: t.visible_domains 
-        })));
+        console.log(
+          `[Home] Setting ${tablesToSet.length} table(s) in model store:`,
+          tablesToSet.map((t: any) => ({
+            id: t.id,
+            name: t.name,
+            primary_domain_id: t.primary_domain_id,
+            visible_domains: t.visible_domains,
+          }))
+        );
         modelStore.setTables(tablesToSet);
         // Wait a tick to ensure state update
-        await new Promise(resolve => setTimeout(resolve, 0));
+        await new Promise((resolve) => setTimeout(resolve, 0));
         const tablesAfterSet = useModelStore.getState().tables;
-        console.log(`[Home] Tables in store after setting: ${tablesAfterSet.length}`, tablesAfterSet.map((t: any) => ({ 
-          id: t.id, 
-          name: t.name, 
-          primary_domain_id: t.primary_domain_id, 
-          visible_domains: t.visible_domains 
-        })));
+        console.log(
+          `[Home] Tables in store after setting: ${tablesAfterSet.length}`,
+          tablesAfterSet.map((t: any) => ({
+            id: t.id,
+            name: t.name,
+            primary_domain_id: t.primary_domain_id,
+            visible_domains: t.visible_domains,
+          }))
+        );
         if (tablesAfterSet.length === 0) {
-          console.error(`[Home] ERROR: Tables were not persisted! Expected ${tablesToSet.length}, got ${tablesAfterSet.length}`);
+          console.error(
+            `[Home] ERROR: Tables were not persisted! Expected ${tablesToSet.length}, got ${tablesAfterSet.length}`
+          );
         }
       } else {
         console.log(`[Home] No tables found in workspace object`);
         console.log(`[Home] Workspace object keys:`, Object.keys(workspace as any));
       }
-      
+
       // Set relationships
       if ((workspace as any).relationships) {
         modelStore.setRelationships((workspace as any).relationships);
       }
-      
+
       // Set systems
       if ((workspace as any).systems) {
         const systemsToSet = (workspace as any).systems;
-        console.log(`[Home] Setting ${systemsToSet.length} system(s) in model store:`, systemsToSet.map((s: any) => ({ 
-          id: s.id, 
-          name: s.name, 
-          table_ids: s.table_ids || [],
-          table_count: (s.table_ids || []).length 
-        })));
+        console.log(
+          `[Home] Setting ${systemsToSet.length} system(s) in model store:`,
+          systemsToSet.map((s: any) => ({
+            id: s.id,
+            name: s.name,
+            table_ids: s.table_ids || [],
+            table_count: (s.table_ids || []).length,
+          }))
+        );
         modelStore.setSystems(systemsToSet);
         // Wait a tick to ensure state update
-        await new Promise(resolve => setTimeout(resolve, 0));
+        await new Promise((resolve) => setTimeout(resolve, 0));
         const systemsAfterSet = useModelStore.getState().systems;
-        console.log(`[Home] Systems in store after setting: ${systemsAfterSet.length}`, systemsAfterSet.map((s: any) => ({ 
-          id: s.id, 
-          name: s.name, 
-          table_ids: s.table_ids || [],
-          table_count: (s.table_ids || []).length 
-        })));
+        console.log(
+          `[Home] Systems in store after setting: ${systemsAfterSet.length}`,
+          systemsAfterSet.map((s: any) => ({
+            id: s.id,
+            name: s.name,
+            table_ids: s.table_ids || [],
+            table_count: (s.table_ids || []).length,
+          }))
+        );
         if (systemsAfterSet.length === 0) {
-          console.error(`[Home] ERROR: Systems were not persisted! Expected ${systemsToSet.length}, got ${systemsAfterSet.length}`);
+          console.error(
+            `[Home] ERROR: Systems were not persisted! Expected ${systemsToSet.length}, got ${systemsAfterSet.length}`
+          );
         }
       } else {
         console.log(`[Home] No systems found in workspace object`);
       }
-      
+
       // Set relationships
       if ((workspace as any).relationships) {
-        console.log(`[Home] Setting ${(workspace as any).relationships.length} relationship(s) in model store`);
+        console.log(
+          `[Home] Setting ${(workspace as any).relationships.length} relationship(s) in model store`
+        );
         modelStore.setRelationships((workspace as any).relationships);
       } else {
         console.log(`[Home] No relationships found in workspace object`);
       }
-      
+
       // Set products
       if ((workspace as any).products) {
-        console.log(`[Home] Setting ${(workspace as any).products.length} product(s) in model store`);
+        console.log(
+          `[Home] Setting ${(workspace as any).products.length} product(s) in model store`
+        );
         modelStore.setProducts((workspace as any).products);
       }
-      
+
       // Set assets
       if ((workspace as any).assets) {
         console.log(`[Home] Setting ${(workspace as any).assets.length} asset(s) in model store`);
         modelStore.setComputeAssets((workspace as any).assets);
       }
-      
+
       // Set BPMN processes
       if ((workspace as any).bpmnProcesses) {
-        console.log(`[Home] Setting ${(workspace as any).bpmnProcesses.length} BPMN process(es) in model store`);
+        console.log(
+          `[Home] Setting ${(workspace as any).bpmnProcesses.length} BPMN process(es) in model store`
+        );
         modelStore.setBPMNProcesses((workspace as any).bpmnProcesses);
       }
-      
+
       // Set DMN decisions
       if ((workspace as any).dmnDecisions) {
-        console.log(`[Home] Setting ${(workspace as any).dmnDecisions.length} DMN decision(s) in model store`);
+        console.log(
+          `[Home] Setting ${(workspace as any).dmnDecisions.length} DMN decision(s) in model store`
+        );
         modelStore.setDMNDecisions((workspace as any).dmnDecisions);
       }
-      
+
       console.log(`[Home] Final model store state:`, {
         domains: modelStore.domains.length,
         tables: modelStore.tables.length,
@@ -241,27 +294,27 @@ const Home: React.FC = () => {
         bpmnProcesses: modelStore.bpmnProcesses.length,
         dmnDecisions: modelStore.dmnDecisions.length,
       });
-      
+
       // Select first domain if available
       if ((workspace as any).domains && (workspace as any).domains.length > 0) {
         modelStore.setSelectedDomain((workspace as any).domains[0].id);
       }
-      
+
       // Check for legacy structure using migration utilities
       const { detectLegacyStructure, getMigrationGuidance } = await import('@/utils/migration');
       const legacyStructure = detectLegacyStructure(workspace);
       const hasLegacyDataFlow = legacyStructure.hasLegacyDataFlow;
       const hasLegacyModelTypes = legacyStructure.hasLegacyModelTypes;
-      
+
       // Add workspace to store if not already present
       const existingWorkspace = workspaces.find((w) => w.id === workspace.id);
       if (!existingWorkspace) {
         addWorkspace(workspace);
       }
-      
+
       // Set as current workspace
       setCurrentWorkspace(workspace.id);
-      
+
       // Show migration notice if legacy structure detected
       if (hasLegacyDataFlow || hasLegacyModelTypes) {
         const guidance = getMigrationGuidance(legacyStructure);
@@ -317,10 +370,12 @@ const Home: React.FC = () => {
                 New Workspace
               </button>
             </div>
-            
+
             {/* Workspace List */}
-            <WorkspaceList onWorkspaceSelect={(workspaceId) => navigate(`/workspace/${workspaceId}`)} />
-            
+            <WorkspaceList
+              onWorkspaceSelect={(workspaceId) => navigate(`/workspace/${workspaceId}`)}
+            />
+
             {/* Create Workspace Dialog for offline mode */}
             {showCreateDialog && (
               <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -331,7 +386,7 @@ const Home: React.FC = () => {
                       e.preventDefault();
                       const formData = new FormData(e.target as HTMLFormElement);
                       const name = formData.get('name') as string;
-                      
+
                       try {
                         // Always use UUIDs for workspace IDs
                         const { generateUUID } = await import('@/utils/validation');
@@ -345,7 +400,7 @@ const Home: React.FC = () => {
                         addWorkspace(workspace);
                         setShowCreateDialog(false);
                         navigate(`/workspace/${workspace.id}`);
-                      } catch (error) {
+                      } catch {
                         addToast({
                           type: 'error',
                           message: 'Failed to create workspace',
@@ -354,7 +409,10 @@ const Home: React.FC = () => {
                     }}
                   >
                     <div className="mb-4">
-                      <label htmlFor="workspace-name-offline" className="block text-sm font-medium text-gray-700 mb-2">
+                      <label
+                        htmlFor="workspace-name-offline"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
                         Workspace Name
                       </label>
                       <input
@@ -396,27 +454,30 @@ const Home: React.FC = () => {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Data Modelling Application</h1>
-          <p className="text-gray-600 mb-6">Online mode requires authentication. Please log in to continue.</p>
+          <p className="text-gray-600 mb-6">
+            Online mode requires authentication. Please log in to continue.
+          </p>
           <button
             onClick={async (e) => {
               e.preventDefault();
               if (isCheckingLogin) return; // Prevent multiple clicks
-              
+
               setIsCheckingLogin(true);
-              
+
               try {
                 // First check health endpoint
                 const isOnline = await sdkModeDetector.checkOnlineMode();
-                
+
                 if (!isOnline) {
                   addToast({
                     type: 'error',
-                    message: 'API server is not available. Please switch to offline mode or ensure the API server is running.',
+                    message:
+                      'API server is not available. Please switch to offline mode or ensure the API server is running.',
                   });
                   setIsCheckingLogin(false);
                   return;
                 }
-                
+
                 // Use desktop OAuth flow for Electron, web flow for browser
                 if (isElectron()) {
                   try {
@@ -424,13 +485,13 @@ const Home: React.FC = () => {
                       type: 'info',
                       message: 'Opening GitHub authentication in your browser...',
                     });
-                    
+
                     // Use desktop OAuth flow
                     const tokens = await electronAuthService.completeDesktopAuth();
-                    
+
                     // Login with tokens
                     await login(tokens);
-                    
+
                     addToast({
                       type: 'success',
                       message: 'Successfully authenticated!',
@@ -449,25 +510,31 @@ const Home: React.FC = () => {
                   try {
                     // Dynamically determine the frontend URL (origin only - API will append /auth/complete)
                     const frontendOrigin = window.location.origin;
-                    
+
                     // Use relative URL which will be proxied by Nginx
                     // Pass only the origin - API will append /auth/complete to it
                     const authEndpoint = `/api/v1/auth/github/login?redirect_uri=${encodeURIComponent(frontendOrigin)}`;
-                    
+
                     const response = await fetch(authEndpoint, {
                       method: 'HEAD',
                       signal: AbortSignal.timeout(2000),
                       redirect: 'manual', // Don't follow redirects, just check if endpoint exists
                     });
-                    
+
                     // If we get a redirect (302/301), OK, or even 405 (method not allowed), the endpoint exists
-                    if (response.status === 302 || response.status === 301 || response.ok || response.status === 405) {
+                    if (
+                      response.status === 302 ||
+                      response.status === 301 ||
+                      response.ok ||
+                      response.status === 405
+                    ) {
                       // Endpoint exists, proceed with login
                       window.location.href = authEndpoint;
                     } else if (response.status === 404) {
                       addToast({
                         type: 'error',
-                        message: 'GitHub OAuth endpoint not found (404). Please check your API server configuration or switch to offline mode.',
+                        message:
+                          'GitHub OAuth endpoint not found (404). Please check your API server configuration or switch to offline mode.',
                       });
                       setIsCheckingLogin(false);
                     } else {
@@ -479,7 +546,8 @@ const Home: React.FC = () => {
                     // Fetch failed - endpoint doesn't exist or server error
                     addToast({
                       type: 'error',
-                      message: 'Cannot reach authentication endpoint. The API server may not be running or the endpoint is not configured. Please switch to offline mode or start the API server.',
+                      message:
+                        'Cannot reach authentication endpoint. The API server may not be running or the endpoint is not configured. Please switch to offline mode or start the API server.',
                     });
                     console.error('Auth endpoint check failed:', fetchError);
                     setIsCheckingLogin(false);
@@ -489,7 +557,8 @@ const Home: React.FC = () => {
                 // Network error or timeout - API is likely not available
                 addToast({
                   type: 'error',
-                  message: 'Cannot connect to API server. Please switch to offline mode or ensure the API server is running.',
+                  message:
+                    'Cannot connect to API server. Please switch to offline mode or ensure the API server is running.',
                 });
                 console.error('API check failed:', error);
                 setIsCheckingLogin(false);
@@ -506,7 +575,8 @@ const Home: React.FC = () => {
           <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
             <p className="font-semibold mb-1">API Server Required</p>
             <p className="text-xs">
-              Make sure the API server is running on {import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081'}
+              Make sure the API server is running on{' '}
+              {import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081'}
             </p>
           </div>
         </div>
@@ -516,14 +586,17 @@ const Home: React.FC = () => {
 
   // Show email alias selection if multiple email aliases available and none selected
   // Use emails from session (availableEmails) instead of profiles
-  const shouldShowEmailSelection = isAuthenticated && availableEmails.length > 1 && !selectedProfileEmail;
+  const shouldShowEmailSelection =
+    isAuthenticated && availableEmails.length > 1 && !selectedProfileEmail;
 
   if (shouldShowEmailSelection) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Select Your Email Alias</h2>
-          <p className="text-gray-600 mb-6">Please select which email alias you want to use for this session:</p>
+          <p className="text-gray-600 mb-6">
+            Please select which email alias you want to use for this session:
+          </p>
           <div className="space-y-2">
             {availableEmails.map((email) => (
               <button
@@ -535,12 +608,21 @@ const Home: React.FC = () => {
                   // The selected email is stored locally and will be used for workspace operations
                   try {
                     const token = apiClient.getAccessToken();
-                    console.log('[Home] Calling select-email with token:', token ? `Bearer ${token.substring(0, 20)}...` : 'NO TOKEN');
-                    const response = await apiClient.getClient().post('/api/v1/auth/select-email', { email });
+                    console.log(
+                      '[Home] Calling select-email with token:',
+                      token ? `Bearer ${token.substring(0, 20)}...` : 'NO TOKEN'
+                    );
+                    const response = await apiClient
+                      .getClient()
+                      .post('/api/v1/auth/select-email', { email });
                     console.log('[Home] select-email response:', response.status, response.data);
                   } catch (err: any) {
                     // API endpoint may have authentication issues - log but don't block user flow
-                    console.warn('[Home] select-email endpoint returned error (this may be an API issue):', err.response?.status, err.response?.data || err.message);
+                    console.warn(
+                      '[Home] select-email endpoint returned error (this may be an API issue):',
+                      err.response?.status,
+                      err.response?.data || err.message
+                    );
                     console.log('[Home] Continuing with locally selected email:', email);
                     // Store selected email in localStorage as fallback
                     localStorage.setItem('selected_email', email);
@@ -563,9 +645,9 @@ const Home: React.FC = () => {
         <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <img 
-                src={getAssetPath('/logo.svg')} 
-                alt="Open Data Modelling" 
+              <img
+                src={getAssetPath('/logo.svg')}
+                alt="Open Data Modelling"
                 className="h-10 w-auto"
                 style={{ maxHeight: '40px' }}
               />
@@ -588,10 +670,12 @@ const Home: React.FC = () => {
               New Workspace
             </button>
           </div>
-          
+
           {/* Workspace List */}
-          <WorkspaceList onWorkspaceSelect={(workspaceId) => navigate(`/workspace/${workspaceId}`)} />
-          
+          <WorkspaceList
+            onWorkspaceSelect={(workspaceId) => navigate(`/workspace/${workspaceId}`)}
+          />
+
           {/* Create Workspace Dialog */}
           {showCreateDialog && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -602,7 +686,7 @@ const Home: React.FC = () => {
                     e.preventDefault();
                     const formData = new FormData(e.target as HTMLFormElement);
                     const name = formData.get('name') as string;
-                    
+
                     try {
                       const workspace = await createWorkspace({
                         name,
@@ -611,7 +695,8 @@ const Home: React.FC = () => {
                       navigate(`/workspace/${workspace.id}`);
                     } catch (error) {
                       console.error('Workspace creation error:', error);
-                      const errorMessage = error instanceof Error ? error.message : 'Failed to create workspace';
+                      const errorMessage =
+                        error instanceof Error ? error.message : 'Failed to create workspace';
                       addToast({
                         type: 'error',
                         message: errorMessage,
@@ -620,7 +705,10 @@ const Home: React.FC = () => {
                   }}
                 >
                   <div className="mb-4">
-                    <label htmlFor="workspace-name" className="block text-sm font-medium text-gray-700 mb-2">
+                    <label
+                      htmlFor="workspace-name"
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                    >
                       Workspace Name
                     </label>
                     <input
@@ -657,4 +745,3 @@ const Home: React.FC = () => {
 };
 
 export default Home;
-

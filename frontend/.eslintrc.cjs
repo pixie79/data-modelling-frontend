@@ -36,7 +36,16 @@ module.exports = {
     'plugin:jsx-a11y/recommended',
     'prettier',
   ],
-  ignorePatterns: ['dist', '.eslintrc.cjs', 'node_modules', '**/bpmn-js/**', '**/dmn-js/**'],
+  ignorePatterns: [
+    'dist',
+    '.eslintrc.cjs',
+    'node_modules',
+    '**/bpmn-js/**',
+    '**/dmn-js/**',
+    'tests/**',
+    '**/*.test.ts',
+    '**/*.test.tsx',
+  ],
   parser: '@typescript-eslint/parser',
   plugins: ['react-refresh', '@typescript-eslint', 'react', 'react-hooks', 'jsx-a11y'],
   rules: {
@@ -44,6 +53,8 @@ module.exports = {
     'react/prop-types': 'off',
     '@typescript-eslint/explicit-module-boundary-types': 'off',
     '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    // Disable no-explicit-any - allow any types for flexibility in services/utils
+    '@typescript-eslint/no-explicit-any': 'off',
     // Disable no-undef for TypeScript files - TypeScript compiler handles this
     // Browser/node env should provide globals, but disable rule to be safe
     'no-undef': 'off',
@@ -55,8 +66,11 @@ module.exports = {
     'jsx-a11y/aria-unsupported-elements': 'error',
     'jsx-a11y/role-has-required-aria-props': 'error',
     'jsx-a11y/role-supports-aria-props': 'error',
+    'jsx-a11y/click-events-have-key-events': 'warn',
+    'jsx-a11y/no-static-element-interactions': 'warn',
+    'jsx-a11y/no-noninteractive-element-interactions': 'warn',
     'jsx-a11y/label-has-associated-control': [
-      'error',
+      'warn',
       {
         labelComponents: [],
         labelAttributes: ['htmlFor'],

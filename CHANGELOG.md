@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-01-06
+
+### Added
+- **Cloudflare Pages Support**: Added wrangler.toml configuration for Cloudflare Pages deployment
+- **Automated Releases**: New consolidated CI/CD workflow that automatically creates GitHub releases on merge to main
+- **Pre-built WASM SDK**: Build script now downloads pre-built WASM SDK from GitHub releases instead of building from source
+
+### Changed
+- **SDK Version**: Upgraded to data-modelling-sdk v1.8.4 with separate ODCL parser and improved validation
+- **Build Process**: Removed SDK git submodule in favor of downloading pre-built WASM binaries (faster builds, no Rust required)
+- **GitHub Workflows**: Consolidated three separate workflows (ci.yml, build-test.yml, build-release.yml) into single main.yml
+- **ESLint Configuration**: Updated package.json lint scripts to use ESLINT_USE_FLAT_CONFIG=false for compatibility
+- **Cloudflare Documentation**: Simplified deployment guide to use Cloudflare Pages Git integration
+
+### Fixed
+- **TypeScript Errors**: Fixed unused variable warnings for deprecated fallback parser methods
+- **Build Output**: Fixed Cloudflare Pages deployment to use correct output directory (frontend/dist)
+- **Lint-Staged**: Removed ESLint from pre-commit hook to avoid configuration conflicts
+- **Electron Build**: Removed unused statSync import and unnecessary eslint-disable directives
+
+### Removed
+- Removed SDK git submodule (no longer needed with pre-built WASM downloads)
+- Removed obsolete migration documentation files (SDK_1.8.3_*)
+- Removed obsolete feature requests and GitHub issue templates
+- Removed unused test files for deprecated features
+
 ## [1.1.0] - 2026-01-04
 
 ### Changed

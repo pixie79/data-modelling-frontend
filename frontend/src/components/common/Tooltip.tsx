@@ -3,7 +3,7 @@
  * Displays contextual help information on hover/focus
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { generateAriaId } from '@/utils/accessibility';
 
 export interface TooltipProps {
@@ -28,7 +28,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
   const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const [tooltipId] = useState(generateAriaId('tooltip'));
 
-  const updatePosition = () => {
+  const updatePosition = useCallback(() => {
     if (!triggerRef.current || !tooltipRef.current) return;
 
     const triggerRect = triggerRef.current.getBoundingClientRect();
@@ -73,7 +73,10 @@ export const Tooltip: React.FC<TooltipProps> = ({
     if (top < padding) {
       top = padding;
       // If tooltip would go off top, try positioning below instead
-      if (position === 'top' && triggerRect.bottom + gap + tooltipRect.height <= viewportHeight - padding) {
+      if (
+        position === 'top' &&
+        triggerRect.bottom + gap + tooltipRect.height <= viewportHeight - padding
+      ) {
         top = triggerRect.bottom + gap;
       }
     } else if (top + tooltipRect.height > viewportHeight - padding) {
@@ -85,7 +88,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
     }
 
     setTooltipPosition({ top, left });
-  };
+  }, [position]);
 
   const showTooltip = () => {
     if (timeoutRef.current) {
@@ -115,7 +118,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
       window.removeEventListener('scroll', updatePosition, true);
       window.removeEventListener('resize', updatePosition);
     };
-  }, [isVisible]);
+  }, [isVisible, updatePosition]);
 
   useEffect(() => {
     return () => {
@@ -154,10 +157,10 @@ export const Tooltip: React.FC<TooltipProps> = ({
               position === 'top'
                 ? 'bottom-[-4px] left-1/2 -translate-x-1/2'
                 : position === 'bottom'
-                ? 'top-[-4px] left-1/2 -translate-x-1/2'
-                : position === 'left'
-                ? 'right-[-4px] top-1/2 -translate-y-1/2'
-                : 'left-[-4px] top-1/2 -translate-y-1/2'
+                  ? 'top-[-4px] left-1/2 -translate-x-1/2'
+                  : position === 'left'
+                    ? 'right-[-4px] top-1/2 -translate-y-1/2'
+                    : 'left-[-4px] top-1/2 -translate-y-1/2'
             }`}
           />
         </div>
@@ -165,4 +168,3 @@ export const Tooltip: React.FC<TooltipProps> = ({
     </div>
   );
 };
-

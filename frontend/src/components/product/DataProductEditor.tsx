@@ -38,6 +38,7 @@ export const DataProductEditor: React.FC<DataProductEditorProps> = ({
   const [outputPorts, setOutputPorts] = useState<ODPSOutputPort[]>([]);
   const [support, setSupport] = useState<ODPSSupport>({});
 
+  // Initialize form state from product prop
   useEffect(() => {
     if (product) {
       setName(product.name);

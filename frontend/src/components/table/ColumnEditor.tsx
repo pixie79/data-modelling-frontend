@@ -29,7 +29,13 @@ const DATA_TYPES = [
   'BLOB',
 ];
 
-export const ColumnEditor: React.FC<ColumnEditorProps> = ({ column, compoundKeys = [], allColumns = [], onChange, onDelete }) => {
+export const ColumnEditor: React.FC<ColumnEditorProps> = ({
+  column,
+  compoundKeys = [],
+  allColumns = [],
+  onChange,
+  onDelete,
+}) => {
   const [name, setName] = useState(column.name);
   const [dataType, setDataType] = useState(column.data_type);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -40,6 +46,7 @@ export const ColumnEditor: React.FC<ColumnEditorProps> = ({ column, compoundKeys
   const [_isForeignKey, setIsForeignKey] = useState(column.is_foreign_key);
   const [nameError, setNameError] = useState<string | null>(null);
 
+  // Sync local state with column prop changes
   useEffect(() => {
     // Only update state if the column prop actually changed
     // This prevents unnecessary re-renders and state conflicts
@@ -48,7 +55,14 @@ export const ColumnEditor: React.FC<ColumnEditorProps> = ({ column, compoundKeys
     setNullable(column.nullable);
     setIsPrimaryKey(column.is_primary_key);
     setIsForeignKey(column.is_foreign_key);
-  }, [column.id, column.name, column.data_type, column.nullable, column.is_primary_key, column.is_foreign_key]);
+  }, [
+    column.id,
+    column.name,
+    column.data_type,
+    column.nullable,
+    column.is_primary_key,
+    column.is_foreign_key,
+  ]);
 
   const handleNameChange = (newName: string) => {
     setName(newName);
@@ -71,14 +85,22 @@ export const ColumnEditor: React.FC<ColumnEditorProps> = ({ column, compoundKeys
   };
 
   const handlePrimaryKeyChange = (newIsPrimaryKey: boolean) => {
-    console.log('[ColumnEditor] handlePrimaryKeyChange called:', { columnId: column.id, columnName: column.name, newIsPrimaryKey });
+    console.log('[ColumnEditor] handlePrimaryKeyChange called:', {
+      columnId: column.id,
+      columnName: column.name,
+      newIsPrimaryKey,
+    });
     // Don't update local state here - let the parent handle it and sync via useEffect
     // This prevents race conditions when multiple columns are updated
     onChange({ is_primary_key: newIsPrimaryKey });
   };
 
   const handleForeignKeyChange = (newIsForeignKey: boolean) => {
-    console.log('[ColumnEditor] handleForeignKeyChange called:', { columnId: column.id, columnName: column.name, newIsForeignKey });
+    console.log('[ColumnEditor] handleForeignKeyChange called:', {
+      columnId: column.id,
+      columnName: column.name,
+      newIsForeignKey,
+    });
     // Don't update local state here - let the parent handle it and sync via useEffect
     // This prevents race conditions when multiple columns are updated
     onChange({ is_foreign_key: newIsForeignKey });
@@ -157,25 +179,26 @@ export const ColumnEditor: React.FC<ColumnEditorProps> = ({ column, compoundKeys
             </label>
 
             {/* Compound Key Tag Display */}
-            {column.compound_key_tag && (() => {
-              const compoundKey = compoundKeys.find(ck => ck.id === column.compound_key_id);
-              if (!compoundKey) return null;
-              
-              // Get column names in the compound key
-              const compoundKeyColumns = compoundKey.column_ids
-                .map(colId => allColumns.find(c => c.id === colId))
-                .filter(Boolean) as Column[];
-              
-              return (
-                <Tooltip
-                  content={`Compound Key: ${column.compound_key_tag}. ${compoundKey.is_primary ? 'Primary Key. ' : ''}Columns in this compound key (${compoundKeyColumns.length}): ${compoundKeyColumns.map((col) => col.name).join(', ')}`}
-                >
-                  <span className="inline-flex items-center gap-1 text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded cursor-help">
-                    CK - {column.compound_key_tag}
-                  </span>
-                </Tooltip>
-              );
-            })()}
+            {column.compound_key_tag &&
+              (() => {
+                const compoundKey = compoundKeys.find((ck) => ck.id === column.compound_key_id);
+                if (!compoundKey) return null;
+
+                // Get column names in the compound key
+                const compoundKeyColumns = compoundKey.column_ids
+                  .map((colId) => allColumns.find((c) => c.id === colId))
+                  .filter(Boolean) as Column[];
+
+                return (
+                  <Tooltip
+                    content={`Compound Key: ${column.compound_key_tag}. ${compoundKey.is_primary ? 'Primary Key. ' : ''}Columns in this compound key (${compoundKeyColumns.length}): ${compoundKeyColumns.map((col) => col.name).join(', ')}`}
+                  >
+                    <span className="inline-flex items-center gap-1 text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded cursor-help">
+                      CK - {column.compound_key_tag}
+                    </span>
+                  </Tooltip>
+                );
+              })()}
           </div>
         </div>
 
@@ -192,5 +215,3 @@ export const ColumnEditor: React.FC<ColumnEditorProps> = ({ column, compoundKeys
     </div>
   );
 };
-
-

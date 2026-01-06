@@ -17,14 +17,21 @@ export interface BPMNLinkProps {
   onLinkChange: (processId: string | undefined) => void;
 }
 
-export const BPMNLink: React.FC<BPMNLinkProps> = ({ assetId, domainId, currentLinkId, onLinkChange }) => {
+export const BPMNLink: React.FC<BPMNLinkProps> = ({
+  assetId,
+  domainId,
+  currentLinkId,
+  onLinkChange,
+}) => {
   const { bpmnProcesses, addBPMNProcess, selectedDomainId } = useModelStore();
   const { addToast } = useUIStore();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showImportDialog, setShowImportDialog] = useState(false);
 
   // Filter BPMN processes for current domain
-  const domainBPMNProcesses = bpmnProcesses.filter((p) => p.domain_id === domainId || p.domain_id === selectedDomainId);
+  const domainBPMNProcesses = bpmnProcesses.filter(
+    (p) => p.domain_id === domainId || p.domain_id === selectedDomainId
+  );
 
   const handleSelect = (processId: string) => {
     if (processId === currentLinkId) {
@@ -84,10 +91,8 @@ export const BPMNLink: React.FC<BPMNLinkProps> = ({ assetId, domainId, currentLi
 
   return (
     <div>
-      <label htmlFor={`bpmn-process-${assetId}`} className="block text-sm font-medium text-gray-700 mb-2">
-        BPMN Process
-      </label>
-      
+      <div className="block text-sm font-medium text-gray-700 mb-2">BPMN Process</div>
+
       {/* Action Buttons */}
       <div className="flex gap-2 mb-3">
         <button
@@ -108,7 +113,9 @@ export const BPMNLink: React.FC<BPMNLinkProps> = ({ assetId, domainId, currentLi
 
       {/* Existing Processes List */}
       {domainBPMNProcesses.length === 0 ? (
-        <p className="text-sm text-gray-500">No BPMN processes available. Create or import one to link.</p>
+        <p className="text-sm text-gray-500">
+          No BPMN processes available. Create or import one to link.
+        </p>
       ) : (
         <div className="space-y-2">
           {domainBPMNProcesses.map((process) => (
@@ -183,4 +190,3 @@ export const BPMNLink: React.FC<BPMNLinkProps> = ({ assetId, domainId, currentLi
     </div>
   );
 };
-

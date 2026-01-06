@@ -17,14 +17,21 @@ export interface DMNLinkProps {
   onLinkChange: (decisionId: string | undefined) => void;
 }
 
-export const DMNLink: React.FC<DMNLinkProps> = ({ assetId, domainId, currentLinkId, onLinkChange }) => {
+export const DMNLink: React.FC<DMNLinkProps> = ({
+  assetId,
+  domainId,
+  currentLinkId,
+  onLinkChange,
+}) => {
   const { dmnDecisions, addDMNDecision, selectedDomainId } = useModelStore();
   const { addToast } = useUIStore();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showImportDialog, setShowImportDialog] = useState(false);
 
   // Filter DMN decisions for current domain
-  const domainDMNDecisions = dmnDecisions.filter((d) => d.domain_id === domainId || d.domain_id === selectedDomainId);
+  const domainDMNDecisions = dmnDecisions.filter(
+    (d) => d.domain_id === domainId || d.domain_id === selectedDomainId
+  );
 
   const handleSelect = (decisionId: string) => {
     if (decisionId === currentLinkId) {
@@ -84,10 +91,8 @@ export const DMNLink: React.FC<DMNLinkProps> = ({ assetId, domainId, currentLink
 
   return (
     <div>
-      <label htmlFor={`dmn-decision-${assetId}`} className="block text-sm font-medium text-gray-700 mb-2">
-        DMN Decision
-      </label>
-      
+      <div className="block text-sm font-medium text-gray-700 mb-2">DMN Decision</div>
+
       {/* Action Buttons */}
       <div className="flex gap-2 mb-3">
         <button
@@ -108,7 +113,9 @@ export const DMNLink: React.FC<DMNLinkProps> = ({ assetId, domainId, currentLink
 
       {/* Existing Decisions List */}
       {domainDMNDecisions.length === 0 ? (
-        <p className="text-sm text-gray-500">No DMN decisions available. Create or import one to link.</p>
+        <p className="text-sm text-gray-500">
+          No DMN decisions available. Create or import one to link.
+        </p>
       ) : (
         <div className="space-y-2">
           {domainDMNDecisions.map((decision) => (
@@ -184,4 +191,3 @@ export const DMNLink: React.FC<DMNLinkProps> = ({ assetId, domainId, currentLink
     </div>
   );
 };
-

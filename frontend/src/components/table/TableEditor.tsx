@@ -165,6 +165,7 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
       return false;
     }
     setErrors((prev) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { name: _name, ...rest } = prev;
       return rest;
     });
@@ -329,6 +330,7 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
           };
         } else {
           // Remove compound key references if column is no longer in any compound key
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const {
             compound_key_id: _compound_key_id,
             compound_key_order: _compound_key_order,

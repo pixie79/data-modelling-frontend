@@ -209,6 +209,11 @@ export function processNestedColumns(columns: any[], tableId: string): any[] {
     return columns;
   }
 
+  console.log('[processNestedColumns] Processing columns:', {
+    count: columns.length,
+    columnNames: columns.map((c) => c.name),
+  });
+
   const columnMap = new Map<string, any>(); // Map column names to column objects
   const rootColumns: any[] = []; // Top-level columns (no parent)
 
@@ -271,6 +276,17 @@ export function processNestedColumns(columns: any[], tableId: string): any[] {
 
     // Within same level, sort by order
     return a.order - b.order;
+  });
+
+  console.log('[processNestedColumns] Processed columns:', {
+    totalColumns: allColumns.length,
+    rootColumns: allColumns.filter((c) => !c.parent_column_id).length,
+    nestedColumns: allColumns.filter((c) => c.parent_column_id).length,
+    hierarchy: allColumns.map((c) => ({
+      name: c.name,
+      hasParent: !!c.parent_column_id,
+      childCount: c.nested_columns?.length || 0,
+    })),
   });
 
   return allColumns;

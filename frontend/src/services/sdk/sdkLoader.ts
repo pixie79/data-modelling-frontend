@@ -3,12 +3,13 @@
  * Loads and initializes the data-modelling-sdk WASM module
  */
 
-// SDK module type definition (SDK 1.7.0+)
+// SDK module type definition (SDK 1.8.3+)
 interface SDKModule {
   init(): Promise<void>;
   // ODCS methods
   parse_odcs_yaml?(yaml: string): string;
   export_to_odcs_yaml?(json: string): string;
+  // ODCL methods (SDK 1.8.3+)
   parse_odcl_yaml?(yaml: string): string;
   // ODPS methods (SDK 1.5.0+)
   parse_odps_yaml?(yaml: string): string;
@@ -31,7 +32,7 @@ interface SDKModule {
   // SQL Import/Export methods (SDK 1.6.1+)
   import_from_sql?(sql: string, dialect: string): string;
   export_to_sql?(json: string, dialect: string): string;
-  // AVRO/Protobuf/JSON Schema methods (SDK 1.7.0+)
+  // AVRO/Protobuf/JSON Schema methods (SDK 1.8.1+)
   import_from_avro?(avro: string): string;
   export_to_avro?(json: string): string;
   import_from_protobuf?(protobuf: string): string;
@@ -71,27 +72,27 @@ class SDKLoader {
       // Using dynamic import with string literal to avoid TypeScript errors
       // Note: The WASM file will be loaded by the JS file, and we need to ensure
       // the correct MIME type is set for the .wasm file itself
-      
+
       // In Electron, use relative path for file:// protocol
       const isElectron = typeof window !== 'undefined' && window.location.protocol === 'file:';
-      
+
       // Determine the correct path based on where we're running from
       // In Electron with file:// protocol, we need to resolve relative to the HTML file location
       // The HTML file is at dist/index.html, so ./wasm/ should resolve to dist/wasm/
       // Vite copies public/wasm/ to dist/wasm/ during build
       // However, Vite might also put files in dist/assets/wasm/, so we try multiple paths
-      const possiblePaths = isElectron 
+      const possiblePaths = isElectron
         ? [
-            './wasm/data_modelling_sdk.js',  // Primary: dist/wasm/ (Vite copies public/wasm/ here)
-            './assets/wasm/data_modelling_sdk.js',  // Alternative: dist/assets/wasm/ (Vite might put it here)
-            '../wasm/data_modelling_sdk.js',  // Fallback: parent directory wasm/ (dist-electron/wasm/)
-            '../public/wasm/data_modelling_sdk.js',  // Fallback: public/wasm/ (source)
+            './wasm/data_modelling_sdk.js', // Primary: dist/wasm/ (Vite copies public/wasm/ here)
+            './assets/wasm/data_modelling_sdk.js', // Alternative: dist/assets/wasm/ (Vite might put it here)
+            '../wasm/data_modelling_sdk.js', // Fallback: parent directory wasm/ (dist-electron/wasm/)
+            '../public/wasm/data_modelling_sdk.js', // Fallback: public/wasm/ (source)
           ]
         : ['/wasm/data_modelling_sdk.js'];
-      
+
       let wasmModule: any = null;
       let lastError: Error | null = null;
-      
+
       for (const wasmPath of possiblePaths) {
         try {
           console.log('[SDKLoader] Attempting to load WASM module from:', wasmPath);
@@ -109,21 +110,23 @@ class SDKLoader {
           // Try next path
         }
       }
-      
+
       if (!wasmModule) {
         throw lastError || new Error('Failed to load WASM module from any path');
       }
-      
+
       const module = wasmModule as SDKModule;
-      
+
       // Log all available methods for debugging
-      const allMethods = Object.keys(module).filter(key => typeof (module as any)[key] === 'function');
+      const allMethods = Object.keys(module).filter(
+        (key) => typeof (module as any)[key] === 'function'
+      );
       console.log('[SDKLoader] Available WASM module methods:', allMethods);
       console.log('[SDKLoader] Module keys:', Object.keys(module));
-      
-      // Verify SDK 1.7.0+ bindings
+
+      // Verify SDK 1.8.1+ bindings
       this.verifySDKBindings(module);
-      
+
       return module;
     } catch (error) {
       // Fallback: Try relative path (for development)
@@ -136,7 +139,9 @@ class SDKLoader {
         return wasmModule as SDKModule;
       } catch (fallbackError) {
         console.warn('SDK WASM module not available - offline mode will use placeholders');
-        console.warn('Build the SDK with: cd ../data-modelling-sdk && wasm-pack build --target web --out-dir pkg --features wasm');
+        console.warn(
+          'Build the SDK with: cd ../data-modelling-sdk && wasm-pack build --target web --out-dir pkg --features wasm'
+        );
         console.warn('Then copy pkg/ to frontend/public/wasm/');
         // Return placeholder for now - actual SDK methods will be called when available
         return {
@@ -175,27 +180,24 @@ class SDKLoader {
   }
 
   /**
-   * Verify SDK 1.7.0+ bindings are available
+   * Verify SDK 1.8.1+ bindings are available
    */
   private verifySDKBindings(module: SDKModule): void {
     // Core methods from SDK 1.5.0+ (using actual exported method names)
     const coreMethods = [
-      'import_from_odps',      // ODPS import (was: parse_odps_yaml)
-      'export_to_odps',        // ODPS export (was: export_to_odps_yaml)
-      'import_from_cads',      // CADS import (was: parse_cads_yaml)
-      'export_to_cads',        // CADS export (was: export_to_cads_yaml)
-      'parse_odcs_yaml',       // ODCS parse (still uses this name)
-      'export_to_odcs_yaml',   // ODCS export (still uses this name)
+      'import_from_odps', // ODPS import (was: parse_odps_yaml)
+      'export_to_odps', // ODPS export (was: export_to_odps_yaml)
+      'import_from_cads', // CADS import (was: parse_cads_yaml)
+      'export_to_cads', // CADS export (was: export_to_cads_yaml)
+      'parse_odcs_yaml', // ODCS parse (still uses this name)
+      'export_to_odcs_yaml', // ODCS export (still uses this name)
     ];
 
     // SDK 1.6.1+ specific methods (enhanced SQL support, especially Databricks)
-    const v161Methods = [
-      'import_from_sql',
-      'export_to_sql',
-    ];
+    const v161Methods = ['import_from_sql', 'export_to_sql'];
 
-    // SDK 1.7.0+ specific methods (enhanced AVRO/Protobuf/JSON Schema support)
-    const v170Methods = [
+    // SDK 1.8.1+ specific methods (enhanced AVRO/Protobuf/JSON Schema/ODPS support)
+    const v181Methods = [
       'import_from_avro',
       'export_to_avro',
       'import_from_protobuf',
@@ -204,9 +206,15 @@ class SDKLoader {
       'export_to_json_schema',
     ];
 
+    // SDK 1.8.3+ specific methods (separate ODCL parser, improved validations)
+    const v182Methods = [
+      'parse_odcl_yaml', // ODCL import (separate from ODCS)
+    ];
+
     const missingCoreMethods: string[] = [];
     const missingV161Methods: string[] = [];
-    const missingV170Methods: string[] = [];
+    const missingV181Methods: string[] = [];
+    const missingV182Methods: string[] = [];
 
     for (const method of coreMethods) {
       if (typeof (module as any)[method] !== 'function') {
@@ -220,9 +228,15 @@ class SDKLoader {
       }
     }
 
-    for (const method of v170Methods) {
+    for (const method of v181Methods) {
       if (typeof (module as any)[method] !== 'function') {
-        missingV170Methods.push(method);
+        missingV181Methods.push(method);
+      }
+    }
+
+    for (const method of v182Methods) {
+      if (typeof (module as any)[method] !== 'function') {
+        missingV182Methods.push(method);
       }
     }
 
@@ -233,28 +247,68 @@ class SDKLoader {
 
     if (missingV161Methods.length > 0) {
       console.warn('[SDKLoader] SDK 1.6.1+ methods not available:', missingV161Methods);
-      console.warn('[SDKLoader] Enhanced SQL import/export (including Databricks support) requires SDK version >= 1.6.1');
+      console.warn(
+        '[SDKLoader] Enhanced SQL import/export (including Databricks support) requires SDK version >= 1.6.1'
+      );
       console.warn('[SDKLoader] Current SDK may not support Databricks SQL syntax natively');
     }
 
-    if (missingV170Methods.length > 0) {
-      console.warn('[SDKLoader] SDK 1.7.0+ methods not available:', missingV170Methods);
-      console.warn('[SDKLoader] Enhanced AVRO/Protobuf/JSON Schema export/import requires SDK version >= 1.7.0');
+    if (missingV181Methods.length > 0) {
+      console.warn('[SDKLoader] SDK 1.8.1+ methods not available:', missingV181Methods);
+      console.warn(
+        '[SDKLoader] Enhanced AVRO/Protobuf/JSON Schema/ODPS export/import requires SDK version >= 1.8.1'
+      );
       console.warn('[SDKLoader] Current SDK may not have enhanced schema export/import support');
     }
 
-    if (missingCoreMethods.length === 0 && missingV161Methods.length === 0 && missingV170Methods.length === 0) {
-      console.log('[SDKLoader] SDK 1.7.0+ bindings verified successfully');
-    } else if (missingCoreMethods.length === 0 && missingV161Methods.length === 0 && missingV170Methods.length > 0) {
-      console.log('[SDKLoader] SDK 1.6.1+ core bindings verified, but 1.7.0+ features are missing');
-      console.log('[SDKLoader] Available methods:', Object.keys(module).filter(key => typeof (module as any)[key] === 'function'));
-      console.log('[SDKLoader] Missing 1.7.0+ methods:', missingV170Methods);
+    if (missingV182Methods.length > 0) {
+      console.warn('[SDKLoader] SDK 1.8.3+ methods not available:', missingV182Methods);
+      console.warn('[SDKLoader] ODCL import with separate parser requires SDK version >= 1.8.3');
+      console.warn('[SDKLoader] ODCL files may need to be imported as ODCS (with limitations)');
+    }
+
+    if (
+      missingCoreMethods.length === 0 &&
+      missingV161Methods.length === 0 &&
+      missingV181Methods.length === 0 &&
+      missingV182Methods.length === 0
+    ) {
+      console.log('[SDKLoader] SDK 1.8.3+ bindings verified successfully');
+    } else if (
+      missingCoreMethods.length === 0 &&
+      missingV161Methods.length === 0 &&
+      missingV181Methods.length === 0 &&
+      missingV182Methods.length > 0
+    ) {
+      console.log('[SDKLoader] SDK 1.8.1+ core bindings verified, but 1.8.3+ features are missing');
+      console.log(
+        '[SDKLoader] Available methods:',
+        Object.keys(module).filter((key) => typeof (module as any)[key] === 'function')
+      );
+      console.log('[SDKLoader] Missing 1.8.3+ methods:', missingV182Methods);
+    } else if (
+      missingCoreMethods.length === 0 &&
+      missingV161Methods.length === 0 &&
+      missingV181Methods.length > 0
+    ) {
+      console.log('[SDKLoader] SDK 1.6.1+ core bindings verified, but 1.8.1+ features are missing');
+      console.log(
+        '[SDKLoader] Available methods:',
+        Object.keys(module).filter((key) => typeof (module as any)[key] === 'function')
+      );
+      console.log('[SDKLoader] Missing 1.8.1+ methods:', missingV181Methods);
     } else if (missingCoreMethods.length === 0 && missingV161Methods.length > 0) {
       console.log('[SDKLoader] SDK 1.5.0+ core bindings verified, but 1.6.1+ features are missing');
-      console.log('[SDKLoader] Available methods:', Object.keys(module).filter(key => typeof (module as any)[key] === 'function'));
+      console.log(
+        '[SDKLoader] Available methods:',
+        Object.keys(module).filter((key) => typeof (module as any)[key] === 'function')
+      );
       console.log('[SDKLoader] Missing 1.6.1+ methods:', missingV161Methods);
     } else {
-      console.log('[SDKLoader] Available methods:', Object.keys(module).filter(key => typeof (module as any)[key] === 'function'));
+      console.log(
+        '[SDKLoader] Available methods:',
+        Object.keys(module).filter((key) => typeof (module as any)[key] === 'function')
+      );
     }
   }
 
@@ -269,4 +323,3 @@ class SDKLoader {
 
 // Export singleton instance
 export const sdkLoader = new SDKLoader();
-

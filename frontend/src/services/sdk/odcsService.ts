@@ -34,161 +34,129 @@ export interface ImportResult {
 
 class ODCSService {
   /**
-   * Detect if content is ODCL (Open Data Contract Language) or ODCS (Open Data Contract Standard) format
-   */
-  private detectFormat(yamlContent: string): 'odcl' | 'odcs' {
-    // ODCL format has dataContractSpecification field at the root
-    if (yamlContent.includes('dataContractSpecification:') || yamlContent.includes('dataContractSpecification ')) {
-      return 'odcl';
-    }
-    // ODCS format typically has tables/entities arrays directly
-    return 'odcs';
-  }
-
-  /**
-   * Parse ODCL/ODCS YAML content to workspace object
-   * Uses API when online, WASM SDK when offline
-   * Automatically detects ODCL vs ODCS format and converts accordingly
+   * Parse ODCS (Open Data Contract Standard) YAML content to workspace object
+   * SDK 1.8.3+: Uses separate parsers for ODCS and ODCL
+   *
+   * For ODCL files, use parseODCL() instead
+   * Note: API mode is out of scope - offline/WASM only
    */
   async parseYAML(yamlContent: string): Promise<ODCSWorkspace> {
-    console.log('[ODCSService] parseYAML called, content length:', yamlContent.length);
+    console.log('[ODCSService] parseYAML called (ODCS only), content length:', yamlContent.length);
+
+    // SDK 1.8.3+: API is out of scope, skip API mode check
     const mode = await sdkModeDetector.getMode();
-    console.log('[ODCSService] Current mode:', mode);
-    
-    // Detect format (ODCL vs ODCS)
-    const format = this.detectFormat(yamlContent);
-    console.log(`[ODCSService] Detected format: ${format.toUpperCase()}`);
 
     if (mode === 'online') {
-      // Use API endpoint (which uses SDK)
-      try {
-        const response = await apiClient.getClient().post<ImportResult>('/api/v1/import/odcl/text', {
-          odcl_text: yamlContent,
-        });
+      // API mode is out of scope for SDK 1.8.3+ migration
+      // If online mode is needed in future, implement API endpoints separately
+      console.warn('[ODCSService] API mode is not supported - falling through to offline mode');
+    }
 
-        // API returns tables, but we need to extract ODCL metadata from original content
-        const parsed = yaml.load(yamlContent) as any;
-        const odclInfo = this.extractODCLInfo(parsed);
+    // Use WASM SDK directly for offline mode (SDK 1.8.3+)
+    try {
+      await sdkLoader.load();
+      const sdk = sdkLoader.getModule();
 
-        // Apply ODCL table-level metadata to tables
-        const tablesWithMetadata = (response.data.tables || []).map((table: Table) => {
-          if (odclInfo.tableMetadata) {
-            return this.applyODCLMetadataToTable(table, odclInfo.tableMetadata);
-          }
-          return table;
-        });
+      console.log('[ODCSService] SDK module loaded for ODCS parsing');
 
-        return {
-          tables: tablesWithMetadata,
-          relationships: [],
-          ...odclInfo,
-        };
-      } catch (error) {
-        throw new Error(
-          `Failed to parse ${format.toUpperCase()} YAML via API: ${error instanceof Error ? error.message : 'Unknown error'}`
-        );
-      }
-    } else {
-      // Use WASM SDK directly for offline mode, with fallback to basic YAML parser
-      try {
-        await sdkLoader.load();
-        const sdk = sdkLoader.getModule();
-        
-        console.log('[ODCSService] SDK module loaded, checking for parse methods...');
-        console.log('[ODCSService] SDK module:', sdk);
-        console.log('[ODCSService] SDK module keys:', sdk ? Object.keys(sdk).join(', ') : 'null');
-        
-        // Check if SDK actually has parseODCSYAML method (when WASM bindings are available)
-        // The SDK might expose functions directly or through a namespace
-        if (sdk) {
-          // SDK 1.1.0+ exposes parse_odcs_yaml function (takes YAML string, returns JSON string)
-          // Note: SDK's parse_odcs_yaml can handle both ODCL and ODCS formats
-          if ('parse_odcs_yaml' in sdk && typeof (sdk as any).parse_odcs_yaml === 'function') {
-            console.log(`[ODCSService] Using SDK parse_odcs_yaml method (SDK 1.1.0+) for ${format.toUpperCase()} format`);
-            try {
-              // Parse original YAML to preserve fields that SDK might not return
-              const originalParsed = yaml.load(yamlContent) as any;
-              
-              // Call SDK function (synchronous, returns JSON string)
-              const resultJson = (sdk as any).parse_odcs_yaml(yamlContent);
-              // Parse the JSON result
-              const result = JSON.parse(resultJson);
-              console.log('[ODCSService] SDK parse_odcs_yaml result:', result);
-              
-              // Extract ODCL metadata from original YAML if it's ODCL format
-              let odclMetadata: ReturnType<typeof this.extractODCLInfo> = {};
-              if (format === 'odcl') {
-                odclMetadata = this.extractODCLInfo(originalParsed);
-              }
-              
-              // Merge original YAML data with SDK result to preserve fields like description and quality
-              const mergedResult = this.mergeOriginalYAMLWithSDKResult(result, originalParsed);
-              
-              // Convert merged result to ODCSWorkspace format, passing both table metadata and full odcl info
-              const workspace = this.convertSDKResultToWorkspace(mergedResult, format, odclMetadata.tableMetadata, odclMetadata);
-              return {
-                ...workspace,
-                ...odclMetadata,
-              };
-            } catch (error) {
-              console.error('[ODCSService] Error parsing SDK result:', error);
-              throw new Error(`Failed to parse ${format.toUpperCase()} YAML with SDK: ${error instanceof Error ? error.message : 'Unknown error'}`);
-            }
-          }
-          
-          // Try direct method first (camelCase) - legacy support
-          if ('parseODCSYAML' in sdk && typeof (sdk as any).parseODCSYAML === 'function') {
-            console.log('[ODCSService] Using SDK parseODCSYAML method');
-            const result = await (sdk as any).parseODCSYAML(yamlContent);
-            console.log('[ODCSService] SDK parseODCSYAML result:', result);
-            return result;
-          }
-          
-          
-          // Try accessing through a namespace (e.g., sdk.odcs.parseYAML) - legacy support
-          if ((sdk as any).odcs && typeof (sdk as any).odcs.parseYAML === 'function') {
-            console.log('[ODCSService] Using SDK odcs.parseYAML method');
-            const result = await (sdk as any).odcs.parseYAML(yamlContent);
-            console.log('[ODCSService] SDK odcs.parseYAML result:', result);
-            return result;
-          }
-          
-          // Try additional method names that might be exposed
-          const methodVariations = [
-            'parse_odcl_yaml',
-            'parseOdclYaml',
-            'parse_odcs',
-            'parseOdcs',
-            'import_odcs',
-            'importOdcs',
-          ];
-          
-          for (const methodName of methodVariations) {
-            if (methodName in sdk && typeof (sdk as any)[methodName] === 'function') {
-              console.log(`[ODCSService] Using SDK ${methodName} method`);
-              const result = await (sdk as any)[methodName](yamlContent);
-              console.log(`[ODCSService] SDK ${methodName} result:`, result);
-              return result;
-            }
-          }
-          
-          console.warn('[ODCSService] SDK loaded but no parseODCSYAML method found. Available methods:', Object.keys(sdk));
-          console.log('[ODCSService] SDK 1.1.0+ may expose additional methods. Check SDK documentation for available exports.');
-        }
-        
-        // Fallback: Use basic YAML parser for offline mode
-        console.log(`[ODCSService] Falling back to JavaScript YAML parser (SDK parse methods not available) for ${format.toUpperCase()} format`);
-        return this.parseYAMLFallback(yamlContent, format);
-      } catch (error) {
-        // If SDK loading fails, try fallback parser
+      if (sdk && 'parse_odcs_yaml' in sdk && typeof (sdk as any).parse_odcs_yaml === 'function') {
+        console.log('[ODCSService] Using SDK parse_odcs_yaml method (SDK 1.8.3+)');
         try {
-          return this.parseYAMLFallback(yamlContent, format);
-        } catch (fallbackError) {
+          // SDK 1.8.3+: No preprocessing needed, SDK handles validation
+          const resultJson = (sdk as any).parse_odcs_yaml(yamlContent);
+          const result = JSON.parse(resultJson);
+          console.log('[ODCSService] SDK parse_odcs_yaml result:', result);
+
+          // SDK 1.8.3+: Returns complete, validated data - no merging needed
+          return {
+            workspace_id: result.workspace_id,
+            domain_id: result.domain_id,
+            tables: result.tables || [],
+            relationships: result.relationships || [],
+            data_flow_diagrams: result.data_flow_diagrams || [],
+          };
+        } catch (error) {
+          console.error('[ODCSService] Error parsing ODCS with SDK:', error);
           throw new Error(
-            `Failed to parse ${format.toUpperCase()} YAML offline: ${error instanceof Error ? error.message : 'Unknown error'}. Fallback parser also failed: ${fallbackError instanceof Error ? fallbackError.message : 'Unknown error'}`
+            `Failed to parse ODCS YAML with SDK: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       }
+
+      // SDK 1.8.3+ method not available - provide helpful error
+      console.warn('[ODCSService] SDK parse_odcs_yaml method not found');
+      throw new Error(
+        'ODCS parsing requires SDK version 1.8.3 or higher. ' +
+          'The parse_odcs_yaml method is not available. ' +
+          'Please update the WASM SDK to version 1.8.3+.'
+      );
+    } catch (error) {
+      // Fallback to basic YAML parser if SDK fails
+      console.warn('[ODCSService] SDK parsing failed, trying fallback parser:', error);
+      try {
+        return this.parseYAMLFallback(yamlContent, 'odcs');
+      } catch (fallbackError) {
+        throw new Error(
+          `Failed to parse ODCS YAML: ${error instanceof Error ? error.message : 'Unknown error'}. ` +
+            `Fallback parser also failed: ${fallbackError instanceof Error ? fallbackError.message : 'Unknown error'}`
+        );
+      }
+    }
+  }
+
+  /**
+   * Parse ODCL (Open Data Contract Language) YAML content to workspace object
+   * SDK 1.8.3+ provides a separate parser for ODCL format
+   * ODCL is identified by the 'dataContractSpecification' field at root level
+   *
+   * Note: This is for import only - we don't support ODCL export
+   */
+  async parseODCL(yamlContent: string): Promise<ODCSWorkspace> {
+    console.log('[ODCSService] parseODCL called, content length:', yamlContent.length);
+
+    // SDK 1.8.3+ uses offline mode only (API is out of scope)
+    try {
+      await sdkLoader.load();
+      const sdk = sdkLoader.getModule();
+
+      console.log('[ODCSService] SDK module loaded for ODCL parsing');
+
+      if (sdk && 'parse_odcl_yaml' in sdk && typeof (sdk as any).parse_odcl_yaml === 'function') {
+        console.log('[ODCSService] Using SDK parse_odcl_yaml method (SDK 1.8.3+)');
+        try {
+          // Call SDK function (synchronous, returns JSON string)
+          const resultJson = (sdk as any).parse_odcl_yaml(yamlContent);
+          const result = JSON.parse(resultJson);
+          console.log('[ODCSService] SDK parse_odcl_yaml result:', result);
+
+          // SDK 1.8.3+ returns complete workspace structure with all ODCL metadata
+          // No need for merging or validation - SDK handles everything
+          return {
+            workspace_id: result.workspace_id,
+            domain_id: result.domain_id,
+            tables: result.tables || [],
+            relationships: result.relationships || [],
+            data_flow_diagrams: result.data_flow_diagrams || [],
+          };
+        } catch (error) {
+          console.error('[ODCSService] Error parsing ODCL with SDK:', error);
+          throw new Error(
+            `Failed to parse ODCL YAML with SDK: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      }
+
+      // If SDK 1.8.3 not available, provide helpful error message
+      throw new Error(
+        'ODCL parsing requires SDK version 1.8.3 or higher. ' +
+          'The parse_odcl_yaml method is not available in the current SDK. ' +
+          'Please update the WASM SDK to version 1.8.3+.'
+      );
+    } catch (error) {
+      // Re-throw with context
+      throw new Error(
+        `Failed to parse ODCL YAML: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -204,15 +172,14 @@ class ODCSService {
       try {
         const workspaceId = workspace.workspace_id || 'default';
         const domainId = workspace.domain_id || 'default';
-        
-        const response = await apiClient.getClient().get<string>(
-          `/api/v1/workspaces/${workspaceId}/domains/${domainId}/export`,
-          {
+
+        const response = await apiClient
+          .getClient()
+          .get<string>(`/api/v1/workspaces/${workspaceId}/domains/${domainId}/export`, {
             params: {
               format: 'odcl',
             },
-          }
-        );
+          });
 
         return response.data;
       } catch (error) {
@@ -225,49 +192,59 @@ class ODCSService {
       try {
         await sdkLoader.load();
         const sdk = sdkLoader.getModule();
-        
+
         // Check if SDK actually has toYAML method (when WASM bindings are available)
         // SDK 1.1.0+ exposes export_to_odcs_yaml function
         if (sdk) {
           // SDK 1.1.0+ uses export_to_odcs_yaml (takes JSON string, returns YAML string)
-          if ('export_to_odcs_yaml' in sdk && typeof (sdk as any).export_to_odcs_yaml === 'function') {
+          if (
+            'export_to_odcs_yaml' in sdk &&
+            typeof (sdk as any).export_to_odcs_yaml === 'function'
+          ) {
             console.log('[ODCSService] Using SDK export_to_odcs_yaml method (SDK 1.1.0+)');
             try {
               // Use the same workspace preparation as importExportService to ensure DataModel structure
               // The SDK's export_to_odcs_yaml expects a DataModel structure with all required fields
               const { normalizeWorkspaceUUIDs, generateUUID } = await import('@/utils/validation');
               const normalized = normalizeWorkspaceUUIDs(workspace);
-              
+
               // Prepare DataModel structure with all required fields (same as importExportService)
               const now = new Date().toISOString();
               const workspaceId = normalized.workspace_id || generateUUID();
-              
+
               // Clean tables (remove complex nested objects, but preserve metadata including system_id)
-              const cleanedTables = Array.isArray(normalized.tables) 
+              const cleanedTables = Array.isArray(normalized.tables)
                 ? normalized.tables.map((table: any) => {
                     const cleaned: any = {
                       id: table.id,
                       workspace_id: table.workspace_id,
                       name: table.name,
                       model_type: table.model_type || 'conceptual',
-                      columns: Array.isArray(table.columns) ? table.columns.map((col: any) => ({
-                        id: col.id,
-                        table_id: col.table_id,
-                        name: col.name,
-                        data_type: col.data_type,
-                        nullable: col.nullable ?? false,
-                        is_primary_key: col.is_primary_key ?? false,
-                        is_foreign_key: col.is_foreign_key ?? false,
-                        order: col.order ?? 0,
-                        created_at: col.created_at || now,
-                        ...(col.description && { description: col.description }),
-                        ...(col.foreign_key_reference && { foreign_key_reference: col.foreign_key_reference }),
-                        ...(col.default_value && { default_value: col.default_value }),
-                      })) : [],
+                      // Ensure status is present (required by ODCS schema)
+                      status: table.status || table.metadata?.status || 'draft',
+                      columns: Array.isArray(table.columns)
+                        ? table.columns.map((col: any) => ({
+                            id: col.id,
+                            table_id: col.table_id,
+                            name: col.name,
+                            data_type: col.data_type,
+                            nullable: col.nullable ?? false,
+                            is_primary_key: col.is_primary_key ?? false,
+                            is_foreign_key: col.is_foreign_key ?? false,
+                            order: col.order ?? 0,
+                            created_at: col.created_at || now,
+                            ...(col.description && { description: col.description }),
+                            ...(col.foreign_key_reference && {
+                              foreign_key_reference: col.foreign_key_reference,
+                            }),
+                            ...(col.default_value && { default_value: col.default_value }),
+                          }))
+                        : [],
                       created_at: table.created_at || now,
                       updated_at: table.last_modified_at || table.updated_at || now,
                     };
-                    if (table.primary_domain_id) cleaned.primary_domain_id = table.primary_domain_id;
+                    if (table.primary_domain_id)
+                      cleaned.primary_domain_id = table.primary_domain_id;
                     if (table.alias) cleaned.alias = table.alias;
                     if (table.description) cleaned.description = table.description;
                     if (Array.isArray(table.tags)) cleaned.tags = table.tags;
@@ -276,13 +253,15 @@ class ODCSService {
                     if (table.metadata && typeof table.metadata === 'object') {
                       cleaned.metadata = { ...table.metadata };
                       if (table.metadata.system_id) {
-                        console.log(`[ODCSService] Preserving system_id="${table.metadata.system_id}" in metadata for table "${table.name}"`);
+                        console.log(
+                          `[ODCSService] Preserving system_id="${table.metadata.system_id}" in metadata for table "${table.name}"`
+                        );
                       }
                     }
                     return cleaned;
                   })
                 : [];
-              
+
               // Clean relationships
               const cleanedRelationships = Array.isArray(normalized.relationships)
                 ? normalized.relationships.map((rel: any) => ({
@@ -299,7 +278,7 @@ class ODCSService {
                     ...(rel.label && { label: rel.label }),
                   }))
                 : [];
-              
+
               // Create DataModel structure with all required fields
               const dataModel = {
                 id: workspaceId,
@@ -310,21 +289,75 @@ class ODCSService {
                 relationships: cleanedRelationships,
                 domains: [],
                 created_at: (normalized as any).created_at || now,
-                updated_at: (normalized as any).updated_at || (normalized as any).last_modified_at || now,
+                updated_at:
+                  (normalized as any).updated_at || (normalized as any).last_modified_at || now,
                 is_subfolder: (normalized as any).is_subfolder ?? false,
               };
-              
+
               // Convert DataModel to JSON string
               const workspaceJson = JSON.stringify(dataModel);
               // Call SDK function (synchronous, returns YAML string)
-              const yamlResult = (sdk as any).export_to_odcs_yaml(workspaceJson);
+              let yamlResult = (sdk as any).export_to_odcs_yaml(workspaceJson);
+
+              // Post-process YAML to fix SDK schema generation issues
+              // SDK sometimes generates invalid schema where properties should be an array
+              try {
+                const parsed = yaml.load(yamlResult) as any;
+                let modified = false;
+
+                // Fix schema properties structure if needed
+                if (parsed.schema && Array.isArray(parsed.schema)) {
+                  parsed.schema.forEach((schemaItem: any, index: number) => {
+                    if (
+                      schemaItem.properties &&
+                      typeof schemaItem.properties === 'object' &&
+                      !Array.isArray(schemaItem.properties)
+                    ) {
+                      // Convert properties object to array format
+                      const propertiesArray = Object.entries(schemaItem.properties).map(
+                        ([name, prop]: [string, any]) => ({
+                          name,
+                          ...prop,
+                        })
+                      );
+                      schemaItem.properties = propertiesArray;
+                      modified = true;
+                      console.log(
+                        `[ODCSService] Fixed schema[${index}].properties: converted object to array`
+                      );
+                    }
+
+                    // Ensure status is present (required by ODCS schema)
+                    if (!schemaItem.status) {
+                      schemaItem.status = 'draft';
+                      modified = true;
+                      console.log(`[ODCSService] Added missing status field to schema[${index}]`);
+                    }
+                  });
+                }
+
+                if (modified) {
+                  yamlResult = yaml.dump(parsed, {
+                    lineWidth: -1,
+                    noRefs: true,
+                    sortKeys: false,
+                  });
+                  console.log('[ODCSService] Post-processed YAML to fix schema structure');
+                }
+              } catch (error) {
+                console.warn(
+                  '[ODCSService] Failed to post-process YAML, returning original:',
+                  error
+                );
+              }
+
               return yamlResult;
             } catch (error) {
               console.error('[ODCSService] Error calling SDK export_to_odcs_yaml:', error);
               throw error;
             }
           }
-          
+
           // Try legacy method names for backward compatibility
           const exportMethods = [
             'toODCSYAML',
@@ -336,25 +369,30 @@ class ODCSService {
             'to_yaml',
             'toYaml',
           ];
-          
+
           for (const methodName of exportMethods) {
             if (methodName in sdk && typeof (sdk as any)[methodName] === 'function') {
               console.log(`[ODCSService] Using SDK ${methodName} method for export`);
               return await (sdk as any)[methodName](workspace);
             }
           }
-          
+
           // Try namespace access
           if ((sdk as any).odcs && typeof (sdk as any).odcs.toYAML === 'function') {
             console.log('[ODCSService] Using SDK odcs.toYAML method');
             return await (sdk as any).odcs.toYAML(workspace);
           }
-          
-          console.warn('[ODCSService] SDK loaded but no export_to_odcs_yaml method found. Available methods:', Object.keys(sdk));
+
+          console.warn(
+            '[ODCSService] SDK loaded but no export_to_odcs_yaml method found. Available methods:',
+            Object.keys(sdk)
+          );
         }
-        
+
         // Fallback: Use basic YAML conversion for offline mode
-        console.log('[ODCSService] Falling back to JavaScript YAML converter (SDK export methods not available)');
+        console.log(
+          '[ODCSService] Falling back to JavaScript YAML converter (SDK export methods not available)'
+        );
         return this.toYAMLFallback(workspace);
       } catch (error) {
         // If SDK loading fails, try fallback converter
@@ -377,59 +415,86 @@ class ODCSService {
     try {
       const parsed = yaml.load(yamlContent) as any;
       console.log('[ODCSService] parseYAMLFallback - Parsed YAML:', parsed);
-      
+
       // Extract tables and relationships from parsed YAML
       // ODCS format may vary, so we try common structures
       let tables: Table[] = [];
       let relationships: Relationship[] = [];
-      
+
       // Extract ODCL metadata if it's ODCL format
       let odclMetadata: ReturnType<typeof this.extractODCLInfo> = {};
-      if (format === 'odcl' || (parsed && typeof parsed === 'object' && parsed.dataContractSpecification)) {
+      if (
+        format === 'odcl' ||
+        (parsed && typeof parsed === 'object' && parsed.dataContractSpecification)
+      ) {
         console.log('[ODCSService] parseYAMLFallback - Detected ODCL format (Data Contract)');
         odclMetadata = this.extractODCLInfo(parsed);
       }
-      
+
       // Get table metadata for applying to tables
       const odclTableMetadata = odclMetadata.tableMetadata;
-      
+
       // Check if this is a Data Contract format (ODCL or ODCS 3.1.0)
       if (parsed && typeof parsed === 'object' && parsed.dataContractSpecification) {
         console.log('[ODCSService] parseYAMLFallback - Detected Data Contract format (ODCL)');
-        
+
         // Data Contract format: look for models.entities or models.tables
         if (parsed.models && typeof parsed.models === 'object') {
           // Check for entities array in models
           if (parsed.models.entities && Array.isArray(parsed.models.entities)) {
-            console.log(`[ODCSService] parseYAMLFallback - Found 'models.entities' array with ${parsed.models.entities.length} items`);
-            tables = parsed.models.entities.map((item: any, index: number) => this.normalizeTable(item, index, odclTableMetadata, odclMetadata));
+            console.log(
+              `[ODCSService] parseYAMLFallback - Found 'models.entities' array with ${parsed.models.entities.length} items`
+            );
+            tables = parsed.models.entities.map((item: any, index: number) =>
+              this.normalizeTable(item, index, odclTableMetadata, odclMetadata)
+            );
           } else if (parsed.models.tables && Array.isArray(parsed.models.tables)) {
-            console.log(`[ODCSService] parseYAMLFallback - Found 'models.tables' array with ${parsed.models.tables.length} items`);
-            tables = parsed.models.tables.map((item: any, index: number) => this.normalizeTable(item, index, odclTableMetadata, odclMetadata));
+            console.log(
+              `[ODCSService] parseYAMLFallback - Found 'models.tables' array with ${parsed.models.tables.length} items`
+            );
+            tables = parsed.models.tables.map((item: any, index: number) =>
+              this.normalizeTable(item, index, odclTableMetadata, odclMetadata)
+            );
           } else {
             // Try to find entities/tables in nested structures
             const modelsKeys = Object.keys(parsed.models);
             console.log(`[ODCSService] parseYAMLFallback - Models keys: ${modelsKeys.join(', ')}`);
-            
+
             // Look for entities/tables in nested model objects (e.g., models.Order.entities)
             for (const key of modelsKeys) {
               const modelObj = parsed.models[key];
               if (modelObj && typeof modelObj === 'object') {
                 // Check if this model object has entities/tables arrays
                 if (Array.isArray(modelObj.entities)) {
-                  console.log(`[ODCSService] parseYAMLFallback - Found 'models.${key}.entities' array with ${modelObj.entities.length} items`);
-                  tables = modelObj.entities.map((item: any, index: number) => this.normalizeTable(item, index, odclTableMetadata, odclMetadata));
+                  console.log(
+                    `[ODCSService] parseYAMLFallback - Found 'models.${key}.entities' array with ${modelObj.entities.length} items`
+                  );
+                  tables = modelObj.entities.map((item: any, index: number) =>
+                    this.normalizeTable(item, index, odclTableMetadata, odclMetadata)
+                  );
                   break;
                 } else if (Array.isArray(modelObj.tables)) {
-                  console.log(`[ODCSService] parseYAMLFallback - Found 'models.${key}.tables' array with ${modelObj.tables.length} items`);
-                  tables = modelObj.tables.map((item: any, index: number) => this.normalizeTable(item, index, odclTableMetadata, odclMetadata));
+                  console.log(
+                    `[ODCSService] parseYAMLFallback - Found 'models.${key}.tables' array with ${modelObj.tables.length} items`
+                  );
+                  tables = modelObj.tables.map((item: any, index: number) =>
+                    this.normalizeTable(item, index, odclTableMetadata, odclMetadata)
+                  );
                   break;
                 } else if (Array.isArray(modelObj)) {
                   // The model object itself might be an array of entities
-                  console.log(`[ODCSService] parseYAMLFallback - Found array in models.${key} with ${modelObj.length} items`);
+                  console.log(
+                    `[ODCSService] parseYAMLFallback - Found array in models.${key} with ${modelObj.length} items`
+                  );
                   const firstItem = modelObj[0];
-                  if (firstItem && typeof firstItem === 'object' && (firstItem.name || firstItem.entity_name || firstItem.table_name)) {
-                    tables = modelObj.map((item: any, index: number) => this.normalizeTable(item, index, odclTableMetadata, odclMetadata));
+                  if (
+                    firstItem &&
+                    typeof firstItem === 'object' &&
+                    (firstItem.name || firstItem.entity_name || firstItem.table_name)
+                  ) {
+                    tables = modelObj.map((item: any, index: number) =>
+                      this.normalizeTable(item, index, odclTableMetadata, odclMetadata)
+                    );
                     break;
                   }
                 } else {
@@ -438,9 +503,20 @@ class ODCSService {
                   for (const nestedKey of nestedKeys) {
                     if (Array.isArray(modelObj[nestedKey])) {
                       const firstItem = modelObj[nestedKey][0];
-                      if (firstItem && typeof firstItem === 'object' && (firstItem.name || firstItem.entity_name || firstItem.table_name || firstItem.id)) {
-                        console.log(`[ODCSService] parseYAMLFallback - Found array in models.${key}.${nestedKey} with ${modelObj[nestedKey].length} items`);
-                        tables = modelObj[nestedKey].map((item: any, index: number) => this.normalizeTable(item, index, odclTableMetadata, odclMetadata));
+                      if (
+                        firstItem &&
+                        typeof firstItem === 'object' &&
+                        (firstItem.name ||
+                          firstItem.entity_name ||
+                          firstItem.table_name ||
+                          firstItem.id)
+                      ) {
+                        console.log(
+                          `[ODCSService] parseYAMLFallback - Found array in models.${key}.${nestedKey} with ${modelObj[nestedKey].length} items`
+                        );
+                        tables = modelObj[nestedKey].map((item: any, index: number) =>
+                          this.normalizeTable(item, index, odclTableMetadata, odclMetadata)
+                        );
                         break;
                       }
                     }
@@ -449,28 +525,41 @@ class ODCSService {
                 }
               } else if (Array.isArray(modelObj)) {
                 // Direct array in models
-                console.log(`[ODCSService] parseYAMLFallback - Found array in models.${key} with ${modelObj.length} items`);
+                console.log(
+                  `[ODCSService] parseYAMLFallback - Found array in models.${key} with ${modelObj.length} items`
+                );
                 const firstItem = modelObj[0];
-                if (firstItem && typeof firstItem === 'object' && (firstItem.name || firstItem.entity_name || firstItem.table_name)) {
-                  tables = modelObj.map((item: any, index: number) => this.normalizeTable(item, index, odclTableMetadata, odclMetadata));
+                if (
+                  firstItem &&
+                  typeof firstItem === 'object' &&
+                  (firstItem.name || firstItem.entity_name || firstItem.table_name)
+                ) {
+                  tables = modelObj.map((item: any, index: number) =>
+                    this.normalizeTable(item, index, odclTableMetadata, odclMetadata)
+                  );
                   break;
                 }
               }
             }
           }
-          
+
           // Look for relationships in models
           if (parsed.models.relationships && Array.isArray(parsed.models.relationships)) {
-            console.log(`[ODCSService] parseYAMLFallback - Found 'models.relationships' array with ${parsed.models.relationships.length} items`);
-            relationships = parsed.models.relationships.map((item: any, index: number) => this.normalizeRelationship(item, index));
+            console.log(
+              `[ODCSService] parseYAMLFallback - Found 'models.relationships' array with ${parsed.models.relationships.length} items`
+            );
+            relationships = parsed.models.relationships.map((item: any, index: number) =>
+              this.normalizeRelationship(item, index)
+            );
           }
         }
-        
+
         // Extract workspace/domain info from Data Contract
         // Use ODCL metadata if available, otherwise fall back to parsed values
-        const workspaceId = odclMetadata.workspace_id || parsed.workspace_id || parsed.id || undefined;
+        const workspaceId =
+          odclMetadata.workspace_id || parsed.workspace_id || parsed.id || undefined;
         const domainId = odclMetadata.domain_id || parsed.domain_id || undefined;
-        
+
         return {
           workspace_id: workspaceId,
           domain_id: domainId,
@@ -480,39 +569,62 @@ class ODCSService {
           ...odclMetadata,
         };
       }
-      
+
       // Handle different YAML structures (legacy formats)
       if (Array.isArray(parsed)) {
         // If it's an array, assume it's an array of tables
-        console.log(`[ODCSService] parseYAMLFallback - Parsed as array of tables, found ${parsed.length} tables.`);
-        tables = parsed.map((item: any, index: number) => this.normalizeTable(item, index, odclTableMetadata, odclMetadata));
+        console.log(
+          `[ODCSService] parseYAMLFallback - Parsed as array of tables, found ${parsed.length} tables.`
+        );
+        tables = parsed.map((item: any, index: number) =>
+          this.normalizeTable(item, index, odclTableMetadata, odclMetadata)
+        );
       } else if (parsed && typeof parsed === 'object') {
         // If it's an object, look for tables and relationships properties
         if (parsed.tables && Array.isArray(parsed.tables)) {
-          console.log(`[ODCSService] parseYAMLFallback - Found 'tables' array, found ${parsed.tables.length} tables.`);
-          tables = parsed.tables.map((item: any, index: number) => this.normalizeTable(item, index, odclTableMetadata, odclMetadata));
+          console.log(
+            `[ODCSService] parseYAMLFallback - Found 'tables' array, found ${parsed.tables.length} tables.`
+          );
+          tables = parsed.tables.map((item: any, index: number) =>
+            this.normalizeTable(item, index, odclTableMetadata, odclMetadata)
+          );
         } else if (parsed.entities && Array.isArray(parsed.entities)) {
           // Alternative: entities property
-          console.log(`[ODCSService] parseYAMLFallback - Found 'entities' array, found ${parsed.entities.length} tables.`);
-          tables = parsed.entities.map((item: any, index: number) => this.normalizeTable(item, index, odclTableMetadata, odclMetadata));
+          console.log(
+            `[ODCSService] parseYAMLFallback - Found 'entities' array, found ${parsed.entities.length} tables.`
+          );
+          tables = parsed.entities.map((item: any, index: number) =>
+            this.normalizeTable(item, index, odclTableMetadata, odclMetadata)
+          );
         } else {
           // Try to parse as a single table if it's an object
           const singleTable = this.normalizeTable(parsed, 0, odclTableMetadata, odclMetadata);
-          if (singleTable.name && singleTable.name !== `Table_1`) { // Heuristic to avoid adding empty default table
+          if (singleTable.name && singleTable.name !== `Table_1`) {
+            // Heuristic to avoid adding empty default table
             tables = [singleTable];
-            console.log(`[ODCSService] parseYAMLFallback - Parsed as single table: ${singleTable.name}`);
+            console.log(
+              `[ODCSService] parseYAMLFallback - Parsed as single table: ${singleTable.name}`
+            );
           } else {
-            console.warn('[ODCSService] parseYAMLFallback - No tables or entities array found, and single object does not look like a table.');
+            console.warn(
+              '[ODCSService] parseYAMLFallback - No tables or entities array found, and single object does not look like a table.'
+            );
           }
         }
-        
+
         if (parsed.relationships && Array.isArray(parsed.relationships)) {
-          relationships = parsed.relationships.map((item: any, index: number) => this.normalizeRelationship(item, index));
-          console.log(`[ODCSService] parseYAMLFallback - Found 'relationships' array, found ${relationships.length} relationships.`);
+          relationships = parsed.relationships.map((item: any, index: number) =>
+            this.normalizeRelationship(item, index)
+          );
+          console.log(
+            `[ODCSService] parseYAMLFallback - Found 'relationships' array, found ${relationships.length} relationships.`
+          );
         }
-        
+
         if (parsed.data_flow_diagrams && Array.isArray(parsed.data_flow_diagrams)) {
-          console.log(`[ODCSService] parseYAMLFallback - Found 'data_flow_diagrams' array, found ${parsed.data_flow_diagrams.length} diagrams.`);
+          console.log(
+            `[ODCSService] parseYAMLFallback - Found 'data_flow_diagrams' array, found ${parsed.data_flow_diagrams.length} diagrams.`
+          );
           return {
             workspace_id: parsed.workspace_id,
             domain_id: parsed.domain_id,
@@ -522,7 +634,7 @@ class ODCSService {
           };
         }
       }
-      
+
       const result = {
         workspace_id: parsed.workspace_id,
         domain_id: parsed.domain_id,
@@ -530,29 +642,39 @@ class ODCSService {
         relationships: relationships.length > 0 ? relationships : undefined,
         data_flow_diagrams: [],
       };
-      
+
       console.log('[ODCSService] parseYAMLFallback - Parsed workspace result:', result);
-      console.log('[ODCSService] parseYAMLFallback - Tables:', tables.map(t => ({ name: t.name, columnsCount: t.columns.length })));
-      
+      console.log(
+        '[ODCSService] parseYAMLFallback - Tables:',
+        tables.map((t) => ({ name: t.name, columnsCount: t.columns.length }))
+      );
+
       return result;
     } catch (error) {
       console.error('[ODCSService] parseYAMLFallback - Error parsing YAML:', error);
-      throw new Error(`Failed to parse YAML: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to parse YAML: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
   /**
    * Extract ODCL metadata from parsed YAML
    * Returns workspace-level metadata AND table-level metadata mapping
+   *
+   * @deprecated SDK 1.8.3+ handles ODCL parsing natively via parse_odcl_yaml()
+   * This method is only used by the fallback parser when SDK is not available
    */
-  private extractODCLInfo(parsed: any): Partial<ODCSWorkspace> & { tableMetadata?: Record<string, unknown> } {
+  private extractODCLInfo(
+    parsed: any
+  ): Partial<ODCSWorkspace> & { tableMetadata?: Record<string, unknown> } {
     const info: Partial<ODCSWorkspace> & { tableMetadata?: Record<string, unknown> } = {};
     const tableMetadata: Record<string, unknown> = {};
-    
+
     if (parsed.dataContractSpecification) {
       info.odcl_version = parsed.dataContractSpecification;
     }
-    
+
     if (parsed.id) {
       info.odcl_id = parsed.id;
       // Try to extract workspace_id from ODCL id if it's a URN
@@ -575,7 +697,7 @@ class ODCSService {
       // Note: Non-URN IDs (like "gst" or "global_betting_system") are not valid UUIDs
       // They will be normalized when tables are imported using the current workspace/domain IDs
     }
-    
+
     if (parsed.info && typeof parsed.info === 'object') {
       info.odcl_info = {
         title: parsed.info.title,
@@ -586,7 +708,7 @@ class ODCSService {
         status: parsed.info.status,
         ...parsed.info,
       };
-      
+
       // Map info fields to table metadata
       if (parsed.info.title) {
         // Title could be used as table name or alias - we'll use it as alias if name exists
@@ -598,7 +720,7 @@ class ODCSService {
       if (parsed.info.status) {
         tableMetadata.status = parsed.info.status;
       }
-      
+
       // Extract owner information from ODCL info
       if (parsed.info.owner) {
         // Owner might be a string (team name) or object
@@ -608,7 +730,7 @@ class ODCSService {
           tableMetadata.odcl_owner = parsed.info.owner;
         }
       }
-      
+
       // Extract contact information
       if (parsed.info.contact) {
         if (typeof parsed.info.contact === 'object') {
@@ -627,7 +749,7 @@ class ODCSService {
         }
       }
     }
-    
+
     // Extract terms section
     if (parsed.terms && typeof parsed.terms === 'object') {
       if (parsed.terms.usage) {
@@ -639,29 +761,28 @@ class ODCSService {
       // Store full terms object for reference
       tableMetadata.terms = parsed.terms;
     }
-    
+
     if (Object.keys(tableMetadata).length > 0) {
       info.tableMetadata = tableMetadata;
     }
-    
+
     return info;
   }
 
   /**
    * TEMPORARY WORKAROUND: Merge original YAML data with SDK result to preserve fields that SDK might not return
    * This ensures fields like 'description' and 'quality' arrays are preserved
-   * 
-   * TODO: Remove this workaround once SDK bug is fixed
-   * Bug Report: https://github.com/pixie79/data-modelling-sdk/issues/9
-   * The SDK MUST parse and return 100% of all ODCS/ODCL fields including description and quality arrays
+   *
+   * @deprecated SDK 1.8.3+ returns complete data - no merging needed
+   * This method is only used by the fallback parser when SDK is not available
    */
   private mergeOriginalYAMLWithSDKResult(sdkResult: any, originalYAML: any): any {
     if (!originalYAML || !sdkResult) return sdkResult;
-    
+
     // Extract tables from original YAML
     const originalTables = originalYAML.models?.tables || originalYAML.tables || [];
     const sdkTables = sdkResult.tables || [];
-    
+
     // Merge column data from original YAML into SDK result
     const mergedTables = sdkTables.map((sdkTable: any) => {
       // Find matching table in original YAML by name
@@ -670,20 +791,22 @@ class ODCSService {
         const origName = t.name || t.table_name || t.entity_name;
         return sdkName === origName;
       });
-      
+
       if (!originalTable) return sdkTable;
-      
+
       // Extract columns from original table (could be object or array)
       let originalColumns: any[] = [];
       if (Array.isArray(originalTable.columns)) {
         originalColumns = originalTable.columns;
       } else if (originalTable.columns && typeof originalTable.columns === 'object') {
-        originalColumns = Object.entries(originalTable.columns).map(([key, value]: [string, any]) => ({
-          name: key,
-          ...value,
-        }));
+        originalColumns = Object.entries(originalTable.columns).map(
+          ([key, value]: [string, any]) => ({
+            name: key,
+            ...value,
+          })
+        );
       }
-      
+
       // Merge column data
       const mergedColumns = (sdkTable.columns || []).map((sdkCol: any) => {
         const originalCol = originalColumns.find((oc: any) => {
@@ -691,9 +814,9 @@ class ODCSService {
           const origColName = oc.name || oc.attribute_name || oc.field_name;
           return sdkColName === origColName;
         });
-        
+
         if (!originalCol) return sdkCol;
-        
+
         // Merge: preserve SDK parsed fields but add missing fields from original
         return {
           ...sdkCol,
@@ -707,7 +830,7 @@ class ODCSService {
           $ref: originalCol.$ref || sdkCol.$ref,
         };
       });
-      
+
       return {
         ...sdkTable,
         columns: mergedColumns,
@@ -715,7 +838,7 @@ class ODCSService {
         description: sdkTable.description || originalTable.description,
       };
     });
-    
+
     return {
       ...sdkResult,
       tables: mergedTables,
@@ -726,49 +849,61 @@ class ODCSService {
    * Convert SDK import result to ODCSWorkspace format
    * SDK 1.1.0+ returns JSON string with tables/relationships structure
    * Validates that SDK parsed all ODCS attributes and raises errors for missing fields
+   *
+   * @deprecated SDK 1.8.3+ returns workspace structure directly - no conversion needed
+   * This method is only used by the fallback parser when SDK is not available
    */
-  private convertSDKResultToWorkspace(sdkResult: any, format: 'odcl' | 'odcs' = 'odcs', odclTableMetadata?: Record<string, unknown>, odclInfo?: any): ODCSWorkspace {
+  private convertSDKResultToWorkspace(
+    sdkResult: any,
+    format: 'odcl' | 'odcs' = 'odcs',
+    odclTableMetadata?: Record<string, unknown>,
+    odclInfo?: any
+  ): ODCSWorkspace {
     try {
       // SDK may return different structures, handle common formats
       if (typeof sdkResult === 'string') {
         sdkResult = JSON.parse(sdkResult);
       }
-      
+
       // Extract tables and relationships with validation
-      const tables: Table[] = Array.isArray(sdkResult.tables) 
+      const tables: Table[] = Array.isArray(sdkResult.tables)
         ? sdkResult.tables.map((item: any, index: number) => {
             const normalized = this.normalizeTable(item, index, odclTableMetadata, odclInfo);
-            
+
             // Validate that SDK parsed all expected ODCS fields
             this.validateTableCompleteness(item, normalized, index);
-            
+
             return normalized;
           })
         : [];
-      
+
       const relationships: Relationship[] = Array.isArray(sdkResult.relationships)
-        ? sdkResult.relationships.map((item: any, index: number) => this.normalizeRelationship(item, index))
+        ? sdkResult.relationships.map((item: any, index: number) =>
+            this.normalizeRelationship(item, index)
+          )
         : [];
-      
+
       // Extract workspace_id and domain_id from SDK result or use defaults
       // SDK may not return these for ODCL format, so we'll extract from original if needed
       let workspaceId = sdkResult.workspace_id;
       let domainId = sdkResult.domain_id;
-      
+
       // For ODCL format, workspace_id and domain_id might not be in SDK result
       // They should be extracted from the ODCL id field
       if (format === 'odcl' && (!workspaceId || !domainId)) {
         // These will be set by extractODCLInfo if available
-        console.log('[ODCSService] ODCL format detected - workspace_id and domain_id will be extracted from ODCL id');
+        console.log(
+          '[ODCSService] ODCL format detected - workspace_id and domain_id will be extracted from ODCL id'
+        );
       }
-      
+
       // Validate that SDK returned tables
       if (!Array.isArray(sdkResult.tables)) {
         const errorMsg = `[ODCSService] SDK result missing 'tables' array`;
         console.error(errorMsg);
         throw new Error(errorMsg);
       }
-      
+
       return {
         workspace_id: workspaceId,
         domain_id: domainId,
@@ -778,18 +913,27 @@ class ODCSService {
       };
     } catch (error) {
       console.error('[ODCSService] Error converting SDK result:', error);
-      throw new Error(`Failed to convert SDK result: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to convert SDK result: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
   /**
    * Validate that a table has all expected ODCS fields parsed
    * Raises errors if critical fields are missing
+   *
+   * @deprecated SDK 1.8.3+ handles validation internally
+   * This method is only used by the fallback parser when SDK is not available
    */
-  private validateTableCompleteness(originalItem: any, normalizedTable: Table, index: number): void {
+  private validateTableCompleteness(
+    originalItem: any,
+    normalizedTable: Table,
+    index: number
+  ): void {
     const originalFields = new Set(Object.keys(originalItem || {}));
     const missingFields: string[] = [];
-    
+
     // Critical fields that must be present (even if empty)
     const criticalFields = ['name'];
     criticalFields.forEach((field) => {
@@ -797,79 +941,89 @@ class ODCSService {
         missingFields.push(field);
       }
     });
-    
+
     // Check if quality rules were loaded for columns
     const columnsWithMissingQualityRules: string[] = [];
     normalizedTable.columns.forEach((col, colIndex) => {
-      const originalCol = originalItem.columns?.[colIndex] || originalItem.attributes?.[colIndex] || originalItem.fields?.[colIndex];
+      const originalCol =
+        originalItem.columns?.[colIndex] ||
+        originalItem.attributes?.[colIndex] ||
+        originalItem.fields?.[colIndex];
       if (originalCol) {
         // Check if original column had quality rules that weren't loaded
         const originalColFields = new Set(Object.keys(originalCol));
-        const hasQualityRulesInOriginal = 
-          originalColFields.has('quality_rules') || 
+        const hasQualityRulesInOriginal =
+          originalColFields.has('quality_rules') ||
           originalColFields.has('qualityRules') ||
           originalColFields.has('constraints') ||
           (originalCol.constraints && Object.keys(originalCol.constraints).length > 0);
-        
-        const hasQualityRulesInNormalized = 
+
+        const hasQualityRulesInNormalized =
           (col.constraints && Object.keys(col.constraints).length > 0) ||
           (col.quality_rules && Object.keys(col.quality_rules).length > 0);
-        
+
         if (hasQualityRulesInOriginal && !hasQualityRulesInNormalized) {
           columnsWithMissingQualityRules.push(col.name || `column_${colIndex}`);
         }
       }
     });
-    
+
     if (missingFields.length > 0) {
       const errorMsg = `[ODCSService] SDK failed to parse critical fields for table ${normalizedTable.name} (index ${index}): ${missingFields.join(', ')}`;
       console.error(errorMsg);
       throw new Error(errorMsg);
     }
-    
+
     if (columnsWithMissingQualityRules.length > 0) {
       const errorMsg = `[ODCSService] SDK failed to parse quality rules for columns in table ${normalizedTable.name}: ${columnsWithMissingQualityRules.join(', ')}`;
       console.error(errorMsg);
       throw new Error(errorMsg);
     }
-    
+
     // Check if table-level quality rules were loaded
-    const originalHasQualityRules = 
-      originalItem.quality_rules || 
+    const originalHasQualityRules =
+      originalItem.quality_rules ||
       originalItem.qualityRules ||
       (originalItem.metadata && originalItem.metadata.quality_rules);
-    
-    const normalizedHasQualityRules = 
+
+    const normalizedHasQualityRules =
       normalizedTable.quality_rules ||
       (normalizedTable.metadata && normalizedTable.metadata.quality_rules);
-    
+
     if (originalHasQualityRules && !normalizedHasQualityRules) {
       const errorMsg = `[ODCSService] SDK failed to parse table-level quality rules for table ${normalizedTable.name}`;
       console.error(errorMsg);
       throw new Error(errorMsg);
     }
-    
+
     // Check if owner/SLA were loaded
     if (originalItem.owner && !normalizedTable.owner) {
-      console.warn(`[ODCSService] SDK may not have parsed owner information for table ${normalizedTable.name}`);
+      console.warn(
+        `[ODCSService] SDK may not have parsed owner information for table ${normalizedTable.name}`
+      );
     }
-    
+
     if (originalItem.sla && !normalizedTable.sla) {
-      console.warn(`[ODCSService] SDK may not have parsed SLA information for table ${normalizedTable.name}`);
+      console.warn(
+        `[ODCSService] SDK may not have parsed SLA information for table ${normalizedTable.name}`
+      );
     }
   }
 
   /**
    * Apply ODCL metadata to a table
+   *
+   * @deprecated SDK 1.8.3+ applies ODCL metadata automatically via parse_odcl_yaml()
+   * This method is only used by the fallback parser when SDK is not available
    */
   private applyODCLMetadataToTable(table: Table, odclMetadata: Record<string, unknown>): Table {
     const updates: Partial<Table> = {};
-    
+
     // Map ODCL metadata to table fields
     if (odclMetadata.odcl_title && !table.alias) {
       updates.alias = odclMetadata.odcl_title as string;
     }
-    
+
     // Build owner object from ODCL info
     const owner: Table['owner'] = table.owner || {};
     if (odclMetadata.odcl_owner_team) {
@@ -884,7 +1038,7 @@ class ODCSService {
     if (Object.keys(owner).length > 0) {
       updates.owner = owner;
     }
-    
+
     // Build metadata object
     const metadata: Record<string, unknown> = { ...table.metadata };
     if (odclMetadata.version) {
@@ -905,7 +1059,7 @@ class ODCSService {
     if (Object.keys(metadata).length > 0) {
       updates.metadata = metadata;
     }
-    
+
     return { ...table, ...updates };
   }
 
@@ -913,102 +1067,170 @@ class ODCSService {
    * Normalize a table object from YAML to Table type
    * Loads ALL ODCS 3.1.0 fields and validates completeness
    */
-  private normalizeTable(item: any, index: number, odclTableMetadata?: Record<string, unknown>, odclInfo?: any): Table {
+  private normalizeTable(
+    item: any,
+    index: number,
+    odclTableMetadata?: Record<string, unknown>,
+    odclInfo?: any
+  ): Table {
     const now = new Date().toISOString();
     // Always generate proper UUID for table ID
     const tableId = item.id && isValidUUID(item.id) ? item.id : generateUUID();
     if (item.id && !isValidUUID(item.id)) {
-      console.warn(`[ODCSService] Invalid table ID format "${item.id}", generated new UUID: ${tableId}`);
+      console.warn(
+        `[ODCSService] Invalid table ID format "${item.id}", generated new UUID: ${tableId}`
+      );
     }
-    
+
     // Track all fields found in the source item for validation
     const sourceFields = new Set(Object.keys(item));
     const expectedFields = [
-      'id', 'name', 'alias', 'description', 'tags', 'model_type',
-      'columns', 'attributes', 'fields',
-      'owner', 'sla', 'metadata', 'quality_rules',
-      'position_x', 'position_y', 'width', 'height',
-      'workspace_id', 'primary_domain_id', 'domain_id',
-      'created_at', 'last_modified_at'
+      'id',
+      'name',
+      'alias',
+      'description',
+      'tags',
+      'model_type',
+      'columns',
+      'attributes',
+      'fields',
+      'owner',
+      'sla',
+      'metadata',
+      'quality_rules',
+      'position_x',
+      'position_y',
+      'width',
+      'height',
+      'workspace_id',
+      'primary_domain_id',
+      'domain_id',
+      'created_at',
+      'last_modified_at',
     ];
-    
+
     // Try multiple possible name fields (ODCS format variations)
-    const tableName = (item.name || item.table_name || item.entity_name || item.label || item.title || `Table_${index + 1}`).trim();
+    const tableName = (
+      item.name ||
+      item.table_name ||
+      item.entity_name ||
+      item.label ||
+      item.title ||
+      `Table_${index + 1}`
+    ).trim();
     console.log(`[ODCSService] normalizeTable - Resolving name for item ${index}: '${tableName}'`);
 
     let columns: Column[] = [];
     if (Array.isArray(item.columns)) {
       columns = item.columns;
-      console.log(`[ODCSService] normalizeTable - Found 'columns' array with ${columns.length} items.`);
+      console.log(
+        `[ODCSService] normalizeTable - Found 'columns' array with ${columns.length} items.`
+      );
     } else if (Array.isArray(item.attributes)) {
       columns = item.attributes;
-      console.log(`[ODCSService] normalizeTable - Found 'attributes' array with ${columns.length} items.`);
+      console.log(
+        `[ODCSService] normalizeTable - Found 'attributes' array with ${columns.length} items.`
+      );
     } else if (Array.isArray(item.fields)) {
       columns = item.fields;
-      console.log(`[ODCSService] normalizeTable - Found 'fields' array with ${columns.length} items.`);
+      console.log(
+        `[ODCSService] normalizeTable - Found 'fields' array with ${columns.length} items.`
+      );
     } else if (item.columns && typeof item.columns === 'object') {
       columns = Object.entries(item.columns).map(([key, value]: [string, any]) => ({
         name: key,
         ...value,
       }));
-      console.log(`[ODCSService] normalizeTable - Converted 'columns' object to array with ${columns.length} items.`);
+      console.log(
+        `[ODCSService] normalizeTable - Converted 'columns' object to array with ${columns.length} items.`
+      );
     } else {
-      console.warn(`[ODCSService] normalizeTable - No columns found for table '${tableName}' (ID: ${tableId}), item:`, item);
+      console.warn(
+        `[ODCSService] normalizeTable - No columns found for table '${tableName}' (ID: ${tableId}), item:`,
+        item
+      );
     }
-    
+
     // Extract owner information
-    let owner = item.owner ? {
-      name: item.owner.name || item.owner.owner_name,
-      email: item.owner.email || item.owner.owner_email,
-      team: item.owner.team || item.owner.owner_team,
-      role: item.owner.role || item.owner.owner_role,
-    } : undefined;
-    
+    let owner = item.owner
+      ? {
+          name: item.owner.name || item.owner.owner_name,
+          email: item.owner.email || item.owner.owner_email,
+          team: item.owner.team || item.owner.owner_team,
+          role: item.owner.role || item.owner.owner_role,
+        }
+      : undefined;
+
     // Extract SLA information
-    const sla = item.sla ? {
-      latency: item.sla.latency,
-      uptime: item.sla.uptime,
-      response_time: item.sla.response_time,
-      error_rate: item.sla.error_rate,
-      update_frequency: item.sla.update_frequency,
-    } : undefined;
-    
+    const sla = item.sla
+      ? {
+          latency: item.sla.latency,
+          uptime: item.sla.uptime,
+          response_time: item.sla.response_time,
+          error_rate: item.sla.error_rate,
+          update_frequency: item.sla.update_frequency,
+        }
+      : undefined;
+
     // Extract Support channels (ODCS v3.0.2)
-    const support = Array.isArray(item.support) ? item.support.map((ch: any) => ({
-      channel: ch.channel || '',
-      url: ch.url || '',
-      description: ch.description,
-      tool: ch.tool,
-      scope: ch.scope,
-      invitationUrl: ch.invitationUrl || ch.invitation_url,
-    })).filter((ch: any) => ch.channel && ch.url) : undefined;
-    
+    const support = Array.isArray(item.support)
+      ? item.support
+          .map((ch: any) => ({
+            channel: ch.channel || '',
+            url: ch.url || '',
+            description: ch.description,
+            tool: ch.tool,
+            scope: ch.scope,
+            invitationUrl: ch.invitationUrl || ch.invitation_url,
+          }))
+          .filter((ch: any) => ch.channel && ch.url)
+      : undefined;
+
     // Extract Pricing (ODCS v3.0.2)
-    const pricing = item.pricing || item.price ? {
-      priceAmount: item.pricing?.priceAmount ?? item.price?.priceAmount ?? item.pricing?.price_amount ?? item.price?.price_amount,
-      priceCurrency: item.pricing?.priceCurrency ?? item.price?.priceCurrency ?? item.pricing?.price_currency ?? item.price?.price_currency,
-      priceUnit: item.pricing?.priceUnit ?? item.price?.priceUnit ?? item.pricing?.price_unit ?? item.price?.price_unit,
-    } : undefined;
-    
+    const pricing =
+      item.pricing || item.price
+        ? {
+            priceAmount:
+              item.pricing?.priceAmount ??
+              item.price?.priceAmount ??
+              item.pricing?.price_amount ??
+              item.price?.price_amount,
+            priceCurrency:
+              item.pricing?.priceCurrency ??
+              item.price?.priceCurrency ??
+              item.pricing?.price_currency ??
+              item.price?.price_currency,
+            priceUnit:
+              item.pricing?.priceUnit ??
+              item.price?.priceUnit ??
+              item.pricing?.price_unit ??
+              item.price?.price_unit,
+          }
+        : undefined;
+
     // Extract Team (ODCS v3.0.2, formerly stakeholders in v2.x)
-    const team = Array.isArray(item.team) ? item.team.map((member: any) => ({
-      username: member.username,
-      role: member.role,
-      dateIn: member.dateIn || member.date_in,
-      dateOut: member.dateOut || member.date_out,
-      replacedByUsername: member.replacedByUsername || member.replaced_by_username,
-      comment: member.comment,
-      name: member.name,
-    })) : Array.isArray(item.stakeholders) ? item.stakeholders.map((member: any) => ({
-      username: member.username,
-      role: member.role,
-      dateIn: member.dateIn || member.date_in,
-      dateOut: member.dateOut || member.date_out,
-      replacedByUsername: member.replacedByUsername || member.replaced_by_username,
-      comment: member.comment,
-      name: member.name,
-    })) : undefined;
-    
+    const team = Array.isArray(item.team)
+      ? item.team.map((member: any) => ({
+          username: member.username,
+          role: member.role,
+          dateIn: member.dateIn || member.date_in,
+          dateOut: member.dateOut || member.date_out,
+          replacedByUsername: member.replacedByUsername || member.replaced_by_username,
+          comment: member.comment,
+          name: member.name,
+        }))
+      : Array.isArray(item.stakeholders)
+        ? item.stakeholders.map((member: any) => ({
+            username: member.username,
+            role: member.role,
+            dateIn: member.dateIn || member.date_in,
+            dateOut: member.dateOut || member.date_out,
+            replacedByUsername: member.replacedByUsername || member.replaced_by_username,
+            comment: member.comment,
+            name: member.name,
+          }))
+        : undefined;
+
     // Extract metadata (including quality_tier and data_modeling_method)
     const metadata: Record<string, unknown> = {};
     if (item.metadata && typeof item.metadata === 'object') {
@@ -1017,7 +1239,7 @@ class ODCSService {
     // Also check for quality_tier and data_modeling_method at top level
     if (item.quality_tier) metadata.quality_tier = item.quality_tier;
     if (item.data_modeling_method) metadata.data_modeling_method = item.data_modeling_method;
-    
+
     // Apply ODCL table-level metadata if provided
     let finalDescription = item.description || item.info?.description;
     if (odclTableMetadata) {
@@ -1035,7 +1257,7 @@ class ODCSService {
       if (odclTableMetadata.status) {
         metadata.status = odclTableMetadata.status;
       }
-      
+
       // Map ODCL owner fields to owner object
       if (odclTableMetadata.odcl_owner_team && !owner) {
         owner = {
@@ -1071,7 +1293,7 @@ class ODCSService {
           owner.email = odclTableMetadata.odcl_contact_email as string;
         }
       }
-      
+
       // Map terms fields
       if (odclTableMetadata.terms_usage) {
         metadata.terms_usage = odclTableMetadata.terms_usage;
@@ -1083,10 +1305,10 @@ class ODCSService {
         metadata.terms = odclTableMetadata.terms;
       }
     }
-    
+
     // Extract quality rules
     const qualityRules = item.quality_rules || item.qualityRules || undefined;
-    
+
     // Extract tags from multiple possible locations
     let tableTags = item.tags;
     if (!tableTags && item.info && item.info.tags) {
@@ -1095,31 +1317,40 @@ class ODCSService {
     if (!tableTags && item.metadata && item.metadata.tags) {
       tableTags = item.metadata.tags;
     }
-    
+
     // Normalize columns with ALL quality rules
     const normalizedColumns = columns.map((col: any, colIndex: number) => {
       const colConstraints: Record<string, unknown> = {};
-      
+
       // Copy all constraint fields
       if (col.constraints && typeof col.constraints === 'object') {
         Object.assign(colConstraints, col.constraints);
       }
-      
+
       // Extract quality rules from column - handle both 'quality' array (ODCL) and 'quality_rules' object
       const colQualityRules = col.quality_rules || col.qualityRules;
       if (colQualityRules && typeof colQualityRules === 'object') {
         Object.assign(colConstraints, colQualityRules);
       }
-      
+
       // Handle 'quality' array format (ODCL) - extract value_set from implementation.kwargs.value_set
       if (col.quality && Array.isArray(col.quality)) {
-        console.log(`[ODCSService] Found quality array for column ${col.name || colIndex}:`, col.quality);
+        console.log(
+          `[ODCSService] Found quality array for column ${col.name || colIndex}:`,
+          col.quality
+        );
         col.quality.forEach((qualityRule: any) => {
           if (qualityRule.implementation && qualityRule.implementation.kwargs) {
             // Extract value_set from great-expectations format
-            if (qualityRule.implementation.kwargs.value_set && Array.isArray(qualityRule.implementation.kwargs.value_set)) {
+            if (
+              qualityRule.implementation.kwargs.value_set &&
+              Array.isArray(qualityRule.implementation.kwargs.value_set)
+            ) {
               colConstraints.validValues = qualityRule.implementation.kwargs.value_set;
-              console.log(`[ODCSService] Extracted validValues from quality rule:`, colConstraints.validValues);
+              console.log(
+                `[ODCSService] Extracted validValues from quality rule:`,
+                colConstraints.validValues
+              );
             }
             // Extract other kwargs fields
             Object.keys(qualityRule.implementation.kwargs).forEach((key) => {
@@ -1134,7 +1365,7 @@ class ODCSService {
           }
         });
       }
-      
+
       // Extract individual quality rule fields
       if (col.minLength !== undefined) colConstraints.minLength = col.minLength;
       if (col.maxLength !== undefined) colConstraints.maxLength = col.maxLength;
@@ -1146,7 +1377,7 @@ class ODCSService {
         colConstraints.validValues = col.validValues || col.valid_values;
       }
       if (col.description !== undefined) colConstraints.description = col.description;
-      
+
       // Extract type information (ODCL may use 'type' instead of 'data_type')
       // Also check for $ref which might indicate a type reference
       let columnDataType = col.data_type || col.type || col.dataType;
@@ -1158,16 +1389,21 @@ class ODCSService {
         }
       }
       columnDataType = columnDataType || 'VARCHAR';
-      
+
       // Extract nullable/required (ODCL may use 'required' instead of 'nullable')
       // If 'required' is true, then nullable is false (and vice versa)
-      const columnNullable = col.nullable !== undefined 
-        ? col.nullable 
-        : (col.required === false ? true : (col.required === true ? false : true));
-      
+      const columnNullable =
+        col.nullable !== undefined
+          ? col.nullable
+          : col.required === false
+            ? true
+            : col.required === true
+              ? false
+              : true;
+
       // Store the full quality array if present (for reference and export)
       const qualityArray = col.quality && Array.isArray(col.quality) ? col.quality : undefined;
-      
+
       // Log column details for debugging
       console.log(`[ODCSService] Normalizing column ${col.name || colIndex}:`, {
         description: col.description,
@@ -1177,34 +1413,44 @@ class ODCSService {
         required: col.required,
         nullable: columnNullable,
       });
-      
+
       // Generate proper UUID for column if missing or invalid
       const columnId = col.id && isValidUUID(col.id) ? col.id : generateUUID();
       if (col.id && !isValidUUID(col.id)) {
-        console.warn(`[ODCSService] Invalid column ID format "${col.id}", generated new UUID: ${columnId}`);
+        console.warn(
+          `[ODCSService] Invalid column ID format "${col.id}", generated new UUID: ${columnId}`
+        );
       }
-      
+
       return {
         id: columnId,
         table_id: tableId,
-        name: col.name || col.attribute_name || col.field_name || col.property || `column_${colIndex + 1}`,
+        name:
+          col.name ||
+          col.attribute_name ||
+          col.field_name ||
+          col.property ||
+          `column_${colIndex + 1}`,
         data_type: columnDataType,
         nullable: columnNullable,
         is_primary_key: col.is_primary_key ?? col.primary_key ?? col.isPrimaryKey ?? false,
         is_foreign_key: col.is_foreign_key ?? col.foreign_key ?? col.isForeignKey ?? false,
-        foreign_key_reference: col.foreign_key_reference || col.foreign_key || col.reference || col.foreignKeyReference,
+        foreign_key_reference:
+          col.foreign_key_reference || col.foreign_key || col.reference || col.foreignKeyReference,
         default_value: col.default_value || col.default || col.defaultValue,
-        description: col.description || col.desc || (colConstraints.description as string) || undefined,
+        description:
+          col.description || col.desc || (colConstraints.description as string) || undefined,
         constraints: Object.keys(colConstraints).length > 0 ? colConstraints : undefined,
         quality_rules: qualityArray || colQualityRules, // Store quality array if present, otherwise use quality_rules object
         order: col.order ?? colIndex,
         created_at: col.created_at || col.createdAt || now,
       };
     });
-    
+
     // Log normalized columns for debugging
     normalizedColumns.forEach((col, idx) => {
-      if (idx < 3) { // Log first 3 columns for debugging
+      if (idx < 3) {
+        // Log first 3 columns for debugging
         console.log(`[ODCSService] Normalized column ${idx} (${col.name}):`, {
           description: col.description,
           quality_rules: col.quality_rules,
@@ -1215,7 +1461,7 @@ class ODCSService {
         });
       }
     });
-    
+
     // Validate that we've loaded all expected fields
     const missingFields: string[] = [];
     const criticalFields = ['name'];
@@ -1224,25 +1470,29 @@ class ODCSService {
         missingFields.push(field);
       }
     });
-    
+
     if (missingFields.length > 0) {
       const errorMsg = `[ODCSService] Missing critical fields in table ${tableName} (index ${index}): ${missingFields.join(', ')}`;
       console.error(errorMsg);
       throw new Error(errorMsg);
     }
-    
+
     // Log any unexpected fields for debugging
-    const unexpectedFields = Array.from(sourceFields).filter((f) => !expectedFields.includes(f) && !f.startsWith('_'));
+    const unexpectedFields = Array.from(sourceFields).filter(
+      (f) => !expectedFields.includes(f) && !f.startsWith('_')
+    );
     if (unexpectedFields.length > 0) {
-      console.warn(`[ODCSService] Unexpected fields in table ${tableName}: ${unexpectedFields.join(', ')}`);
+      console.warn(
+        `[ODCSService] Unexpected fields in table ${tableName}: ${unexpectedFields.join(', ')}`
+      );
     }
-    
+
     // Apply ODCL title as alias if no alias exists
     let finalAlias = item.alias;
     if (!finalAlias && odclTableMetadata?.odcl_title) {
       finalAlias = odclTableMetadata.odcl_title as string;
     }
-    
+
     return {
       id: tableId,
       workspace_id: item.workspace_id || '',
@@ -1262,7 +1512,10 @@ class ODCSService {
       owner,
       roles: Array.isArray(item.roles) ? item.roles : undefined,
       support,
-      pricing: pricing && (pricing.priceAmount !== undefined || pricing.priceCurrency || pricing.priceUnit) ? pricing : undefined,
+      pricing:
+        pricing && (pricing.priceAmount !== undefined || pricing.priceCurrency || pricing.priceUnit)
+          ? pricing
+          : undefined,
       team,
       sla,
       metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
@@ -1278,7 +1531,7 @@ class ODCSService {
    */
   private normalizeRelationship(item: any, _index: number): Relationship {
     const now = new Date().toISOString();
-    
+
     // Convert relationship type string to RelationshipType
     let relationshipType: 'one-to-one' | 'one-to-many' | 'many-to-many' = 'one-to-many';
     const typeStr = (item.relationship_type || item.type || 'one-to-many').toLowerCase();
@@ -1287,29 +1540,37 @@ class ODCSService {
     } else if (typeStr.includes('many-to-many') || typeStr === 'n:n' || typeStr === 'm:m') {
       relationshipType = 'many-to-many';
     }
-    
+
     // Convert cardinality to Cardinality type ('0', '1', 'N')
     const convertCardinality = (val: any): '0' | '1' | 'N' => {
       if (val === '0' || val === 0 || val === 'optional') return '0';
       if (val === '1' || val === 1 || val === 'one' || val === 'required') return '1';
       return 'N';
     };
-    
-    const sourceId = item.source_table_id || item.source_id || item.from_table_id || item.source || '';
-    const targetId = item.target_table_id || item.target_id || item.to_table_id || item.target || '';
+
+    const sourceId =
+      item.source_table_id || item.source_id || item.from_table_id || item.source || '';
+    const targetId =
+      item.target_table_id || item.target_id || item.to_table_id || item.target || '';
     const sourceType = item.source_type || (sourceId ? 'table' : 'table');
     const targetType = item.target_type || (targetId ? 'table' : 'table');
-    
+
     // Always generate proper UUID for relationship ID
     const relationshipId = item.id && isValidUUID(item.id) ? item.id : generateUUID();
     if (item.id && !isValidUUID(item.id)) {
-      console.warn(`[ODCSService] Invalid relationship ID format "${item.id}", generated new UUID: ${relationshipId}`);
+      console.warn(
+        `[ODCSService] Invalid relationship ID format "${item.id}", generated new UUID: ${relationshipId}`
+      );
     }
-    
+
     const relationship: Relationship = {
       id: relationshipId,
-      workspace_id: item.workspace_id && isValidUUID(item.workspace_id) ? item.workspace_id : (item.workspace_id || ''),
-      domain_id: item.domain_id && isValidUUID(item.domain_id) ? item.domain_id : (item.domain_id || ''),
+      workspace_id:
+        item.workspace_id && isValidUUID(item.workspace_id)
+          ? item.workspace_id
+          : item.workspace_id || '',
+      domain_id:
+        item.domain_id && isValidUUID(item.domain_id) ? item.domain_id : item.domain_id || '',
       source_id: sourceId,
       target_id: targetId,
       source_type: sourceType,
@@ -1318,15 +1579,21 @@ class ODCSService {
       source_table_id: sourceType === 'table' ? sourceId : undefined,
       target_table_id: targetType === 'table' ? targetId : undefined,
       type: relationshipType,
-      source_cardinality: convertCardinality(item.source_cardinality || item.from_cardinality || item.source_optional === false ? '1' : '0'),
-      target_cardinality: convertCardinality(item.target_cardinality || item.to_cardinality || item.target_optional === false ? '1' : 'N'),
+      source_cardinality: convertCardinality(
+        item.source_cardinality || item.from_cardinality || item.source_optional === false
+          ? '1'
+          : '0'
+      ),
+      target_cardinality: convertCardinality(
+        item.target_cardinality || item.to_cardinality || item.target_optional === false ? '1' : 'N'
+      ),
       label: item.label || item.name,
       model_type: item.model_type || 'conceptual',
       is_circular: item.is_circular ?? false,
       created_at: item.created_at || now,
       last_modified_at: item.last_modified_at || now,
     };
-    
+
     return relationship;
   }
 
@@ -1341,11 +1608,11 @@ class ODCSService {
         domain_id: workspace.domain_id,
         tables: workspace.tables || [],
       };
-      
+
       if (workspace.relationships && workspace.relationships.length > 0) {
         yamlData.relationships = workspace.relationships;
       }
-      
+
       if (workspace.data_flow_diagrams && workspace.data_flow_diagrams.length > 0) {
         yamlData.data_flow_diagrams = workspace.data_flow_diagrams.map((diagram) => ({
           id: diagram.id,
@@ -1371,7 +1638,7 @@ class ODCSService {
           linked_tables: (diagram as any).linked_tables || [],
         }));
       }
-      
+
       return yaml.dump(yamlData, {
         indent: 2,
         lineWidth: 120,
@@ -1379,7 +1646,9 @@ class ODCSService {
         sortKeys: false,
       });
     } catch (error) {
-      throw new Error(`Failed to convert to YAML: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to convert to YAML: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -1387,10 +1656,13 @@ class ODCSService {
    * Validate ODCS format
    * Uses API when online, WASM SDK when offline
    */
-  async validate(odcsContent: string | ODCSWorkspace): Promise<{ valid: boolean; errors: string[] }> {
+  async validate(
+    odcsContent: string | ODCSWorkspace
+  ): Promise<{ valid: boolean; errors: string[] }> {
     try {
       // Try parsing to validate
-      const content = typeof odcsContent === 'string' ? odcsContent : await this.toYAML(odcsContent);
+      const content =
+        typeof odcsContent === 'string' ? odcsContent : await this.toYAML(odcsContent);
       await this.parseYAML(content);
       return {
         valid: true,
@@ -1410,7 +1682,7 @@ class ODCSService {
    */
   async exportAsGitDiff(workspace: ODCSWorkspace, baseWorkspace?: ODCSWorkspace): Promise<string> {
     const currentYAML = await this.toYAML(workspace);
-    
+
     if (!baseWorkspace) {
       // No base workspace - return current as diff
       return `--- /dev/null\n+++ workspace.yaml\n@@ -0,0 +1,${currentYAML.split('\n').length} @@\n${currentYAML}`;
@@ -1422,13 +1694,13 @@ class ODCSService {
 
     // Simple diff format (in a real implementation, use a proper diff library)
     let diff = '--- base/workspace.yaml\n+++ current/workspace.yaml\n';
-    
+
     // Add context lines and changes
     const maxLines = Math.max(currentLines.length, baseLines.length);
     for (let i = 0; i < maxLines; i++) {
       const currentLine = currentLines[i] || '';
       const baseLine = baseLines[i] || '';
-      
+
       if (currentLine !== baseLine) {
         if (baseLine) diff += `-${baseLine}\n`;
         if (currentLine) diff += `+${currentLine}\n`;

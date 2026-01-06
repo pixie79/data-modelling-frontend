@@ -20,14 +20,32 @@ export interface ImportExportDialogProps {
   onClose: () => void;
 }
 
-type ImportFormat = 'odcs' | 'sql' | 'avro' | 'json-schema' | 'protobuf' | 'odps' | 'cads' | 'bpmn' | 'dmn' | 'openapi';
-type ExportFormat = 'odcs' | 'sql' | 'avro' | 'json-schema' | 'protobuf' | 'odps' | 'cads' | 'bpmn' | 'dmn' | 'openapi';
+type ImportFormat =
+  | 'odcs'
+  | 'odcl'
+  | 'sql'
+  | 'avro'
+  | 'json-schema'
+  | 'protobuf'
+  | 'odps'
+  | 'cads'
+  | 'bpmn'
+  | 'dmn'
+  | 'openapi';
+type ExportFormat =
+  | 'odcs'
+  | 'sql'
+  | 'avro'
+  | 'json-schema'
+  | 'protobuf'
+  | 'odps'
+  | 'cads'
+  | 'bpmn'
+  | 'dmn'
+  | 'openapi';
 type SQLDialect = 'postgresql' | 'mysql' | 'sqlite' | 'mssql' | 'databricks';
 
-export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({
-  isOpen,
-  onClose,
-}) => {
+export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({ isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState<'import' | 'export'>('import');
   const [importFormat, setImportFormat] = useState<ImportFormat>('odcs');
   const [exportFormat, setExportFormat] = useState<ExportFormat>('odcs');
@@ -102,15 +120,29 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({
     console.log('[ImportExportDialog] handleImportContent called with format:', format);
     console.log('[ImportExportDialog] Content length:', content.length);
     console.log('[ImportExportDialog] Content preview:', content.substring(0, 200));
-    
-    const { setTables, setRelationships, setDomains, setSystems, selectedDomainId: initialSelectedDomainId, selectedSystemId, systems: existingSystems, updateSystem, tables: existingTables, domains } = useModelStore.getState();
-    
+
+    const {
+      setTables,
+      setRelationships,
+      setDomains,
+      setSystems,
+      selectedDomainId: initialSelectedDomainId,
+      selectedSystemId,
+      systems: existingSystems,
+      updateSystem,
+      tables: existingTables,
+      domains,
+    } = useModelStore.getState();
+
     try {
       let workspace: ODCSWorkspace | null = null;
-      
+
       switch (format) {
         case 'odcs':
           workspace = await odcsService.parseYAML(content);
+          break;
+        case 'odcl':
+          workspace = await odcsService.parseODCL(content);
           break;
         case 'sql':
           workspace = await importExportService.importFromSQL(content, sqlDialect);
@@ -183,46 +215,44 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({
       if (workspace && workspace.tables && workspace.tables.length > 0) {
         console.log('[ImportExportDialog] Imported workspace:', workspace);
         console.log('[ImportExportDialog] Imported tables:', workspace.tables);
-        
+
         // Map imported tables to current domain if available
         // Normalize UUIDs to ensure they're valid (critical for exports)
         // Import validation utilities once before processing tables
-        const { normalizeWorkspaceUUIDs, normalizeUUID, isValidUUID } = await import('@/utils/validation');
-        
+        const { normalizeWorkspaceUUIDs, normalizeUUID } = await import('@/utils/validation');
+
         // Get current selected domain ID, or use first available domain
         let currentDomainId = initialSelectedDomainId;
-        
+
         // If no domain is selected, try to use the first available domain
         if (!currentDomainId && domains.length > 0 && domains[0]) {
           currentDomainId = domains[0].id;
           useModelStore.getState().setSelectedDomain(currentDomainId);
-          console.log('[ImportExportDialog] No domain selected, using first available domain:', currentDomainId);
+          console.log(
+            '[ImportExportDialog] No domain selected, using first available domain:',
+            currentDomainId
+          );
         }
-        
+
         // Validate that we have a domain ID (even if invalid UUID, we'll normalize it)
         if (!currentDomainId) {
           throw new Error('No domain available. Please create a domain before importing tables.');
         }
-        
-        // Normalize the domain ID if it's not a valid UUID (instead of rejecting it)
-        if (!isValidUUID(currentDomainId)) {
-          console.warn('[ImportExportDialog] Domain ID is not a valid UUID, normalizing:', currentDomainId);
-          const domainToUpdate = domains.find(d => d.id === currentDomainId);
-          if (domainToUpdate) {
-            const normalizedId = normalizeUUID(currentDomainId);
-            useModelStore.getState().updateDomain(currentDomainId, { id: normalizedId });
-            if (initialSelectedDomainId === currentDomainId) {
-              useModelStore.getState().setSelectedDomain(normalizedId);
-            }
-            currentDomainId = normalizedId;
-          } else {
-            currentDomainId = normalizeUUID(currentDomainId);
-          }
+
+        // Don't normalize existing domain IDs - preserve them as-is
+        // Only normalize IDs for imported data, not for existing domains
+        // If the domain exists in the store, use its ID as-is (even if not a standard UUID)
+        const domainToUpdate = domains.find((d) => d.id === currentDomainId);
+        if (!domainToUpdate) {
+          // Domain not found in store - this shouldn't happen, but if it does, log a warning
+          console.warn('[ImportExportDialog] Domain not found in store:', currentDomainId);
         }
-        
+        // Use the domain ID as-is - don't normalize it
+        // The domain ID should remain consistent throughout the application lifecycle
+
         // Use normalized domain ID for the rest of the function
         const selectedDomainId = currentDomainId;
-        
+
         // Clear primary_domain_id from tables before normalization so we can set it to current domain
         const workspaceWithClearedDomainIds = {
           ...workspace,
@@ -233,110 +263,130 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({
           })),
         };
         const normalizedWorkspace = normalizeWorkspaceUUIDs(workspaceWithClearedDomainIds);
-        
+
         // Always use the current selectedDomainId (the domain where we're importing)
         // This ensures imported tables belong to the current domain and are editable
         // currentDomainId is already normalized above, so we can use it directly
-        
+
         // Ensure all required fields are preserved, especially name and columns
         const tablesWithDomain = normalizedWorkspace.tables.map((table: Table, index: number) => {
           console.log(`[ImportExportDialog] Processing table ${index}:`, table);
           console.log(`[ImportExportDialog] Table name: "${table.name}", columns:`, table.columns);
-          
+
           // Cast to any to access potential alternative property names
           const tableAny = table as any;
-          
+
           // Preserve name - don't override if it exists, try alternative property names
           // The normalizeTable should have already set the name, but double-check
-          const finalName = table.name || tableAny.table_name || tableAny.entity_name || tableAny.label || `Table_${index + 1}`;
-          
+          const finalName =
+            table.name ||
+            tableAny.table_name ||
+            tableAny.entity_name ||
+            tableAny.label ||
+            `Table_${index + 1}`;
+
           // Preserve columns if they exist, ensure it's an array
-          const finalColumns = Array.isArray(table.columns) ? table.columns : (table.columns ? [table.columns] : []);
-          
-          console.log(`[ImportExportDialog] Final name: "${finalName}", final columns count: ${finalColumns.length}`);
-        
-        // Ensure table has required fields - preserve original data first
-        // Don't spread table first, as we want to ensure our resolved values are used
-        const mappedTable: Table = {
-          ...table,
-          // Use the resolved name (normalizeTable should have set it, but ensure it's not empty)
-          name: finalName.trim() || `Table_${index + 1}`,
-          // Use the resolved columns (normalizeTable should have set them)
-          columns: finalColumns,
-          // Ensure required fields are set and normalize UUIDs
-          id: normalizeUUID(table.id),
-          workspace_id: normalizeUUID(table.workspace_id || useWorkspaceStore.getState().currentWorkspaceId || 'offline-workspace'),
-          // Always override with current domain ID - never use what's in the imported table
-          // selectedDomainId is already normalized above
-          primary_domain_id: selectedDomainId,
-          visible_domains: [selectedDomainId], // Also set visible_domains to current domain
+          const finalColumns = Array.isArray(table.columns)
+            ? table.columns
+            : table.columns
+              ? [table.columns]
+              : [];
+
+          console.log(
+            `[ImportExportDialog] Final name: "${finalName}", final columns count: ${finalColumns.length}`
+          );
+
+          // Ensure table has required fields - preserve original data first
+          // Don't spread table first, as we want to ensure our resolved values are used
+          const mappedTable: Table = {
+            ...table,
+            // Use the resolved name (normalizeTable should have set it, but ensure it's not empty)
+            name: finalName.trim() || `Table_${index + 1}`,
+            // Use the resolved columns (normalizeTable should have set them)
+            columns: finalColumns,
+            // Ensure required fields are set and normalize UUIDs
+            id: normalizeUUID(table.id),
+            workspace_id: normalizeUUID(
+              table.workspace_id ||
+                useWorkspaceStore.getState().currentWorkspaceId ||
+                'offline-workspace'
+            ),
+            // Always override with current domain ID - never use what's in the imported table
+            // selectedDomainId is already normalized above
+            primary_domain_id: selectedDomainId,
+            visible_domains: [selectedDomainId], // Also set visible_domains to current domain
             // Ensure position and size are set - try alternative property names
-            position_x: table.position_x ?? tableAny.x ?? (index * 250),
+            position_x: table.position_x ?? tableAny.x ?? index * 250,
             position_y: table.position_y ?? tableAny.y ?? 0,
             width: table.width ?? 200,
             height: table.height ?? 150,
-          // Ensure timestamps are set
-          created_at: table.created_at || new Date().toISOString(),
-          last_modified_at: table.last_modified_at || new Date().toISOString(),
-        };
-        
-        // Normalize all UUIDs in the table (columns, compound keys, etc.)
-        const normalizedTable = normalizeWorkspaceUUIDs({ tables: [mappedTable] }).tables[0];
-        
-        console.log(`[ImportExportDialog] Mapped table:`, normalizedTable);
-        return normalizedTable;
+            // Ensure timestamps are set
+            created_at: table.created_at || new Date().toISOString(),
+            last_modified_at: table.last_modified_at || new Date().toISOString(),
+          };
+
+          // Normalize all UUIDs in the table (columns, compound keys, etc.)
+          const normalizedTable = normalizeWorkspaceUUIDs({ tables: [mappedTable] }).tables[0];
+
+          console.log(`[ImportExportDialog] Mapped table:`, normalizedTable);
+          return normalizedTable;
         });
-        
+
         console.log('[ImportExportDialog] Setting tables:', tablesWithDomain);
-        
+
         // Merge with existing tables instead of replacing them
-        const existingTableIds = new Set((existingTables || []).map(t => t.id));
-        
+        const existingTableIds = new Set((existingTables || []).map((t) => t.id));
+
         // Filter out duplicates and merge
         const newTables = tablesWithDomain.filter((t: Table) => !existingTableIds.has(t.id));
         const mergedTables = [...(existingTables || []), ...newTables];
-        
+
         setTables(mergedTables);
-        
+
         // IMPORTANT: Preserve existing systems - never clear them during import
         // Systems are domain-specific and should not be affected by ODCS table imports
         console.log('[ImportExportDialog] Preserving existing systems:', existingSystems.length);
-        
+
         // If a system is selected, add imported tables to that system
         if (selectedSystemId && newTables.length > 0) {
-          const selectedSystem = existingSystems.find(s => s.id === selectedSystemId);
+          const selectedSystem = existingSystems.find((s) => s.id === selectedSystemId);
           if (selectedSystem) {
             const newTableIds = newTables.map((t: Table) => t.id);
             const updatedTableIds = [...(selectedSystem.table_ids || []), ...newTableIds];
             // Remove duplicates
             const uniqueTableIds = Array.from(new Set(updatedTableIds));
             updateSystem(selectedSystemId, { table_ids: uniqueTableIds });
-            console.log(`[ImportExportDialog] Added ${newTables.length} table(s) to system "${selectedSystem.name}"`);
+            console.log(
+              `[ImportExportDialog] Added ${newTables.length} table(s) to system "${selectedSystem.name}"`
+            );
           }
         }
-        
+
         addToast({
           type: 'success',
           message: `Successfully imported ${workspace.tables.length} table(s)${selectedSystemId ? ' into selected system' : ''}`,
         });
-        
+
         // Small delay to ensure store updates propagate before closing
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
         // Close dialog after successful import
         onClose();
       } else {
         addToast({
           type: 'warning',
-          message: format === 'sql' 
-            ? `No tables found in imported SQL content. Please ensure your SQL contains CREATE TABLE statements and that the dialect "${sqlDialect}" is correct.`
-            : `No tables found in imported ${format.toUpperCase()} content.`,
+          message:
+            format === 'sql'
+              ? `No tables found in imported SQL content. Please ensure your SQL contains CREATE TABLE statements and that the dialect "${sqlDialect}" is correct.`
+              : `No tables found in imported ${format.toUpperCase()} content.`,
         });
       }
-      
+
       if (workspace && workspace.relationships && workspace.relationships.length > 0) {
         // Map imported relationships to current domain if available
-        const currentDomainIdForRelationships = useModelStore.getState().selectedDomainId || (domains.length > 0 && domains[0] ? domains[0].id : 'default-domain');
+        const currentDomainIdForRelationships =
+          useModelStore.getState().selectedDomainId ||
+          (domains.length > 0 && domains[0] ? domains[0].id : 'default-domain');
         const relationshipsWithDomain = workspace.relationships.map((rel) => ({
           ...rel,
           workspace_id: useWorkspaceStore.getState().currentWorkspaceId || 'offline-workspace',
@@ -344,48 +394,68 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({
         }));
         setRelationships(relationshipsWithDomain);
       }
-      
+
       // If workspace has domains, add them (but don't replace existing ones)
       // IMPORTANT: When merging domains, preserve systems from existing domains
-      if (workspace && workspace.domains && Array.isArray(workspace.domains) && workspace.domains.length > 0) {
+      if (
+        workspace &&
+        workspace.domains &&
+        Array.isArray(workspace.domains) &&
+        workspace.domains.length > 0
+      ) {
         const currentState = useModelStore.getState();
         const existingDomains = currentState.domains || [];
         const existingSystems = currentState.systems || [];
-        
+
         // Merge domains, preserving systems from existing domains
         const newDomains = workspace.domains.filter(
           (domain: any) => !existingDomains.some((d) => d.id === domain.id)
         );
-        
+
         if (newDomains.length > 0) {
           // When adding new domains, preserve all existing systems
           setDomains([...existingDomains, ...newDomains]);
-          console.log('[ImportExportDialog] Added new domains, preserving existing systems:', existingSystems.length);
+          console.log(
+            '[ImportExportDialog] Added new domains, preserving existing systems:',
+            existingSystems.length
+          );
         }
-        
+
         // IMPORTANT: Never clear or overwrite systems during ODCS import
         // Systems are managed separately and should only be modified explicitly
         // If imported domains have systems embedded, we should merge them, not replace
         if (workspace.systems && Array.isArray(workspace.systems) && workspace.systems.length > 0) {
-          console.log('[ImportExportDialog] Found systems in imported workspace, merging with existing systems');
+          console.log(
+            '[ImportExportDialog] Found systems in imported workspace, merging with existing systems'
+          );
           const importedSystems = workspace.systems;
-          const existingSystemIds = new Set(existingSystems.map(s => s.id));
+          const existingSystemIds = new Set(existingSystems.map((s) => s.id));
           const newSystems = importedSystems.filter((s: any) => !existingSystemIds.has(s.id));
-          
+
           if (newSystems.length > 0) {
             // Only add new systems, never replace existing ones
             setSystems([...existingSystems, ...newSystems]);
-            console.log(`[ImportExportDialog] Added ${newSystems.length} new system(s), preserved ${existingSystems.length} existing system(s)`);
+            console.log(
+              `[ImportExportDialog] Added ${newSystems.length} new system(s), preserved ${existingSystems.length} existing system(s)`
+            );
           } else {
-            console.log('[ImportExportDialog] No new systems to add, all imported systems already exist');
+            console.log(
+              '[ImportExportDialog] No new systems to add, all imported systems already exist'
+            );
           }
         } else {
           // Ensure existing systems are preserved even if imported workspace has no systems
-          console.log('[ImportExportDialog] No systems in imported workspace, preserving existing systems:', existingSystems.length);
+          console.log(
+            '[ImportExportDialog] No systems in imported workspace, preserving existing systems:',
+            existingSystems.length
+          );
         }
       } else {
         // Even if no domains are imported, ensure systems are preserved
-        console.log('[ImportExportDialog] No domains in imported workspace, preserving existing systems:', existingSystems.length);
+        console.log(
+          '[ImportExportDialog] No domains in imported workspace, preserving existing systems:',
+          existingSystems.length
+        );
       }
     } catch (error) {
       throw new Error(
@@ -398,7 +468,8 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({
     setIsProcessing(true);
     try {
       // Get current workspace data including all domain assets
-      const { products, computeAssets, bpmnProcesses, dmnDecisions, domains } = useModelStore.getState();
+      const { products, computeAssets, bpmnProcesses, dmnDecisions, domains } =
+        useModelStore.getState();
       const workspace = {
         tables,
         relationships,
@@ -449,7 +520,7 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({
             throw new Error('No data products to export');
           }
           // Get domain name for ODPS export
-          const productDomain = domains.find(d => d.id === productToExport.domain_id);
+          const productDomain = domains.find((d) => d.id === productToExport.domain_id);
           const productDomainName = productDomain?.name || 'unknown';
           content = await odpsService.toYAML(productToExport, productDomainName);
           filename = `${productToExport.name || 'product'}.odps.yaml`;
@@ -560,15 +631,14 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({
         {activeTab === 'import' && (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Import Format
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Import Format</label>
               <select
                 value={importFormat}
                 onChange={(e) => setImportFormat(e.target.value as ImportFormat)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="odcs">ODCS 3.1.0</option>
+                <option value="odcs">ODCS 3.1.0 (Data Contract Standard)</option>
+                <option value="odcl">ODCL (Data Contract Language)</option>
                 <option value="sql">SQL (CREATE TABLE)</option>
                 <option value="avro">AVRO Schema</option>
                 <option value="json-schema">JSON Schema</option>
@@ -583,9 +653,7 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({
 
             {importFormat === 'sql' && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  SQL Dialect
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">SQL Dialect</label>
                 <select
                   value={sqlDialect}
                   onChange={(e) => setSqlDialect(e.target.value as SQLDialect)}
@@ -604,13 +672,17 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({
               <FileUpload
                 onFileSelect={handleFileImport}
                 accept={
-                  importFormat === 'odcs' || importFormat === 'odps' || importFormat === 'cads' || importFormat === 'openapi'
+                  importFormat === 'odcs' ||
+                  importFormat === 'odcl' ||
+                  importFormat === 'odps' ||
+                  importFormat === 'cads' ||
+                  importFormat === 'openapi'
                     ? '.yaml,.yml'
                     : importFormat === 'sql'
-                    ? '.sql'
-                    : importFormat === 'bpmn' || importFormat === 'dmn'
-                    ? '.xml,.bpmn,.dmn'
-                    : '.json'
+                      ? '.sql'
+                      : importFormat === 'bpmn' || importFormat === 'dmn'
+                        ? '.xml,.bpmn,.dmn'
+                        : '.json'
                 }
                 label="Upload File"
               />
@@ -624,9 +696,7 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({
         {activeTab === 'export' && (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Export Format
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Export Format</label>
               <select
                 value={exportFormat}
                 onChange={(e) => setExportFormat(e.target.value as ExportFormat)}
@@ -647,9 +717,7 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({
 
             {exportFormat === 'sql' && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  SQL Dialect
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">SQL Dialect</label>
                 <select
                   value={sqlDialect}
                   onChange={(e) => setSqlDialect(e.target.value as SQLDialect)}
@@ -677,4 +745,3 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({
     </Dialog>
   );
 };
-

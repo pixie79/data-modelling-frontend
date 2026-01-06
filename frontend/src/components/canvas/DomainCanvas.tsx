@@ -72,7 +72,6 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
     setSelectedSystem,
     setSelectedTable,
     currentView,
-    selectedDataLevel,
     getFilteredTables,
     updateSystem,
     removeSystem,

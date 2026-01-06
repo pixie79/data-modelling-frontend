@@ -595,7 +595,6 @@ export const CreateTableDialog: React.FC<CreateTableDialogProps> = ({
                   className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                     error ? 'border-red-500' : 'border-gray-300'
                   }`}
-                  autoFocus
                   disabled={isCreating}
                 />
                 <p className="mt-1 text-xs text-gray-500">

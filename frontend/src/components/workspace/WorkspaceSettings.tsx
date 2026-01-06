@@ -189,7 +189,7 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({
         )}
 
         {/* Collaborators Section (disabled - offline mode only) */}
-        {/* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */}
+        {/* eslint-disable-next-line no-constant-binary-expression */}
         {false && (
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Collaborators</h3>

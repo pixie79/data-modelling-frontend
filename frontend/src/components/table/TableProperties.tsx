@@ -9,7 +9,7 @@ import { useSDKModeStore } from '@/services/sdk/sdkMode';
 import { formatDateReadable } from '@/utils/formatting';
 import { ColumnDetailsModal } from './ColumnDetailsModal';
 import { TableMetadataModal } from './TableMetadataModal';
-import type { Column, Table } from '@/types/table';
+import type { Column } from '@/types/table';
 
 export interface TablePropertiesProps {
   tableId: string;
@@ -22,7 +22,7 @@ export const TableProperties: React.FC<TablePropertiesProps> = ({
   workspaceId,
   onClose,
 }) => {
-  const { tables, updateTableRemote, updateColumn, updateColumnRemote } = useModelStore();
+  const { tables, updateColumn, updateColumnRemote } = useModelStore();
   const { mode } = useSDKModeStore();
   const table = tables.find((t) => t.id === tableId);
 

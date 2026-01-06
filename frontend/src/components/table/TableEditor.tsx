@@ -165,7 +165,7 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
       return false;
     }
     setErrors((prev) => {
-      const { name, ...rest } = prev;
+      const { name: _name, ...rest } = prev;
       return rest;
     });
     return true;
@@ -329,7 +329,12 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
           };
         } else {
           // Remove compound key references if column is no longer in any compound key
-          const { compound_key_id, compound_key_order, compound_key_tag, ...rest } = col;
+          const {
+            compound_key_id: _compound_key_id,
+            compound_key_order: _compound_key_order,
+            compound_key_tag: _compound_key_tag,
+            ...rest
+          } = col;
           return { ...rest, order: index };
         }
       });

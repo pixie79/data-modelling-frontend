@@ -46,13 +46,12 @@ export const EditorModal: React.FC<EditorModalProps> = ({
       size={size === 'full' ? 'xl' : size}
     >
       <div
-        className={size === 'full' ? 'h-[calc(95vh-120px)]' : 'h-[600px]'}
         style={{
           display: 'flex',
           flexDirection: 'column',
           minHeight: 0,
           width: 'calc(100% + 3rem)', // Expand to counteract DraggableModal's p-6 padding (48px = 3rem)
-          height: 'calc(100% + 3rem)', // Expand height as well
+          height: size === 'full' ? 'calc(95vh - 120px + 3rem)' : 'calc(600px + 3rem)', // Original height + padding compensation
           margin: '-1.5rem', // Counteract DraggableModal's p-6 padding (24px = 1.5rem)
           padding: 0,
         }}

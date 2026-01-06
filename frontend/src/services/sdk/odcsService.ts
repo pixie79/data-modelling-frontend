@@ -67,13 +67,24 @@ class ODCSService {
           const result = JSON.parse(resultJson);
           console.log('[ODCSService] SDK parse_odcs_yaml result:', result);
 
-          // SDK 1.8.4+: Returns complete, validated data - no merging needed
+          // Log table structure to verify quality rules are included
+          if (result.tables && result.tables.length > 0) {
+            console.log('[ODCSService] First table structure:', {
+              name: result.tables[0].name,
+              columnsCount: result.tables[0].columns?.length,
+              hasQualityRules: !!result.tables[0].quality_rules,
+              firstColumnSample: result.tables[0].columns?.[0],
+            });
+          }
+
+          // SDK 1.8.4+: Returns complete, validated data - preserve all fields
           return {
             workspace_id: result.workspace_id,
             domain_id: result.domain_id,
             tables: result.tables || [],
             relationships: result.relationships || [],
             data_flow_diagrams: result.data_flow_diagrams || [],
+            ...result, // Preserve any additional fields from SDK
           };
         } catch (error) {
           console.error('[ODCSService] Error parsing ODCS with SDK:', error);
@@ -129,14 +140,25 @@ class ODCSService {
           const result = JSON.parse(resultJson);
           console.log('[ODCSService] SDK parse_odcl_yaml result:', result);
 
+          // Log table structure to verify quality rules are included
+          if (result.tables && result.tables.length > 0) {
+            console.log('[ODCSService] First table structure:', {
+              name: result.tables[0].name,
+              columnsCount: result.tables[0].columns?.length,
+              hasQualityRules: !!result.tables[0].quality_rules,
+              firstColumnSample: result.tables[0].columns?.[0],
+            });
+          }
+
           // SDK 1.8.4+ returns complete workspace structure with all ODCL metadata
-          // No need for merging or validation - SDK handles everything
+          // Preserve all fields from SDK result
           return {
             workspace_id: result.workspace_id,
             domain_id: result.domain_id,
             tables: result.tables || [],
             relationships: result.relationships || [],
             data_flow_diagrams: result.data_flow_diagrams || [],
+            ...result, // Preserve any additional fields from SDK
           };
         } catch (error) {
           console.error('[ODCSService] Error parsing ODCL with SDK:', error);

@@ -416,7 +416,6 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
     }
 
     return filtered;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getFilteredTables, currentView, domainId, selectedSystemId, systems, tables]);
 
   // Get systems for current domain
@@ -600,6 +599,10 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
     handleAssetEdit,
     handleAssetDelete,
     handleAssetExport,
+    handleAssetBPMNClick,
+    handleAssetDMNClick,
+    handleTableBPMNClick,
+    tableHasBPMN,
   ]);
 
   // Get transformation links from BPMN processes

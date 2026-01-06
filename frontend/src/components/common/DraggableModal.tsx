@@ -43,11 +43,11 @@ export const DraggableModal: React.FC<DraggableModalProps> = ({
     const handleMouseMove = (e: MouseEvent) => {
       const newX = e.clientX - dragOffset.x;
       const newY = e.clientY - dragOffset.y;
-      
+
       // Keep modal within viewport bounds
       const maxX = window.innerWidth - (modalRef.current?.offsetWidth || 0);
       const maxY = window.innerHeight - (modalRef.current?.offsetHeight || 0);
-      
+
       setPosition({
         x: Math.max(0, Math.min(newX, maxX)),
         y: Math.max(0, Math.min(newY, maxY)),
@@ -69,7 +69,7 @@ export const DraggableModal: React.FC<DraggableModalProps> = ({
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!modalRef.current) return;
-    
+
     const rect = modalRef.current.getBoundingClientRect();
     setDragOffset({
       x: e.clientX - rect.left,
@@ -96,7 +96,7 @@ export const DraggableModal: React.FC<DraggableModalProps> = ({
       // Use setTimeout to ensure the modal is fully rendered and avoid focus conflicts
       const focusTimeout = setTimeout(() => {
         if (!modalRef.current || hasFocusedRef.current) return;
-        
+
         // Prioritize input fields, exclude close button
         const prioritySelectors = [
           'input[autofocus]',
@@ -107,7 +107,7 @@ export const DraggableModal: React.FC<DraggableModalProps> = ({
           'select',
           'button:not([aria-label="Close modal"]):not([aria-label="Close"])',
         ];
-        
+
         for (const selector of prioritySelectors) {
           const element = modalRef.current.querySelector<HTMLElement>(selector);
           if (element) {
@@ -120,7 +120,7 @@ export const DraggableModal: React.FC<DraggableModalProps> = ({
           }
         }
       }, 50); // Slightly longer delay to ensure modal is stable
-      
+
       return () => {
         cleanup?.();
         clearTimeout(focusTimeout);
@@ -166,7 +166,14 @@ export const DraggableModal: React.FC<DraggableModalProps> = ({
       <div
         className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
         onClick={onClose}
-        aria-hidden="true"
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            onClose();
+          }
+        }}
+        role="button"
+        tabIndex={0}
+        aria-label="Close modal"
       />
 
       {/* Draggable Modal */}
@@ -179,6 +186,8 @@ export const DraggableModal: React.FC<DraggableModalProps> = ({
           transform: 'none',
         }}
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
       >
         {/* Header - draggable area */}
         <div
@@ -194,6 +203,8 @@ export const DraggableModal: React.FC<DraggableModalProps> = ({
           className={`flex items-center justify-between p-4 border-b border-gray-200 ${
             isDragging ? 'cursor-grabbing' : 'cursor-move'
           } select-none`}
+          role="banner"
+          aria-label="Modal header - drag to move"
         >
           <h2 id={titleId} className="text-xl font-semibold text-gray-900 flex-1">
             {title}
@@ -206,12 +217,7 @@ export const DraggableModal: React.FC<DraggableModalProps> = ({
               className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded ml-4 flex-shrink-0"
               aria-label="Close modal"
             >
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -227,7 +233,7 @@ export const DraggableModal: React.FC<DraggableModalProps> = ({
         <div
           id={descriptionId}
           className="flex-1 overflow-y-auto p-6"
-          style={{ 
+          style={{
             maxHeight: 'calc(90vh - 80px)',
             scrollbarWidth: 'thin',
             scrollbarColor: '#cbd5e1 #f1f5f9',
@@ -255,4 +261,3 @@ export const DraggableModal: React.FC<DraggableModalProps> = ({
     </div>
   );
 };
-

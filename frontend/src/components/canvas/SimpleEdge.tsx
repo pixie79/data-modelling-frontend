@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { BaseEdge, EdgeLabelRenderer, EdgeProps, useEdges, useNodes } from 'reactflow';
+import { BaseEdge, EdgeLabelRenderer, EdgeProps, useEdges } from 'reactflow';
 import type { Relationship } from '@/types/relationship';
 
 interface SimpleEdgeData {
@@ -25,26 +25,6 @@ export const SimpleEdge: React.FC<EdgeProps<SimpleEdgeData>> = ({
   selected,
 }) => {
   const allEdges = useEdges();
-  const allNodes = useNodes();
-
-  // Helper function to get node bounding box (unused but kept for potential future use)
-  // @ts-expect-error - Unused function kept for potential future use
-  const _getNodeBounds = (
-    _nodeId: string
-  ): { x: number; y: number; width: number; height: number } | null => {
-    const node = allNodes.find((n) => n.id === _nodeId);
-    if (!node) return null;
-
-    const width = (node.width as number) || 200;
-    const height = (node.height as number) || 150;
-
-    return {
-      x: node.position.x,
-      y: node.position.y,
-      width,
-      height,
-    };
-  };
 
   // Check if a point is inside a node bounding box
   // Note: Currently unused but kept for future routing logic

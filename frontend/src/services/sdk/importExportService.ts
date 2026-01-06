@@ -824,7 +824,7 @@ class ImportExportService {
               tables: response.data.tables || [],
               relationships: [],
             } as ODCSWorkspace;
-          } catch (retryError) {
+          } catch {
             // If both fail, throw the original error
             throw new Error(
               `Failed to import Databricks SQL: ${error instanceof Error ? error.message : 'Unknown error'}. ` +

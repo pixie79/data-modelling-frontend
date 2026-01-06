@@ -87,7 +87,8 @@ class IndexedDBService {
     return new Promise((resolve, reject) => {
       const request = store.put({ id: key, ...value });
       request.onsuccess = () => resolve();
-      request.onerror = () => reject(new Error(`Failed to set ${storeName}: ${request.error?.message}`));
+      request.onerror = () =>
+        reject(new Error(`Failed to set ${storeName}: ${request.error?.message}`));
     });
   }
 
@@ -105,13 +106,14 @@ class IndexedDBService {
         const result = request.result;
         if (result) {
           // Remove the id key that was added during storage
-          const { id, ...value } = result;
+          const { id: _id, ...value } = result;
           resolve(value as T);
         } else {
           resolve(null);
         }
       };
-      request.onerror = () => reject(new Error(`Failed to get ${storeName}: ${request.error?.message}`));
+      request.onerror = () =>
+        reject(new Error(`Failed to get ${storeName}: ${request.error?.message}`));
     });
   }
 
@@ -126,7 +128,8 @@ class IndexedDBService {
     return new Promise((resolve, reject) => {
       const request = store.delete(key);
       request.onsuccess = () => resolve();
-      request.onerror = () => reject(new Error(`Failed to remove ${storeName}: ${request.error?.message}`));
+      request.onerror = () =>
+        reject(new Error(`Failed to remove ${storeName}: ${request.error?.message}`));
     });
   }
 
@@ -142,12 +145,13 @@ class IndexedDBService {
       const request = store.getAll();
       request.onsuccess = () => {
         const results = request.result.map((item: { id: string }) => {
-          const { id, ...value } = item;
+          const { id: _id, ...value } = item;
           return value;
         });
         resolve(results as T[]);
       };
-      request.onerror = () => reject(new Error(`Failed to get all ${storeName}: ${request.error?.message}`));
+      request.onerror = () =>
+        reject(new Error(`Failed to get all ${storeName}: ${request.error?.message}`));
     });
   }
 
@@ -162,13 +166,11 @@ class IndexedDBService {
     return new Promise((resolve, reject) => {
       const request = store.clear();
       request.onsuccess = () => resolve();
-      request.onerror = () => reject(new Error(`Failed to clear ${storeName}: ${request.error?.message}`));
+      request.onerror = () =>
+        reject(new Error(`Failed to clear ${storeName}: ${request.error?.message}`));
     });
   }
 }
 
 // Export singleton instance
 export const indexedDBService = new IndexedDBService();
-
-
-

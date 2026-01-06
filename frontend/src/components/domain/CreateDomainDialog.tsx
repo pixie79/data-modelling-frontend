@@ -26,7 +26,17 @@ export const CreateDomainDialog: React.FC<CreateDomainDialogProps> = ({
   onCreated,
   workspaceId,
 }) => {
-  const { addDomain, domains, setDomains, setSelectedDomain, setTables, setProducts, setComputeAssets, setBPMNProcesses, setDMNDecisions } = useModelStore();
+  const {
+    addDomain,
+    domains,
+    setDomains,
+    setSelectedDomain,
+    setTables,
+    setProducts,
+    setComputeAssets,
+    setBPMNProcesses,
+    setDMNDecisions,
+  } = useModelStore();
   const { addToast } = useUIStore();
   const { mode } = useSDKModeStore();
   const [name, setName] = useState('');
@@ -51,7 +61,7 @@ export const CreateDomainDialog: React.FC<CreateDomainDialogProps> = ({
     try {
       // Import validation utilities
       const { generateUUID, isValidUUID } = await import('@/utils/validation');
-      
+
       // Show folder selection dialog
       const result = await platformFileService.showOpenDialog({
         properties: ['openDirectory'],
@@ -68,21 +78,22 @@ export const CreateDomainDialog: React.FC<CreateDomainDialogProps> = ({
         setIsLoading(false);
         return;
       }
-      
+
       // Load domain folder
       const domainData = await electronFileService.loadDomainFolder(domainPath);
-      
+
       // Extract workspace path from domain path (parent directory)
       const pathParts = domainPath.split(/[/\\]/);
       const domainName = pathParts[pathParts.length - 1];
       const workspacePath = pathParts.slice(0, -1).join('/');
-      
+
       // Convert domain to Domain format expected by store
       // Ensure domain ID is a valid UUID
       const domain = {
-        id: domainData.domain.id && isValidUUID(domainData.domain.id) 
-          ? domainData.domain.id 
-          : generateUUID(),
+        id:
+          domainData.domain.id && isValidUUID(domainData.domain.id)
+            ? domainData.domain.id
+            : generateUUID(),
         workspace_id: workspaceId || '',
         name: domainData.domain.name || domainName || 'Loaded Domain',
         description: domainData.domain.description,
@@ -91,14 +102,14 @@ export const CreateDomainDialog: React.FC<CreateDomainDialogProps> = ({
         folder_path: domainPath, // Store the domain folder path
         workspace_path: workspacePath, // Store the workspace root path
       };
-      
+
       // Check if domain name already exists
       if (domains.some((d) => d.name.toLowerCase() === domain.name.toLowerCase())) {
         setError('A domain with this name already exists.');
         setIsLoading(false);
         return;
       }
-      
+
       // Update model store with loaded data
       setDomains([...domains, domain]);
       setSelectedDomain(domain.id);
@@ -107,7 +118,7 @@ export const CreateDomainDialog: React.FC<CreateDomainDialogProps> = ({
       setComputeAssets(domainData.assets);
       setBPMNProcesses(domainData.bpmnProcesses);
       setDMNDecisions(domainData.dmnDecisions);
-      
+
       addToast({
         type: 'success',
         message: `Loaded domain: ${domain.name}`,
@@ -146,7 +157,8 @@ export const CreateDomainDialog: React.FC<CreateDomainDialogProps> = ({
       // Import generateUUID to ensure valid UUID format
       const { generateUUID } = await import('@/utils/validation');
       const domainId = generateUUID();
-      const currentWorkspaceId = workspaceId || useModelStore.getState().tables[0]?.workspace_id || 'offline-workspace';
+      const currentWorkspaceId =
+        workspaceId || useModelStore.getState().tables[0]?.workspace_id || 'offline-workspace';
 
       if (mode === 'online') {
         // Create domain via API
@@ -189,15 +201,18 @@ export const CreateDomainDialog: React.FC<CreateDomainDialogProps> = ({
   const showImportOption = isOffline && getPlatform() === 'electron';
 
   return (
-    <DraggableModal 
-      isOpen={isOpen} 
-      onClose={onClose} 
-      title={importMode ? 'Import Domain from Folder' : 'Create New Domain'} 
+    <DraggableModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={importMode ? 'Import Domain from Folder' : 'Create New Domain'}
       size="sm"
     >
       <div className="p-4 space-y-4">
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <div
+            className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"
+            role="alert"
+          >
             <strong className="font-bold">Error:</strong>
             <span className="block sm:inline"> {error}</span>
           </div>
@@ -276,7 +291,6 @@ export const CreateDomainDialog: React.FC<CreateDomainDialogProps> = ({
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g., Customer Domain"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                autoFocus
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !isCreating && name.trim()) {
                     handleCreate();
@@ -285,7 +299,10 @@ export const CreateDomainDialog: React.FC<CreateDomainDialogProps> = ({
               />
             </div>
             <div>
-              <label htmlFor="domain-description" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="domain-description"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Description (Optional)
               </label>
               <textarea
@@ -319,4 +336,3 @@ export const CreateDomainDialog: React.FC<CreateDomainDialogProps> = ({
     </DraggableModal>
   );
 };
-

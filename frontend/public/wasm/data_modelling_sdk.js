@@ -214,16 +214,16 @@ if (!('encodeInto' in cachedTextEncoder)) {
 
 let WASM_VECTOR_LEN = 0;
 
-function wasm_bindgen__convert__closures________invoke__h87c7a578e64daa55(arg0, arg1, arg2) {
-    wasm.wasm_bindgen__convert__closures________invoke__h87c7a578e64daa55(arg0, arg1, arg2);
+function wasm_bindgen__convert__closures________invoke__h45b2f24db2feab69(arg0, arg1, arg2) {
+    wasm.wasm_bindgen__convert__closures________invoke__h45b2f24db2feab69(arg0, arg1, arg2);
 }
 
-function wasm_bindgen__convert__closures_____invoke__h42c5e6acbbd33cc5(arg0, arg1, arg2) {
-    wasm.wasm_bindgen__convert__closures_____invoke__h42c5e6acbbd33cc5(arg0, arg1, arg2);
+function wasm_bindgen__convert__closures_____invoke__h05ea8688cde0d495(arg0, arg1, arg2) {
+    wasm.wasm_bindgen__convert__closures_____invoke__h05ea8688cde0d495(arg0, arg1, arg2);
 }
 
-function wasm_bindgen__convert__closures_____invoke__h316eb2ec948a37b8(arg0, arg1, arg2, arg3) {
-    wasm.wasm_bindgen__convert__closures_____invoke__h316eb2ec948a37b8(arg0, arg1, arg2, arg3);
+function wasm_bindgen__convert__closures_____invoke__h3f04f8768b5c65b3(arg0, arg1, arg2, arg3) {
+    wasm.wasm_bindgen__convert__closures_____invoke__h3f04f8768b5c65b3(arg0, arg1, arg2, arg3);
 }
 
 const __wbindgen_enum_IdbTransactionMode = ["readonly", "readwrite", "versionchange", "readwriteflush", "cleanup"];
@@ -256,6 +256,90 @@ export function add_cads_node_to_domain(workspace_json, domain_id, node_json) {
         const ptr2 = passStringToWasm0(node_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len2 = WASM_VECTOR_LEN;
         const ret = wasm.add_cads_node_to_domain(ptr0, len0, ptr1, len1, ptr2, len2);
+        var ptr4 = ret[0];
+        var len4 = ret[1];
+        if (ret[3]) {
+            ptr4 = 0; len4 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred5_0 = ptr4;
+        deferred5_1 = len4;
+        return getStringFromWasm0(ptr4, len4);
+    } finally {
+        wasm.__wbindgen_free(deferred5_0, deferred5_1, 1);
+    }
+}
+
+/**
+ * Add a domain reference to a workspace.
+ *
+ * # Arguments
+ *
+ * * `workspace_json` - JSON string containing Workspace
+ * * `domain_id` - Domain UUID as string
+ * * `domain_name` - Domain name
+ *
+ * # Returns
+ *
+ * JSON string containing updated Workspace, or JsValue error
+ * @param {string} workspace_json
+ * @param {string} domain_id
+ * @param {string} domain_name
+ * @returns {string}
+ */
+export function add_domain_to_workspace(workspace_json, domain_id, domain_name) {
+    let deferred5_0;
+    let deferred5_1;
+    try {
+        const ptr0 = passStringToWasm0(workspace_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(domain_id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ptr2 = passStringToWasm0(domain_name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len2 = WASM_VECTOR_LEN;
+        const ret = wasm.add_domain_to_workspace(ptr0, len0, ptr1, len1, ptr2, len2);
+        var ptr4 = ret[0];
+        var len4 = ret[1];
+        if (ret[3]) {
+            ptr4 = 0; len4 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred5_0 = ptr4;
+        deferred5_1 = len4;
+        return getStringFromWasm0(ptr4, len4);
+    } finally {
+        wasm.__wbindgen_free(deferred5_0, deferred5_1, 1);
+    }
+}
+
+/**
+ * Add an entity reference to a domain config.
+ *
+ * # Arguments
+ *
+ * * `config_json` - JSON string containing DomainConfig
+ * * `entity_type` - Entity type: "system", "table", "product", "asset", "process", "decision"
+ * * `entity_id` - Entity UUID as string
+ *
+ * # Returns
+ *
+ * JSON string containing updated DomainConfig, or JsValue error
+ * @param {string} config_json
+ * @param {string} entity_type
+ * @param {string} entity_id
+ * @returns {string}
+ */
+export function add_entity_to_domain_config(config_json, entity_type, entity_id) {
+    let deferred5_0;
+    let deferred5_1;
+    try {
+        const ptr0 = passStringToWasm0(config_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(entity_type, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ptr2 = passStringToWasm0(entity_id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len2 = WASM_VECTOR_LEN;
+        const ret = wasm.add_entity_to_domain_config(ptr0, len0, ptr1, len1, ptr2, len2);
         var ptr4 = ret[0];
         var len4 = ret[1];
         if (ret[3]) {
@@ -355,6 +439,44 @@ export function add_system_to_domain(workspace_json, domain_id, system_json) {
 }
 
 /**
+ * Analyze an OpenAPI component for conversion feasibility.
+ *
+ * # Arguments
+ *
+ * * `openapi_content` - OpenAPI YAML or JSON content as a string
+ * * `component_name` - Name of the schema component to analyze
+ *
+ * # Returns
+ *
+ * JSON string containing ConversionReport, or JsValue error
+ * @param {string} openapi_content
+ * @param {string} component_name
+ * @returns {string}
+ */
+export function analyze_openapi_conversion(openapi_content, component_name) {
+    let deferred4_0;
+    let deferred4_1;
+    try {
+        const ptr0 = passStringToWasm0(openapi_content, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(component_name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.analyze_openapi_conversion(ptr0, len0, ptr1, len1);
+        var ptr3 = ret[0];
+        var len3 = ret[1];
+        if (ret[3]) {
+            ptr3 = 0; len3 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred4_0 = ptr3;
+        deferred4_1 = len3;
+        return getStringFromWasm0(ptr3, len3);
+    } finally {
+        wasm.__wbindgen_free(deferred4_0, deferred4_1, 1);
+    }
+}
+
+/**
  * Check for circular dependencies in relationships.
  *
  * # Arguments
@@ -382,6 +504,48 @@ export function check_circular_dependency(relationships_json, source_table_id, t
         const ptr2 = passStringToWasm0(target_table_id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len2 = WASM_VECTOR_LEN;
         const ret = wasm.check_circular_dependency(ptr0, len0, ptr1, len1, ptr2, len2);
+        var ptr4 = ret[0];
+        var len4 = ret[1];
+        if (ret[3]) {
+            ptr4 = 0; len4 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred5_0 = ptr4;
+        deferred5_1 = len4;
+        return getStringFromWasm0(ptr4, len4);
+    } finally {
+        wasm.__wbindgen_free(deferred5_0, deferred5_1, 1);
+    }
+}
+
+/**
+ * Convert an OpenAPI schema component to an ODCS table.
+ *
+ * # Arguments
+ *
+ * * `openapi_content` - OpenAPI YAML or JSON content as a string
+ * * `component_name` - Name of the schema component to convert
+ * * `table_name` - Optional desired ODCS table name (uses component_name if None)
+ *
+ * # Returns
+ *
+ * JSON string containing ODCS Table, or JsValue error
+ * @param {string} openapi_content
+ * @param {string} component_name
+ * @param {string | null} [table_name]
+ * @returns {string}
+ */
+export function convert_openapi_to_odcs(openapi_content, component_name, table_name) {
+    let deferred5_0;
+    let deferred5_1;
+    try {
+        const ptr0 = passStringToWasm0(openapi_content, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(component_name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        var ptr2 = isLikeNone(table_name) ? 0 : passStringToWasm0(table_name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        var len2 = WASM_VECTOR_LEN;
+        const ret = wasm.convert_openapi_to_odcs(ptr0, len0, ptr1, len1, ptr2, len2);
         var ptr4 = ret[0];
         var len4 = ret[1];
         if (ret[3]) {
@@ -470,6 +634,82 @@ export function create_domain(name) {
 }
 
 /**
+ * Create a new domain configuration.
+ *
+ * # Arguments
+ *
+ * * `name` - Domain name
+ * * `workspace_id` - Workspace UUID as string
+ *
+ * # Returns
+ *
+ * JSON string containing DomainConfig, or JsValue error
+ * @param {string} name
+ * @param {string} workspace_id
+ * @returns {string}
+ */
+export function create_domain_config(name, workspace_id) {
+    let deferred4_0;
+    let deferred4_1;
+    try {
+        const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(workspace_id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.create_domain_config(ptr0, len0, ptr1, len1);
+        var ptr3 = ret[0];
+        var len3 = ret[1];
+        if (ret[3]) {
+            ptr3 = 0; len3 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred4_0 = ptr3;
+        deferred4_1 = len3;
+        return getStringFromWasm0(ptr3, len3);
+    } finally {
+        wasm.__wbindgen_free(deferred4_0, deferred4_1, 1);
+    }
+}
+
+/**
+ * Create a new workspace.
+ *
+ * # Arguments
+ *
+ * * `name` - Workspace name
+ * * `owner_id` - Owner UUID as string
+ *
+ * # Returns
+ *
+ * JSON string containing Workspace, or JsValue error
+ * @param {string} name
+ * @param {string} owner_id
+ * @returns {string}
+ */
+export function create_workspace(name, owner_id) {
+    let deferred4_0;
+    let deferred4_1;
+    try {
+        const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(owner_id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.create_workspace(ptr0, len0, ptr1, len1);
+        var ptr3 = ret[0];
+        var len3 = ret[1];
+        if (ret[3]) {
+            ptr3 = 0; len3 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred4_0 = ptr3;
+        deferred4_1 = len3;
+        return getStringFromWasm0(ptr3, len3);
+    } finally {
+        wasm.__wbindgen_free(deferred4_0, deferred4_1, 1);
+    }
+}
+
+/**
  * Detect naming conflicts between existing and new tables.
  *
  * # Arguments
@@ -504,6 +744,82 @@ export function detect_naming_conflicts(existing_tables_json, new_tables_json) {
         return getStringFromWasm0(ptr3, len3);
     } finally {
         wasm.__wbindgen_free(deferred4_0, deferred4_1, 1);
+    }
+}
+
+/**
+ * Export a domain config to YAML format.
+ *
+ * # Arguments
+ *
+ * * `config_json` - JSON string containing DomainConfig
+ *
+ * # Returns
+ *
+ * DomainConfig YAML format string, or JsValue error
+ * @param {string} config_json
+ * @returns {string}
+ */
+export function export_domain_config_to_yaml(config_json) {
+    let deferred3_0;
+    let deferred3_1;
+    try {
+        const ptr0 = passStringToWasm0(config_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.export_domain_config_to_yaml(ptr0, len0);
+        var ptr2 = ret[0];
+        var len2 = ret[1];
+        if (ret[3]) {
+            ptr2 = 0; len2 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred3_0 = ptr2;
+        deferred3_1 = len2;
+        return getStringFromWasm0(ptr2, len2);
+    } finally {
+        wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+    }
+}
+
+/**
+ * Export an OpenAPI specification to YAML or JSON content.
+ *
+ * # Arguments
+ *
+ * * `content` - OpenAPI content as a string
+ * * `source_format` - Source format ("yaml" or "json")
+ * * `target_format` - Optional target format for conversion (None to keep original)
+ *
+ * # Returns
+ *
+ * OpenAPI content in requested format, or JsValue error
+ * @param {string} content
+ * @param {string} source_format
+ * @param {string | null} [target_format]
+ * @returns {string}
+ */
+export function export_openapi_spec(content, source_format, target_format) {
+    let deferred5_0;
+    let deferred5_1;
+    try {
+        const ptr0 = passStringToWasm0(content, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(source_format, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        var ptr2 = isLikeNone(target_format) ? 0 : passStringToWasm0(target_format, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        var len2 = WASM_VECTOR_LEN;
+        const ret = wasm.export_openapi_spec(ptr0, len0, ptr1, len1, ptr2, len2);
+        var ptr4 = ret[0];
+        var len4 = ret[1];
+        if (ret[3]) {
+            ptr4 = 0; len4 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred5_0 = ptr4;
+        deferred5_1 = len4;
+        return getStringFromWasm0(ptr4, len4);
+    } finally {
+        wasm.__wbindgen_free(deferred5_0, deferred5_1, 1);
     }
 }
 
@@ -784,6 +1100,40 @@ export function export_to_sql(workspace_json, dialect) {
 }
 
 /**
+ * Export a workspace to YAML format.
+ *
+ * # Arguments
+ *
+ * * `workspace_json` - JSON string containing Workspace
+ *
+ * # Returns
+ *
+ * Workspace YAML format string, or JsValue error
+ * @param {string} workspace_json
+ * @returns {string}
+ */
+export function export_workspace_to_yaml(workspace_json) {
+    let deferred3_0;
+    let deferred3_1;
+    try {
+        const ptr0 = passStringToWasm0(workspace_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.export_workspace_to_yaml(ptr0, len0);
+        var ptr2 = ret[0];
+        var len2 = ret[1];
+        if (ret[3]) {
+            ptr2 = 0; len2 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred3_0 = ptr2;
+        deferred3_1 = len2;
+        return getStringFromWasm0(ptr2, len2);
+    } finally {
+        wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+    }
+}
+
+/**
  * Filter Data Flow nodes and relationships by tag.
  *
  * # Arguments
@@ -970,6 +1320,40 @@ export function filter_relationships_by_owner(workspace_json, owner) {
         return getStringFromWasm0(ptr3, len3);
     } finally {
         wasm.__wbindgen_free(deferred4_0, deferred4_1, 1);
+    }
+}
+
+/**
+ * Get the domain ID from a domain config JSON.
+ *
+ * # Arguments
+ *
+ * * `config_json` - JSON string containing DomainConfig
+ *
+ * # Returns
+ *
+ * Domain UUID as string, or JsValue error
+ * @param {string} config_json
+ * @returns {string}
+ */
+export function get_domain_config_id(config_json) {
+    let deferred3_0;
+    let deferred3_1;
+    try {
+        const ptr0 = passStringToWasm0(config_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.get_domain_config_id(ptr0, len0);
+        var ptr2 = ret[0];
+        var len2 = ret[1];
+        if (ret[3]) {
+            ptr2 = 0; len2 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred3_0 = ptr2;
+        deferred3_1 = len2;
+        return getStringFromWasm0(ptr2, len2);
+    } finally {
+        wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
     }
 }
 
@@ -1216,6 +1600,71 @@ export function import_from_sql(sql_content, dialect) {
 }
 
 /**
+ * Import an OpenAPI specification from YAML or JSON content.
+ *
+ * # Arguments
+ *
+ * * `domain_id` - Domain UUID as string
+ * * `content` - OpenAPI YAML or JSON content as a string
+ * * `api_name` - Optional API name (extracted from info.title if not provided)
+ *
+ * # Returns
+ *
+ * JSON string containing OpenAPIModel, or JsValue error
+ * @param {string} domain_id
+ * @param {string} content
+ * @param {string | null} [api_name]
+ * @returns {string}
+ */
+export function import_openapi_spec(domain_id, content, api_name) {
+    let deferred5_0;
+    let deferred5_1;
+    try {
+        const ptr0 = passStringToWasm0(domain_id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(content, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        var ptr2 = isLikeNone(api_name) ? 0 : passStringToWasm0(api_name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        var len2 = WASM_VECTOR_LEN;
+        const ret = wasm.import_openapi_spec(ptr0, len0, ptr1, len1, ptr2, len2);
+        var ptr4 = ret[0];
+        var len4 = ret[1];
+        if (ret[3]) {
+            ptr4 = 0; len4 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred5_0 = ptr4;
+        deferred5_1 = len4;
+        return getStringFromWasm0(ptr4, len4);
+    } finally {
+        wasm.__wbindgen_free(deferred5_0, deferred5_1, 1);
+    }
+}
+
+/**
+ * Check if the given YAML content is in legacy ODCL format.
+ *
+ * Returns true if the content is in ODCL format (Data Contract Specification
+ * or simple ODCL format), false if it's in ODCS v3.x format or invalid.
+ *
+ * # Arguments
+ *
+ * * `yaml_content` - YAML content to check
+ *
+ * # Returns
+ *
+ * Boolean indicating if the content is ODCL format
+ * @param {string} yaml_content
+ * @returns {boolean}
+ */
+export function is_odcl_format(yaml_content) {
+    const ptr0 = passStringToWasm0(yaml_content, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.is_odcl_format(ptr0, len0);
+    return ret !== 0;
+}
+
+/**
  * Load a model from browser storage (IndexedDB/localStorage).
  *
  * # Arguments
@@ -1278,6 +1727,80 @@ export function migrate_dataflow_to_domain(dataflow_yaml, domain_name) {
         return getStringFromWasm0(ptr3, len3);
     } finally {
         wasm.__wbindgen_free(deferred4_0, deferred4_1, 1);
+    }
+}
+
+/**
+ * Parse domain config YAML content and return a structured representation.
+ *
+ * # Arguments
+ *
+ * * `yaml_content` - Domain config YAML content as a string
+ *
+ * # Returns
+ *
+ * JSON string containing DomainConfig, or JsValue error
+ * @param {string} yaml_content
+ * @returns {string}
+ */
+export function parse_domain_config_yaml(yaml_content) {
+    let deferred3_0;
+    let deferred3_1;
+    try {
+        const ptr0 = passStringToWasm0(yaml_content, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.parse_domain_config_yaml(ptr0, len0);
+        var ptr2 = ret[0];
+        var len2 = ret[1];
+        if (ret[3]) {
+            ptr2 = 0; len2 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred3_0 = ptr2;
+        deferred3_1 = len2;
+        return getStringFromWasm0(ptr2, len2);
+    } finally {
+        wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+    }
+}
+
+/**
+ * Import data model from legacy ODCL (Open Data Contract Language) YAML format.
+ *
+ * This function parses legacy ODCL formats including:
+ * - Data Contract Specification format (dataContractSpecification, models, definitions)
+ * - Simple ODCL format (name, columns)
+ *
+ * For ODCS v3.1.0/v3.0.x format, use `parse_odcs_yaml` instead.
+ *
+ * # Arguments
+ *
+ * * `yaml_content` - ODCL YAML content as a string
+ *
+ * # Returns
+ *
+ * JSON string containing ImportResult object, or JsValue error
+ * @param {string} yaml_content
+ * @returns {string}
+ */
+export function parse_odcl_yaml(yaml_content) {
+    let deferred3_0;
+    let deferred3_1;
+    try {
+        const ptr0 = passStringToWasm0(yaml_content, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.parse_odcl_yaml(ptr0, len0);
+        var ptr2 = ret[0];
+        var len2 = ret[1];
+        if (ret[3]) {
+            ptr2 = 0; len2 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred3_0 = ptr2;
+        deferred3_1 = len2;
+        return getStringFromWasm0(ptr2, len2);
+    } finally {
+        wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
     }
 }
 
@@ -1346,6 +1869,120 @@ export function parse_tag(tag_str) {
         return getStringFromWasm0(ptr2, len2);
     } finally {
         wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+    }
+}
+
+/**
+ * Parse workspace YAML content and return a structured representation.
+ *
+ * # Arguments
+ *
+ * * `yaml_content` - Workspace YAML content as a string
+ *
+ * # Returns
+ *
+ * JSON string containing Workspace, or JsValue error
+ * @param {string} yaml_content
+ * @returns {string}
+ */
+export function parse_workspace_yaml(yaml_content) {
+    let deferred3_0;
+    let deferred3_1;
+    try {
+        const ptr0 = passStringToWasm0(yaml_content, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.parse_workspace_yaml(ptr0, len0);
+        var ptr2 = ret[0];
+        var len2 = ret[1];
+        if (ret[3]) {
+            ptr2 = 0; len2 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred3_0 = ptr2;
+        deferred3_1 = len2;
+        return getStringFromWasm0(ptr2, len2);
+    } finally {
+        wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+    }
+}
+
+/**
+ * Remove a domain reference from a workspace.
+ *
+ * # Arguments
+ *
+ * * `workspace_json` - JSON string containing Workspace
+ * * `domain_id` - Domain UUID as string to remove
+ *
+ * # Returns
+ *
+ * JSON string containing updated Workspace, or JsValue error
+ * @param {string} workspace_json
+ * @param {string} domain_id
+ * @returns {string}
+ */
+export function remove_domain_from_workspace(workspace_json, domain_id) {
+    let deferred4_0;
+    let deferred4_1;
+    try {
+        const ptr0 = passStringToWasm0(workspace_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(domain_id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.remove_domain_from_workspace(ptr0, len0, ptr1, len1);
+        var ptr3 = ret[0];
+        var len3 = ret[1];
+        if (ret[3]) {
+            ptr3 = 0; len3 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred4_0 = ptr3;
+        deferred4_1 = len3;
+        return getStringFromWasm0(ptr3, len3);
+    } finally {
+        wasm.__wbindgen_free(deferred4_0, deferred4_1, 1);
+    }
+}
+
+/**
+ * Remove an entity reference from a domain config.
+ *
+ * # Arguments
+ *
+ * * `config_json` - JSON string containing DomainConfig
+ * * `entity_type` - Entity type: "system", "table", "product", "asset", "process", "decision"
+ * * `entity_id` - Entity UUID as string to remove
+ *
+ * # Returns
+ *
+ * JSON string containing updated DomainConfig, or JsValue error
+ * @param {string} config_json
+ * @param {string} entity_type
+ * @param {string} entity_id
+ * @returns {string}
+ */
+export function remove_entity_from_domain_config(config_json, entity_type, entity_id) {
+    let deferred5_0;
+    let deferred5_1;
+    try {
+        const ptr0 = passStringToWasm0(config_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(entity_type, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ptr2 = passStringToWasm0(entity_id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len2 = WASM_VECTOR_LEN;
+        const ret = wasm.remove_entity_from_domain_config(ptr0, len0, ptr1, len1, ptr2, len2);
+        var ptr4 = ret[0];
+        var len4 = ret[1];
+        if (ret[3]) {
+            ptr4 = 0; len4 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred5_0 = ptr4;
+        deferred5_1 = len4;
+        return getStringFromWasm0(ptr4, len4);
+    } finally {
+        wasm.__wbindgen_free(deferred5_0, deferred5_1, 1);
     }
 }
 
@@ -1472,6 +2109,44 @@ export function serialize_tag(tag_json) {
         return getStringFromWasm0(ptr2, len2);
     } finally {
         wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+    }
+}
+
+/**
+ * Update domain config with new view positions.
+ *
+ * # Arguments
+ *
+ * * `config_json` - JSON string containing DomainConfig
+ * * `positions_json` - JSON string containing view positions map
+ *
+ * # Returns
+ *
+ * JSON string containing updated DomainConfig, or JsValue error
+ * @param {string} config_json
+ * @param {string} positions_json
+ * @returns {string}
+ */
+export function update_domain_view_positions(config_json, positions_json) {
+    let deferred4_0;
+    let deferred4_1;
+    try {
+        const ptr0 = passStringToWasm0(config_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(positions_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.update_domain_view_positions(ptr0, len0, ptr1, len1);
+        var ptr3 = ret[0];
+        var len3 = ret[1];
+        if (ret[3]) {
+            ptr3 = 0; len3 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred4_0 = ptr3;
+        deferred4_1 = len3;
+        return getStringFromWasm0(ptr3, len3);
+    } finally {
+        wasm.__wbindgen_free(deferred4_0, deferred4_1, 1);
     }
 }
 
@@ -1612,6 +2287,27 @@ export function validate_no_self_reference(source_table_id, target_table_id) {
         return getStringFromWasm0(ptr3, len3);
     } finally {
         wasm.__wbindgen_free(deferred4_0, deferred4_1, 1);
+    }
+}
+
+/**
+ * Validate ODPS YAML content against the ODPS JSON Schema.
+ *
+ * # Arguments
+ *
+ * * `yaml_content` - ODPS YAML content as a string
+ *
+ * # Returns
+ *
+ * Empty string on success, or error message string
+ * @param {string} yaml_content
+ */
+export function validate_odps(yaml_content) {
+    const ptr0 = passStringToWasm0(yaml_content, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.validate_odps(ptr0, len0);
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
     }
 }
 
@@ -1808,6 +2504,9 @@ function __wbg_get_imports() {
         getDataViewMemory0().setInt32(arg0 + 4 * 1, len1, true);
         getDataViewMemory0().setInt32(arg0 + 4 * 0, ptr1, true);
     }, arguments) };
+    imports.wbg.__wbg_getRandomValues_1c61fac11405ffdc = function() { return handleError(function (arg0, arg1) {
+        globalThis.crypto.getRandomValues(getArrayU8FromWasm0(arg0, arg1));
+    }, arguments) };
     imports.wbg.__wbg_getRandomValues_9b655bdd369112f2 = function() { return handleError(function (arg0, arg1) {
         globalThis.crypto.getRandomValues(getArrayU8FromWasm0(arg0, arg1));
     }, arguments) };
@@ -1883,7 +2582,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return wasm_bindgen__convert__closures_____invoke__h316eb2ec948a37b8(a, state0.b, arg0, arg1);
+                    return wasm_bindgen__convert__closures_____invoke__h3f04f8768b5c65b3(a, state0.b, arg0, arg1);
                 } finally {
                     state0.a = a;
                 }
@@ -1978,14 +2677,14 @@ function __wbg_get_imports() {
         const ret = getStringFromWasm0(arg0, arg1);
         return ret;
     };
-    imports.wbg.__wbindgen_cast_ce26484b23ff7426 = function(arg0, arg1) {
-        // Cast intrinsic for `Closure(Closure { dtor_idx: 387, function: Function { arguments: [Ref(NamedExternref("IDBVersionChangeEvent"))], shim_idx: 388, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
-        const ret = makeMutClosure(arg0, arg1, wasm.wasm_bindgen__closure__destroy__h55fab0c08c4474f1, wasm_bindgen__convert__closures________invoke__h87c7a578e64daa55);
+    imports.wbg.__wbindgen_cast_5f456ebbc96590f3 = function(arg0, arg1) {
+        // Cast intrinsic for `Closure(Closure { dtor_idx: 555, function: Function { arguments: [Ref(NamedExternref("IDBVersionChangeEvent"))], shim_idx: 556, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+        const ret = makeMutClosure(arg0, arg1, wasm.wasm_bindgen__closure__destroy__hdae3aa893cc8b3d0, wasm_bindgen__convert__closures________invoke__h45b2f24db2feab69);
         return ret;
     };
-    imports.wbg.__wbindgen_cast_e15614d8168764d1 = function(arg0, arg1) {
-        // Cast intrinsic for `Closure(Closure { dtor_idx: 390, function: Function { arguments: [Externref], shim_idx: 391, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
-        const ret = makeMutClosure(arg0, arg1, wasm.wasm_bindgen__closure__destroy__h46c4eab16e66fc6a, wasm_bindgen__convert__closures_____invoke__h42c5e6acbbd33cc5);
+    imports.wbg.__wbindgen_cast_f76ca5d97f256192 = function(arg0, arg1) {
+        // Cast intrinsic for `Closure(Closure { dtor_idx: 584, function: Function { arguments: [Externref], shim_idx: 585, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+        const ret = makeMutClosure(arg0, arg1, wasm.wasm_bindgen__closure__destroy__h90087f72df793db4, wasm_bindgen__convert__closures_____invoke__h05ea8688cde0d495);
         return ret;
     };
     imports.wbg.__wbindgen_init_externref_table = function() {

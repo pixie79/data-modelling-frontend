@@ -4,11 +4,38 @@ Shared SDK for model operations across platforms (API, WASM, Native).
 
 Copyright (c) 2025 Mark Olliver - Licensed under MIT
 
+## CLI Tool
+
+The SDK includes a command-line interface (CLI) for importing and exporting schemas. See [CLI.md](CLI.md) for detailed usage instructions.
+
+**Quick Start:**
+```bash
+# Build the CLI (with OpenAPI and ODPS validation support)
+cargo build --release --bin data-modelling-cli --features cli,openapi,odps-validation
+
+# Run it
+./target/release/data-modelling-cli --help
+```
+
+**Note:** The CLI now includes OpenAPI support by default in GitHub releases. For local builds, include the `openapi` feature to enable OpenAPI import/export. Include `odps-validation` to enable ODPS schema validation.
+
+**ODPS Import/Export Examples:**
+```bash
+# Import ODPS YAML file
+data-modelling-cli import odps product.odps.yaml
+
+# Export ODCS to ODPS format
+data-modelling-cli export odps input.odcs.yaml output.odps.yaml
+
+# Test ODPS round-trip (requires odps-validation feature)
+cargo run --bin test-odps --features odps-validation,cli -- product.odps.yaml --verbose
+```
+
 ## Features
 
 - **Storage Backends**: File system, browser storage (IndexedDB/localStorage), and HTTP API
 - **Model Loading/Saving**: Load and save models from various storage backends
-- **Import/Export**: Import from SQL (PostgreSQL, MySQL, SQLite, Generic, Databricks), ODCS, ODCL, JSON Schema, AVRO, Protobuf, CADS, ODPS, BPMN, DMN, OpenAPI; Export to various formats
+- **Import/Export**: Import from SQL (PostgreSQL, MySQL, SQLite, Generic, Databricks), ODCS, ODCL, JSON Schema, AVRO, Protobuf (proto2/proto3), CADS, ODPS, BPMN, DMN, OpenAPI; Export to various formats
 - **Business Domain Schema**: Organize systems, CADS nodes, and ODCS nodes within business domains
 - **Universal Converter**: Convert any format to ODCS v3.1.0 format
 - **OpenAPI to ODCS Converter**: Convert OpenAPI schema components to ODCS table definitions
@@ -136,6 +163,8 @@ console.log('Exported YAML:', exportedYaml);
 - `importFromProtobuf(protobufContent: string): string` - Import from Protobuf
 - `importFromCads(yamlContent: string): string` - Import CADS (Compute Asset Description Specification) YAML
 - `importFromOdps(yamlContent: string): string` - Import ODPS (Open Data Product Standard) YAML
+- `exportToOdps(productJson: string): string` - Export ODPS data product to YAML format
+- `validateOdps(yamlContent: string): void` - Validate ODPS YAML content against ODPS JSON Schema (requires `odps-validation` feature)
 - `importBpmnModel(domainId: string, xmlContent: string, modelName?: string): string` - Import BPMN 2.0 XML model
 - `importDmnModel(domainId: string, xmlContent: string, modelName?: string): string` - Import DMN 1.3 XML model
 - `importOpenapiSpec(domainId: string, content: string, apiName?: string): string` - Import OpenAPI 3.1.1 specification

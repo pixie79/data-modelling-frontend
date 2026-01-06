@@ -6,7 +6,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FRONTEND_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 WASM_OUT_DIR="$FRONTEND_DIR/public/wasm"
-SDK_VERSION="1.8.3"
+SDK_VERSION="1.8.4"
 GITHUB_REPO="pixie79/data-modelling-sdk"
 RELEASE_URL="https://github.com/$GITHUB_REPO/releases/download/v$SDK_VERSION/data-modelling-sdk-wasm-v$SDK_VERSION.tar.gz"
 

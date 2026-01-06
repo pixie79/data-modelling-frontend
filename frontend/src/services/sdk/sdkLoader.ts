@@ -3,13 +3,13 @@
  * Loads and initializes the data-modelling-sdk WASM module
  */
 
-// SDK module type definition (SDK 1.8.3+)
+// SDK module type definition (SDK 1.8.4+)
 interface SDKModule {
   init(): Promise<void>;
   // ODCS methods
   parse_odcs_yaml?(yaml: string): string;
   export_to_odcs_yaml?(json: string): string;
-  // ODCL methods (SDK 1.8.3+)
+  // ODCL methods (SDK 1.8.4+)
   parse_odcl_yaml?(yaml: string): string;
   // ODPS methods (SDK 1.5.0+)
   parse_odps_yaml?(yaml: string): string;
@@ -206,7 +206,7 @@ class SDKLoader {
       'export_to_json_schema',
     ];
 
-    // SDK 1.8.3+ specific methods (separate ODCL parser, improved validations)
+    // SDK 1.8.4+ specific methods (separate ODCL parser, improved validations)
     const v182Methods = [
       'parse_odcl_yaml', // ODCL import (separate from ODCS)
     ];
@@ -262,8 +262,8 @@ class SDKLoader {
     }
 
     if (missingV182Methods.length > 0) {
-      console.warn('[SDKLoader] SDK 1.8.3+ methods not available:', missingV182Methods);
-      console.warn('[SDKLoader] ODCL import with separate parser requires SDK version >= 1.8.3');
+      console.warn('[SDKLoader] SDK 1.8.4+ methods not available:', missingV182Methods);
+      console.warn('[SDKLoader] ODCL import with separate parser requires SDK version >= 1.8.4');
       console.warn('[SDKLoader] ODCL files may need to be imported as ODCS (with limitations)');
     }
 
@@ -273,19 +273,19 @@ class SDKLoader {
       missingV181Methods.length === 0 &&
       missingV182Methods.length === 0
     ) {
-      console.log('[SDKLoader] SDK 1.8.3+ bindings verified successfully');
+      console.log('[SDKLoader] SDK 1.8.4+ bindings verified successfully');
     } else if (
       missingCoreMethods.length === 0 &&
       missingV161Methods.length === 0 &&
       missingV181Methods.length === 0 &&
       missingV182Methods.length > 0
     ) {
-      console.log('[SDKLoader] SDK 1.8.1+ core bindings verified, but 1.8.3+ features are missing');
+      console.log('[SDKLoader] SDK 1.8.1+ core bindings verified, but 1.8.4+ features are missing');
       console.log(
         '[SDKLoader] Available methods:',
         Object.keys(module).filter((key) => typeof (module as any)[key] === 'function')
       );
-      console.log('[SDKLoader] Missing 1.8.3+ methods:', missingV182Methods);
+      console.log('[SDKLoader] Missing 1.8.4+ methods:', missingV182Methods);
     } else if (
       missingCoreMethods.length === 0 &&
       missingV161Methods.length === 0 &&

@@ -35,7 +35,7 @@ export interface ImportResult {
 class ODCSService {
   /**
    * Parse ODCS (Open Data Contract Standard) YAML content to workspace object
-   * SDK 1.8.3+: Uses separate parsers for ODCS and ODCL
+   * SDK 1.8.4+: Uses separate parsers for ODCS and ODCL
    *
    * For ODCL files, use parseODCL() instead
    * Note: API mode is out of scope - offline/WASM only
@@ -43,16 +43,16 @@ class ODCSService {
   async parseYAML(yamlContent: string): Promise<ODCSWorkspace> {
     console.log('[ODCSService] parseYAML called (ODCS only), content length:', yamlContent.length);
 
-    // SDK 1.8.3+: API is out of scope, skip API mode check
+    // SDK 1.8.4+: API is out of scope, skip API mode check
     const mode = await sdkModeDetector.getMode();
 
     if (mode === 'online') {
-      // API mode is out of scope for SDK 1.8.3+ migration
+      // API mode is out of scope for SDK 1.8.4+ migration
       // If online mode is needed in future, implement API endpoints separately
       console.warn('[ODCSService] API mode is not supported - falling through to offline mode');
     }
 
-    // Use WASM SDK directly for offline mode (SDK 1.8.3+)
+    // Use WASM SDK directly for offline mode (SDK 1.8.4+)
     try {
       await sdkLoader.load();
       const sdk = sdkLoader.getModule();
@@ -60,14 +60,14 @@ class ODCSService {
       console.log('[ODCSService] SDK module loaded for ODCS parsing');
 
       if (sdk && 'parse_odcs_yaml' in sdk && typeof (sdk as any).parse_odcs_yaml === 'function') {
-        console.log('[ODCSService] Using SDK parse_odcs_yaml method (SDK 1.8.3+)');
+        console.log('[ODCSService] Using SDK parse_odcs_yaml method (SDK 1.8.4+)');
         try {
-          // SDK 1.8.3+: No preprocessing needed, SDK handles validation
+          // SDK 1.8.4+: No preprocessing needed, SDK handles validation
           const resultJson = (sdk as any).parse_odcs_yaml(yamlContent);
           const result = JSON.parse(resultJson);
           console.log('[ODCSService] SDK parse_odcs_yaml result:', result);
 
-          // SDK 1.8.3+: Returns complete, validated data - no merging needed
+          // SDK 1.8.4+: Returns complete, validated data - no merging needed
           return {
             workspace_id: result.workspace_id,
             domain_id: result.domain_id,
@@ -83,12 +83,12 @@ class ODCSService {
         }
       }
 
-      // SDK 1.8.3+ method not available - provide helpful error
+      // SDK 1.8.4+ method not available - provide helpful error
       console.warn('[ODCSService] SDK parse_odcs_yaml method not found');
       throw new Error(
-        'ODCS parsing requires SDK version 1.8.3 or higher. ' +
+        'ODCS parsing requires SDK version 1.8.4 or higher. ' +
           'The parse_odcs_yaml method is not available. ' +
-          'Please update the WASM SDK to version 1.8.3+.'
+          'Please update the WASM SDK to version 1.8.4+.'
       );
     } catch (error) {
       // Fallback to basic YAML parser if SDK fails
@@ -106,7 +106,7 @@ class ODCSService {
 
   /**
    * Parse ODCL (Open Data Contract Language) YAML content to workspace object
-   * SDK 1.8.3+ provides a separate parser for ODCL format
+   * SDK 1.8.4+ provides a separate parser for ODCL format
    * ODCL is identified by the 'dataContractSpecification' field at root level
    *
    * Note: This is for import only - we don't support ODCL export
@@ -114,7 +114,7 @@ class ODCSService {
   async parseODCL(yamlContent: string): Promise<ODCSWorkspace> {
     console.log('[ODCSService] parseODCL called, content length:', yamlContent.length);
 
-    // SDK 1.8.3+ uses offline mode only (API is out of scope)
+    // SDK 1.8.4+ uses offline mode only (API is out of scope)
     try {
       await sdkLoader.load();
       const sdk = sdkLoader.getModule();
@@ -122,14 +122,14 @@ class ODCSService {
       console.log('[ODCSService] SDK module loaded for ODCL parsing');
 
       if (sdk && 'parse_odcl_yaml' in sdk && typeof (sdk as any).parse_odcl_yaml === 'function') {
-        console.log('[ODCSService] Using SDK parse_odcl_yaml method (SDK 1.8.3+)');
+        console.log('[ODCSService] Using SDK parse_odcl_yaml method (SDK 1.8.4+)');
         try {
           // Call SDK function (synchronous, returns JSON string)
           const resultJson = (sdk as any).parse_odcl_yaml(yamlContent);
           const result = JSON.parse(resultJson);
           console.log('[ODCSService] SDK parse_odcl_yaml result:', result);
 
-          // SDK 1.8.3+ returns complete workspace structure with all ODCL metadata
+          // SDK 1.8.4+ returns complete workspace structure with all ODCL metadata
           // No need for merging or validation - SDK handles everything
           return {
             workspace_id: result.workspace_id,
@@ -146,11 +146,11 @@ class ODCSService {
         }
       }
 
-      // If SDK 1.8.3 not available, provide helpful error message
+      // If SDK 1.8.4 not available, provide helpful error message
       throw new Error(
-        'ODCL parsing requires SDK version 1.8.3 or higher. ' +
+        'ODCL parsing requires SDK version 1.8.4 or higher. ' +
           'The parse_odcl_yaml method is not available in the current SDK. ' +
-          'Please update the WASM SDK to version 1.8.3+.'
+          'Please update the WASM SDK to version 1.8.4+.'
       );
     } catch (error) {
       // Re-throw with context
@@ -662,7 +662,7 @@ class ODCSService {
    * Extract ODCL metadata from parsed YAML
    * Returns workspace-level metadata AND table-level metadata mapping
    *
-   * @deprecated SDK 1.8.3+ handles ODCL parsing natively via parse_odcl_yaml()
+   * @deprecated SDK 1.8.4+ handles ODCL parsing natively via parse_odcl_yaml()
    * This method is only used by the fallback parser when SDK is not available
    */
   private extractODCLInfo(
@@ -773,7 +773,7 @@ class ODCSService {
    * TEMPORARY WORKAROUND: Merge original YAML data with SDK result to preserve fields that SDK might not return
    * This ensures fields like 'description' and 'quality' arrays are preserved
    *
-   * @deprecated SDK 1.8.3+ returns complete data - no merging needed
+   * @deprecated SDK 1.8.4+ returns complete data - no merging needed
    * This method is only used by the fallback parser when SDK is not available
    */
   // @ts-expect-error - Kept for fallback parser, marked as deprecated
@@ -851,7 +851,7 @@ class ODCSService {
    * SDK 1.1.0+ returns JSON string with tables/relationships structure
    * Validates that SDK parsed all ODCS attributes and raises errors for missing fields
    *
-   * @deprecated SDK 1.8.3+ returns workspace structure directly - no conversion needed
+   * @deprecated SDK 1.8.4+ returns workspace structure directly - no conversion needed
    * This method is only used by the fallback parser when SDK is not available
    */
   // @ts-expect-error - Kept for fallback parser, marked as deprecated
@@ -925,7 +925,7 @@ class ODCSService {
    * Validate that a table has all expected ODCS fields parsed
    * Raises errors if critical fields are missing
    *
-   * @deprecated SDK 1.8.3+ handles validation internally
+   * @deprecated SDK 1.8.4+ handles validation internally
    * This method is only used by the fallback parser when SDK is not available
    */
   private validateTableCompleteness(
@@ -1015,7 +1015,7 @@ class ODCSService {
   /**
    * Apply ODCL metadata to a table
    *
-   * @deprecated SDK 1.8.3+ applies ODCL metadata automatically via parse_odcl_yaml()
+   * @deprecated SDK 1.8.4+ applies ODCL metadata automatically via parse_odcl_yaml()
    * This method is only used by the fallback parser when SDK is not available
    */
   // @ts-expect-error - Kept for fallback parser, marked as deprecated

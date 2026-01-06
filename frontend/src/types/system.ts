@@ -103,7 +103,7 @@ export interface System {
   position_y?: number; // Canvas position Y
   created_at: string; // ISO timestamp
   last_modified_at: string; // ISO timestamp
-  
+
   // System contains tables and assets
   table_ids?: string[]; // Array of table IDs in this system
   asset_ids?: string[]; // Array of CADS asset IDs in this system
@@ -127,4 +127,3 @@ export interface UpdateSystemRequest {
   table_ids?: string[];
   asset_ids?: string[];
 }
-

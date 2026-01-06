@@ -306,7 +306,7 @@ class ElectronFileService {
   }
 
   /**
-   * Save ODCS table to {table-name}.odcs.yaml
+   * Save ODCS table to {systemName_tableName}.odcs.yaml (or {tableName}.odcs.yaml if no system)
    * @param domainPath - Full path to domain folder (e.g., "/path/to/workspace/domain-name")
    * @param domainName - Domain name (for backward compatibility, not used if domainPath is provided)
    * @param table - Table object to save
@@ -330,9 +330,11 @@ class ElectronFileService {
       table.metadata = {};
     }
 
-    // Set system_id in table metadata if we found an owning system
+    // Build filename with system prefix if table belongs to a system
+    let systemPrefix = '';
     if (owningSystem) {
       table.metadata.system_id = owningSystem.id;
+      systemPrefix = `${owningSystem.name}_`;
       console.log(
         `[ElectronFileService] Saving table "${table.name}" with system_id="${owningSystem.id}" (system: ${owningSystem.name})`
       );
@@ -344,7 +346,8 @@ class ElectronFileService {
       );
     }
 
-    const tableYamlPath = joinPath(domainPath, `${table.name}.odcs.yaml`);
+    const filename = `${systemPrefix}${table.name}.odcs.yaml`;
+    const tableYamlPath = joinPath(domainPath, filename);
     const yamlContent = await odcsService.toYAML({ tables: [table] } as any);
     await platformFileService.writeFile(tableYamlPath, yamlContent);
   }
@@ -373,17 +376,38 @@ class ElectronFileService {
   }
 
   /**
-   * Save CADS asset to {asset-name}.cads.yaml
+   * Save CADS asset to {systemName_assetName}.cads.yaml (or {assetName}.cads.yaml if no system)
    * @param domainPath - Full path to domain folder (e.g., "/path/to/workspace/domain-name")
    * @param domainName - Domain name (for backward compatibility, not used if domainPath is provided)
    * @param asset - Asset object to save
+   * @param systems - Optional array of systems to determine which system owns this asset
    */
-  async saveCADSAsset(domainPath: string, _domainName: string, asset: ComputeAsset): Promise<void> {
+  async saveCADSAsset(
+    domainPath: string,
+    _domainName: string,
+    asset: ComputeAsset,
+    systems: System[] = []
+  ): Promise<void> {
     if (getPlatform() !== 'electron') {
       throw new Error('Electron file service can only be used in Electron environment');
     }
 
-    const assetYamlPath = joinPath(domainPath, `${asset.name}.cads.yaml`);
+    // Find which system owns this asset (by checking which system has this asset.id in its asset_ids)
+    const owningSystem = systems.find((s) => s.asset_ids?.includes(asset.id));
+
+    // Build filename with system prefix if asset belongs to a system
+    let systemPrefix = '';
+    if (owningSystem) {
+      systemPrefix = `${owningSystem.name}_`;
+      console.log(
+        `[ElectronFileService] Saving asset "${asset.name}" with system: ${owningSystem.name}`
+      );
+    } else {
+      console.log(`[ElectronFileService] Saving asset "${asset.name}" without system (unlinked)`);
+    }
+
+    const filename = `${systemPrefix}${asset.name}.cads.yaml`;
+    const assetYamlPath = joinPath(domainPath, filename);
     const yamlContent = await cadsService.toYAML(asset);
     await platformFileService.writeFile(assetYamlPath, yamlContent);
   }
@@ -939,7 +963,7 @@ class ElectronFileService {
     // Save all assets (overwrites existing files)
     console.log(`[ElectronFileService] Saving ${assets.length} asset(s) (overwriting existing)`);
     for (const asset of assets) {
-      await this.saveCADSAsset(domainPath, domain.name, asset);
+      await this.saveCADSAsset(domainPath, domain.name, asset, systems);
     }
 
     // Save all BPMN processes (overwrites existing files)

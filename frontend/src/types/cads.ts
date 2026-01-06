@@ -26,6 +26,7 @@ export interface ComputeAsset {
   openapi_specs?: CADSOpenAPISpec[];
   status?: ComputeAssetStatus;
   kind?: CADSKind;
+  tags?: string[]; // optional tags for categorization (supports Simple, Pair, and List formats)
   custom_properties?: Record<string, unknown>;
   position_x?: number; // canvas position
   position_y?: number; // canvas position
@@ -57,4 +58,3 @@ export interface CADSOpenAPISpec {
   format: 'openapi';
   description?: string;
 }
-

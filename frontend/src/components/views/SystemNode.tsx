@@ -34,6 +34,7 @@ export interface SystemNodeData {
   onAssetBPMNClick?: (assetId: string) => void; // Handler for BPMN icon clicks on assets
   onAssetDMNClick?: (assetId: string) => void; // Handler for DMN icon clicks on assets
   currentView?: 'systems' | 'etl' | 'operational' | 'analytical' | 'products';
+  isShared?: boolean; // True if this is a shared resource from another domain
 }
 
 export interface SystemNodeProps {
@@ -42,18 +43,60 @@ export interface SystemNodeProps {
 }
 
 export const SystemNode: React.FC<SystemNodeProps> = ({ data, selected }) => {
-  const { systemId, systemName, systemType, description, tables = [], computeAssets = [],
-    onTableBPMNClick, tableHasBPMN,
-    onAssetBPMNClick, onAssetDMNClick, onTableClick, onTableEdit, onTableDelete, onTableExport, onEdit, onDelete, onAssetEdit, onAssetDelete, onAssetExport, currentView } = data;
+  const {
+    systemId,
+    systemName,
+    systemType,
+    description,
+    tables = [],
+    computeAssets = [],
+    onTableBPMNClick,
+    tableHasBPMN,
+    onAssetBPMNClick,
+    onAssetDMNClick,
+    onTableClick,
+    onTableEdit,
+    onTableDelete,
+    onTableExport,
+    onEdit,
+    onDelete,
+    onAssetEdit,
+    onAssetDelete,
+    onAssetExport,
+    currentView,
+    isShared = false,
+  } = data;
   const isSystemsView = currentView === 'systems';
 
   const getSystemIcon = () => {
     // Relational Databases
-    if (['postgresql', 'mysql', 'mssql', 'oracle', 'db2', 'sqlite', 'mariadb', 'percona'].includes(systemType)) {
+    if (
+      ['postgresql', 'mysql', 'mssql', 'oracle', 'db2', 'sqlite', 'mariadb', 'percona'].includes(
+        systemType
+      )
+    ) {
       return '🗄️';
     }
     // Cloud Databases
-    if (['dynamodb', 'cassandra', 'mongodb', 'redis', 'elasticsearch', 'influxdb', 'timescaledb', 'clickhouse', 'bigquery', 'snowflake', 'redshift', 'databricks', 'deltalake', 'duckdb', 'motherduck'].includes(systemType)) {
+    if (
+      [
+        'dynamodb',
+        'cassandra',
+        'mongodb',
+        'redis',
+        'elasticsearch',
+        'influxdb',
+        'timescaledb',
+        'clickhouse',
+        'bigquery',
+        'snowflake',
+        'redshift',
+        'databricks',
+        'deltalake',
+        'duckdb',
+        'motherduck',
+      ].includes(systemType)
+    ) {
       return '☁️';
     }
     // Data Warehouses & Analytics
@@ -69,7 +112,19 @@ export const SystemNode: React.FC<SystemNodeProps> = ({ data, selected }) => {
       return '🕸️';
     }
     // Message Bus & Event Streaming
-    if (['kafka', 'pulsar', 'eventbus', 'rabbitmq', 'activemq', 'nats', 'amazonmq', 'azureservicebus', 'googlepubsub'].includes(systemType)) {
+    if (
+      [
+        'kafka',
+        'pulsar',
+        'eventbus',
+        'rabbitmq',
+        'activemq',
+        'nats',
+        'amazonmq',
+        'azureservicebus',
+        'googlepubsub',
+      ].includes(systemType)
+    ) {
       return '📨';
     }
     // Cache Services
@@ -77,11 +132,46 @@ export const SystemNode: React.FC<SystemNodeProps> = ({ data, selected }) => {
       return '⚡';
     }
     // BI Applications
-    if (['looker', 'quicksight', 'tableau', 'powerbi', 'qlik', 'metabase', 'superset', 'mode', 'chartio', 'periscope', 'sisense', 'domo', 'thoughtspot', 'microstrategy', 'cognos', 'businessobjects'].includes(systemType)) {
+    if (
+      [
+        'looker',
+        'quicksight',
+        'tableau',
+        'powerbi',
+        'qlik',
+        'metabase',
+        'superset',
+        'mode',
+        'chartio',
+        'periscope',
+        'sisense',
+        'domo',
+        'thoughtspot',
+        'microstrategy',
+        'cognos',
+        'businessobjects',
+      ].includes(systemType)
+    ) {
       return '📈';
     }
     // Cloud Infrastructure & Servers
-    if (['ec2', 'eks', 'docker', 'kubernetes', 'lambda', 'azurefunctions', 'gcpcloudfunctions', 'azurevm', 'gcpcomputeengine', 'azurecontainerinstances', 'gcpcloudrun', 'fargate', 'ecs'].includes(systemType)) {
+    if (
+      [
+        'ec2',
+        'eks',
+        'docker',
+        'kubernetes',
+        'lambda',
+        'azurefunctions',
+        'gcpcloudfunctions',
+        'azurevm',
+        'gcpcomputeengine',
+        'azurecontainerinstances',
+        'gcpcloudrun',
+        'fargate',
+        'ecs',
+      ].includes(systemType)
+    ) {
       return '🖥️';
     }
     // Legacy/Generic types
@@ -102,8 +192,9 @@ export const SystemNode: React.FC<SystemNodeProps> = ({ data, selected }) => {
   return (
     <div
       className={`
-        bg-white border-2 rounded-lg shadow-md
-        ${selected ? 'border-blue-600 ring-2 ring-blue-200' : 'border-gray-300'}
+        bg-white rounded-lg shadow-md
+        ${isShared ? 'border-2 border-dashed' : 'border-2 border-solid'}
+        ${selected ? 'border-blue-600 ring-2 ring-blue-200' : isShared ? 'border-gray-400' : 'border-gray-300'}
         ${isSystemsView ? 'min-w-[300px] max-w-[400px]' : 'min-w-[180px]'}
       `}
       role="group"
@@ -119,7 +210,9 @@ export const SystemNode: React.FC<SystemNodeProps> = ({ data, selected }) => {
       <Handle type="source" position={Position.Right} className="w-3 h-3" />
 
       {/* System Header */}
-      <div className={`flex items-center gap-2 ${isSystemsView ? 'p-3 border-b border-gray-200' : 'p-3'} relative group`}>
+      <div
+        className={`flex items-center gap-2 ${isSystemsView ? 'p-3 border-b border-gray-200' : 'p-3'} relative group`}
+      >
         <span className="text-2xl">{getSystemIcon()}</span>
         <div className="flex-1 min-w-0">
           <div className="font-semibold text-gray-900 truncate">{systemName}</div>
@@ -199,7 +292,7 @@ export const SystemNode: React.FC<SystemNodeProps> = ({ data, selected }) => {
               ))}
             </>
           )}
-          
+
           {/* Compute Assets Section */}
           {computeAssets.length > 0 && (
             <>
@@ -232,5 +325,3 @@ export const SystemNode: React.FC<SystemNodeProps> = ({ data, selected }) => {
     </div>
   );
 };
-
-

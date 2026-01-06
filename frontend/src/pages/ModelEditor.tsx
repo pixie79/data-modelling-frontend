@@ -31,6 +31,10 @@ import { WorkspaceSettings } from '@/components/workspace/WorkspaceSettings';
 import { VersionHistory } from '@/components/workspace/VersionHistory';
 import { ImportExportDialog } from '@/components/common/ImportExportDialog';
 import { ModelNavbar } from '@/components/navbar/ModelNavbar';
+import { TagFilter } from '@/components/common/TagFilter';
+import { filterService } from '@/services/sdk/filterService';
+import { SharedResourcePicker } from '@/components/domain/SharedResourcePicker';
+import type { SharedResourceReference } from '@/types/domain';
 
 const ModelEditor: React.FC = () => {
   const { workspaceId, domainId } = useParams<{ workspaceId: string; domainId?: string }>();
@@ -38,6 +42,10 @@ const ModelEditor: React.FC = () => {
   const {
     selectedDomainId,
     selectedTableId,
+    tables,
+    computeAssets,
+    relationships,
+    systems,
     fetchTables,
     fetchRelationships,
     loadDomainAssets,
@@ -66,6 +74,106 @@ const ModelEditor: React.FC = () => {
   const [showCreateTableDialog, setShowCreateTableDialog] = useState(false);
   const [showCreateSystemDialog, setShowCreateSystemDialog] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tagFilter, setTagFilter] = useState<string[]>([]);
+  const [isFiltering, setIsFiltering] = useState(false);
+  const [showSharedResourcePicker, setShowSharedResourcePicker] = useState(false);
+
+  // Handle shared resource selection
+  const handleSharedResourcesSelected = (sharedResources: SharedResourceReference[]) => {
+    if (!selectedDomainId) return;
+
+    const domain = useModelStore.getState().domains.find((d) => d.id === selectedDomainId);
+    if (!domain) return;
+
+    // Update domain with new shared resources
+    const updatedSharedResources = sharedResources.map((sr) => ({
+      ...sr,
+      shared_at: new Date().toISOString(),
+    }));
+
+    useModelStore.getState().updateDomain(selectedDomainId, {
+      shared_resources: updatedSharedResources,
+    });
+
+    addToast({
+      type: 'success',
+      message: `Shared ${sharedResources.length} resource(s) from other domain(s)`,
+    });
+
+    // Trigger save
+    useWorkspaceStore.getState().setPendingChanges(true);
+  };
+
+  // Handle tag filter changes
+  const handleTagFilterChange = async (tags: string[]) => {
+    setTagFilter(tags);
+
+    if (tags.length === 0) {
+      setIsFiltering(false);
+      return;
+    }
+
+    setIsFiltering(true);
+
+    try {
+      const filtered = await filterService.filterByTags(
+        {
+          tables,
+          computeAssets,
+          relationships,
+          systems,
+        },
+        tags
+      );
+
+      // Store original data before filtering if not already stored
+      const modelStore = useModelStore.getState();
+      if (!modelStore.originalTables) {
+        (modelStore as any).originalTables = tables;
+        (modelStore as any).originalComputeAssets = computeAssets;
+        (modelStore as any).originalRelationships = relationships;
+        (modelStore as any).originalSystems = systems;
+      }
+
+      // Apply filtered data to store
+      setTables(filtered.tables);
+      setComputeAssets(filtered.computeAssets);
+      setRelationships(filtered.relationships);
+      setSystems(filtered.systems);
+    } catch (error) {
+      console.error('[ModelEditor] Error filtering by tags:', error);
+      addToast({
+        type: 'error',
+        message: 'Failed to apply tag filter',
+      });
+    } finally {
+      setIsFiltering(false);
+    }
+  };
+
+  // Restore original data when filter is cleared
+  useEffect(() => {
+    if (tagFilter.length === 0) {
+      const modelStore = useModelStore.getState();
+      const origTables = (modelStore as any).originalTables;
+      const origAssets = (modelStore as any).originalComputeAssets;
+      const origRelationships = (modelStore as any).originalRelationships;
+      const origSystems = (modelStore as any).originalSystems;
+
+      if (origTables) {
+        setTables(origTables);
+        setComputeAssets(origAssets);
+        setRelationships(origRelationships);
+        setSystems(origSystems);
+
+        // Clear stored originals
+        delete (modelStore as any).originalTables;
+        delete (modelStore as any).originalComputeAssets;
+        delete (modelStore as any).originalRelationships;
+        delete (modelStore as any).originalSystems;
+      }
+    }
+  }, [tagFilter.length, setTables, setComputeAssets, setRelationships, setSystems]);
 
   // Initialize collaboration
   useCollaboration({
@@ -368,11 +476,59 @@ const ModelEditor: React.FC = () => {
         </div>
       )}
 
-      {/* Domain Selector */}
+      {/* Domain Selector and Tag Filter */}
       <div className="bg-gray-50 border-b border-gray-200 px-4 py-2">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
           <DomainSelector workspaceId={workspaceId ?? ''} />
+          <div className="flex-1">
+            <TagFilter
+              onFilterChange={handleTagFilterChange}
+              placeholder="Filter by tags (e.g., env:production, product:food)"
+            />
+          </div>
+          {selectedDomainId && (
+            <>
+              <button
+                onClick={() => {
+                  // Force a re-render by toggling the current view
+                  const currentView = useModelStore.getState().currentView;
+                  useModelStore.getState().setCurrentView(currentView);
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 whitespace-nowrap"
+                title="Refresh canvas and reload all resources"
+              >
+                <svg
+                  className="w-4 h-4 inline-block mr-1"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+                Refresh
+              </button>
+              <button
+                onClick={() => setShowSharedResourcePicker(true)}
+                className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 whitespace-nowrap"
+                title="Share resources from other domains"
+              >
+                Share Resources
+              </button>
+            </>
+          )}
         </div>
+        {isFiltering && <div className="mt-1 text-xs text-gray-500">Filtering resources...</div>}
+        {tagFilter.length > 0 && !isFiltering && (
+          <div className="mt-1 text-xs text-blue-600">
+            Showing {tables.length} table(s), {computeAssets.length} asset(s),{' '}
+            {relationships.length} relationship(s), {systems.length} system(s)
+          </div>
+        )}
       </div>
 
       {/* Domain Tabs */}
@@ -540,6 +696,16 @@ const ModelEditor: React.FC = () => {
             // Optionally select the system
             useModelStore.getState().setSelectedSystem(systemId);
           }}
+        />
+      )}
+
+      {/* Shared Resource Picker Dialog */}
+      {selectedDomainId && (
+        <SharedResourcePicker
+          isOpen={showSharedResourcePicker}
+          onClose={() => setShowSharedResourcePicker(false)}
+          currentDomainId={selectedDomainId}
+          onResourcesSelected={handleSharedResourcesSelected}
         />
       )}
     </div>

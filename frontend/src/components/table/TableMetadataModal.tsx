@@ -17,10 +17,10 @@ export interface TableMetadataModalProps {
   onClose: () => void;
 }
 
-export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({ 
-  table, 
-  isOpen, 
-  onClose 
+export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
+  table,
+  isOpen,
+  onClose,
 }) => {
   const { updateTable, updateTableRemote, selectedDomainId } = useModelStore();
   const { addToast } = useUIStore();
@@ -63,20 +63,36 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
     try {
       // Filter out roles without a role name (required field)
       const validRoles = roles.filter((r) => r.role && r.role.trim().length > 0);
-      
+
       // Filter out support channels without required fields
-      const validSupport = support.filter((s) => s.channel && s.channel.trim().length > 0 && s.url && s.url.trim().length > 0);
-      
+      const validSupport = support.filter(
+        (s) => s.channel && s.channel.trim().length > 0 && s.url && s.url.trim().length > 0
+      );
+
       // Filter out team members without at least username or name
-      const validTeam = team.filter((t) => (t.username && t.username.trim().length > 0) || (t.name && t.name.trim().length > 0));
+      const validTeam = team.filter(
+        (t) => (t.username && t.username.trim().length > 0) || (t.name && t.name.trim().length > 0)
+      );
 
       const updates: Partial<Table> = {
         owner: owner && (owner.name || owner.email) ? owner : undefined,
         roles: validRoles.length > 0 ? validRoles : undefined,
         support: validSupport.length > 0 ? validSupport : undefined,
-        pricing: pricing && (pricing.priceAmount !== undefined || pricing.priceCurrency || pricing.priceUnit) ? pricing : undefined,
+        pricing:
+          pricing &&
+          (pricing.priceAmount !== undefined || pricing.priceCurrency || pricing.priceUnit)
+            ? pricing
+            : undefined,
         team: validTeam.length > 0 ? validTeam : undefined,
-        sla: sla && (sla.latency !== undefined || sla.uptime !== undefined || sla.response_time !== undefined || sla.error_rate !== undefined || sla.update_frequency) ? sla : undefined,
+        sla:
+          sla &&
+          (sla.latency !== undefined ||
+            sla.uptime !== undefined ||
+            sla.response_time !== undefined ||
+            sla.error_rate !== undefined ||
+            sla.update_frequency)
+            ? sla
+            : undefined,
         tags: tags.length > 0 ? tags : undefined,
         metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
         quality_rules: Object.keys(qualityRules).length > 0 ? qualityRules : undefined,
@@ -114,7 +130,13 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
 
   const handleTagsInputChange = (value: string) => {
     setTagsInput(value);
-    const newTags = value.split(',').map(t => t.trim()).filter(t => t.length > 0);
+    // Parse tags from input
+    // Split on ", " (comma + space) to separate different tags
+    // This allows "env:prod,staging" to be one tag, but "env:prod, product:food" to be two tags
+    const newTags = value
+      .split(/, /)
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0);
     setTags(newTags);
     setHasUnsavedChanges(true);
   };
@@ -174,26 +196,62 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
 
         {/* Tags */}
         <div>
-          <h3 className="text-sm font-semibold text-gray-700 mb-2">Tags</h3>
+          <div className="flex items-center gap-2 mb-2">
+            <h3 className="text-sm font-semibold text-gray-700">Tags</h3>
+            <div className="relative group">
+              <button
+                type="button"
+                className="w-4 h-4 flex items-center justify-center rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 text-xs font-semibold"
+                title="Tag format help"
+              >
+                ?
+              </button>
+              <div className="invisible group-hover:visible absolute left-0 top-6 z-50 w-80 bg-white border border-gray-300 rounded-lg shadow-lg p-3 text-xs">
+                <h4 className="font-semibold text-gray-900 mb-2">Tag Formats</h4>
+                <div className="space-y-2 text-gray-700">
+                  <div>
+                    <span className="font-medium">Simple:</span>
+                    <code className="ml-2 px-1 bg-gray-100 rounded">production</code>
+                    <p className="text-xs text-gray-600 mt-1">Single word tag</p>
+                  </div>
+                  <div>
+                    <span className="font-medium">Keyword:</span>
+                    <code className="ml-2 px-1 bg-gray-100 rounded">env:production</code>
+                    <p className="text-xs text-gray-600 mt-1">Key-value pair</p>
+                  </div>
+                  <div>
+                    <span className="font-medium">Keyword with list:</span>
+                    <code className="ml-2 px-1 bg-gray-100 rounded">env:production,staging</code>
+                    <p className="text-xs text-gray-600 mt-1">
+                      Key with multiple values (no spaces)
+                    </p>
+                  </div>
+                  <div className="pt-2 border-t border-gray-200 mt-2">
+                    <p className="text-xs text-gray-600">
+                      <span className="font-medium">Multiple tags:</span> Separate with comma +
+                      space
+                    </p>
+                    <code className="block mt-1 px-1 bg-gray-100 rounded">
+                      env:production, product:food
+                    </code>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
           {isEditable ? (
             <div>
               <input
                 type="text"
                 value={tagsInput}
                 onChange={(e) => handleTagsInputChange(e.target.value)}
-                placeholder="Enter tags separated by commas (e.g., pii, sensitive, production)"
+                placeholder="e.g., env:production, product:food or pii, sensitive"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               />
-              <p className="mt-1 text-xs text-gray-500">
-                Separate multiple tags with commas
-              </p>
               {tags.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1">
                   {tags.map((tag, idx) => (
-                    <span
-                      key={idx}
-                      className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs"
-                    >
+                    <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
                       {tag}
                     </span>
                   ))}
@@ -205,10 +263,7 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
               {tags.length > 0 ? (
                 <div className="flex flex-wrap gap-1">
                   {tags.map((tag, idx) => (
-                    <span
-                      key={idx}
-                      className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs"
-                    >
+                    <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
                       {tag}
                     </span>
                   ))}
@@ -355,7 +410,9 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Description</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Description
+                      </label>
                       <textarea
                         value={role.description || ''}
                         onChange={(e) => {
@@ -370,7 +427,9 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Access Type</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Access Type
+                      </label>
                       <input
                         type="text"
                         value={role.access || ''}
@@ -385,20 +444,26 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">1st Level Approvers</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        1st Level Approvers
+                      </label>
                       <input
                         type="text"
-                        value={Array.isArray(role.firstLevelApprovers) 
-                          ? role.firstLevelApprovers.join(', ') 
-                          : role.firstLevelApprovers || ''}
+                        value={
+                          Array.isArray(role.firstLevelApprovers)
+                            ? role.firstLevelApprovers.join(', ')
+                            : role.firstLevelApprovers || ''
+                        }
                         onChange={(e) => {
                           const newRoles = [...roles];
                           const value = e.target.value.trim();
-                          newRoles[index] = { 
-                            ...role, 
-                            firstLevelApprovers: value 
-                              ? (value.includes(',') ? value.split(',').map(s => s.trim()) : value)
-                              : undefined 
+                          newRoles[index] = {
+                            ...role,
+                            firstLevelApprovers: value
+                              ? value.includes(',')
+                                ? value.split(',').map((s) => s.trim())
+                                : value
+                              : undefined,
                           };
                           setRoles(newRoles);
                           setHasUnsavedChanges(true);
@@ -408,20 +473,26 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">2nd Level Approvers</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        2nd Level Approvers
+                      </label>
                       <input
                         type="text"
-                        value={Array.isArray(role.secondLevelApprovers) 
-                          ? role.secondLevelApprovers.join(', ') 
-                          : role.secondLevelApprovers || ''}
+                        value={
+                          Array.isArray(role.secondLevelApprovers)
+                            ? role.secondLevelApprovers.join(', ')
+                            : role.secondLevelApprovers || ''
+                        }
                         onChange={(e) => {
                           const newRoles = [...roles];
                           const value = e.target.value.trim();
-                          newRoles[index] = { 
-                            ...role, 
-                            secondLevelApprovers: value 
-                              ? (value.includes(',') ? value.split(',').map(s => s.trim()) : value)
-                              : undefined 
+                          newRoles[index] = {
+                            ...role,
+                            secondLevelApprovers: value
+                              ? value.includes(',')
+                                ? value.split(',').map((s) => s.trim())
+                                : value
+                              : undefined,
                           };
                           setRoles(newRoles);
                           setHasUnsavedChanges(true);
@@ -431,13 +502,21 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Custom Properties (JSON)</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Custom Properties (JSON)
+                      </label>
                       <textarea
-                        value={role.customProperties ? JSON.stringify(role.customProperties, null, 2) : ''}
+                        value={
+                          role.customProperties
+                            ? JSON.stringify(role.customProperties, null, 2)
+                            : ''
+                        }
                         onChange={(e) => {
                           const newRoles = [...roles];
                           try {
-                            const parsed = e.target.value.trim() ? JSON.parse(e.target.value) : undefined;
+                            const parsed = e.target.value.trim()
+                              ? JSON.parse(e.target.value)
+                              : undefined;
                             newRoles[index] = { ...role, customProperties: parsed };
                             setRoles(newRoles);
                             setHasUnsavedChanges(true);
@@ -481,23 +560,25 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                     {role.firstLevelApprovers && (
                       <div className="text-xs text-gray-500">
                         <span className="font-medium">1st Level Approvers:</span>{' '}
-                        {Array.isArray(role.firstLevelApprovers) 
-                          ? role.firstLevelApprovers.join(', ') 
+                        {Array.isArray(role.firstLevelApprovers)
+                          ? role.firstLevelApprovers.join(', ')
                           : role.firstLevelApprovers}
                       </div>
                     )}
                     {role.secondLevelApprovers && (
                       <div className="text-xs text-gray-500">
                         <span className="font-medium">2nd Level Approvers:</span>{' '}
-                        {Array.isArray(role.secondLevelApprovers) 
-                          ? role.secondLevelApprovers.join(', ') 
+                        {Array.isArray(role.secondLevelApprovers)
+                          ? role.secondLevelApprovers.join(', ')
                           : role.secondLevelApprovers}
                       </div>
                     )}
                     {role.customProperties && Object.keys(role.customProperties).length > 0 && (
                       <div className="text-xs text-gray-500 mt-1">
                         <span className="font-medium">Custom Properties:</span>{' '}
-                        <pre className="inline-block">{JSON.stringify(role.customProperties, null, 2)}</pre>
+                        <pre className="inline-block">
+                          {JSON.stringify(role.customProperties, null, 2)}
+                        </pre>
                       </div>
                     )}
                   </div>
@@ -511,7 +592,9 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
 
         {/* Support and Communication Channels */}
         <div>
-          <h3 className="text-sm font-semibold text-gray-700 mb-2">Support and Communication Channels</h3>
+          <h3 className="text-sm font-semibold text-gray-700 mb-2">
+            Support and Communication Channels
+          </h3>
           {isEditable ? (
             <div className="space-y-3">
               {support.map((channel, index) => (
@@ -568,13 +651,18 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Description</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Description
+                      </label>
                       <input
                         type="text"
                         value={channel.description || ''}
                         onChange={(e) => {
                           const newSupport = [...support];
-                          newSupport[index] = { ...channel, description: e.target.value || undefined };
+                          newSupport[index] = {
+                            ...channel,
+                            description: e.target.value || undefined,
+                          };
                           setSupport(newSupport);
                           setHasUnsavedChanges(true);
                         }}
@@ -604,12 +692,21 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                         </select>
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Scope</label>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Scope
+                        </label>
                         <select
                           value={channel.scope || ''}
                           onChange={(e) => {
                             const newSupport = [...support];
-                            newSupport[index] = { ...channel, scope: e.target.value as 'interactive' | 'announcements' | 'issues' | undefined };
+                            newSupport[index] = {
+                              ...channel,
+                              scope: e.target.value as
+                                | 'interactive'
+                                | 'announcements'
+                                | 'issues'
+                                | undefined,
+                            };
                             setSupport(newSupport);
                             setHasUnsavedChanges(true);
                           }}
@@ -623,13 +720,18 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Invitation URL</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Invitation URL
+                      </label>
                       <input
                         type="url"
                         value={channel.invitationUrl || ''}
                         onChange={(e) => {
                           const newSupport = [...support];
-                          newSupport[index] = { ...channel, invitationUrl: e.target.value || undefined };
+                          newSupport[index] = {
+                            ...channel,
+                            invitationUrl: e.target.value || undefined,
+                          };
                           setSupport(newSupport);
                           setHasUnsavedChanges(true);
                         }}
@@ -667,10 +769,14 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                     )}
                     <div className="flex gap-2 text-xs text-gray-500">
                       {channel.tool && (
-                        <span><span className="font-medium">Tool:</span> {channel.tool}</span>
+                        <span>
+                          <span className="font-medium">Tool:</span> {channel.tool}
+                        </span>
                       )}
                       {channel.scope && (
-                        <span><span className="font-medium">Scope:</span> {channel.scope}</span>
+                        <span>
+                          <span className="font-medium">Scope:</span> {channel.scope}
+                        </span>
                       )}
                     </div>
                     {channel.invitationUrl && (
@@ -696,13 +802,18 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
             <div className="space-y-2">
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Price Amount</label>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Price Amount
+                  </label>
                   <input
                     type="number"
                     step="0.01"
                     value={pricing?.priceAmount || ''}
                     onChange={(e) => {
-                      setPricing({ ...pricing, priceAmount: e.target.value ? Number(e.target.value) : undefined });
+                      setPricing({
+                        ...pricing,
+                        priceAmount: e.target.value ? Number(e.target.value) : undefined,
+                      });
                       setHasUnsavedChanges(true);
                     }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
@@ -739,7 +850,8 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
             </div>
           ) : (
             <div className="space-y-1 text-sm">
-              {pricing && (pricing.priceAmount !== undefined || pricing.priceCurrency || pricing.priceUnit) ? (
+              {pricing &&
+              (pricing.priceAmount !== undefined || pricing.priceCurrency || pricing.priceUnit) ? (
                 <>
                   {pricing.priceAmount !== undefined && (
                     <div>
@@ -782,7 +894,9 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                   <div className="space-y-2">
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Username/Email</label>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Username/Email
+                        </label>
                         <input
                           type="text"
                           value={member.username || ''}
@@ -829,7 +943,9 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Date In</label>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Date In
+                        </label>
                         <input
                           type="date"
                           value={member.dateIn || ''}
@@ -843,7 +959,9 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Date Out</label>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Date Out
+                        </label>
                         <input
                           type="date"
                           value={member.dateOut || ''}
@@ -858,13 +976,18 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Replaced By Username</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Replaced By Username
+                      </label>
                       <input
                         type="text"
                         value={member.replacedByUsername || ''}
                         onChange={(e) => {
                           const newTeam = [...team];
-                          newTeam[index] = { ...member, replacedByUsername: e.target.value || undefined };
+                          newTeam[index] = {
+                            ...member,
+                            replacedByUsername: e.target.value || undefined,
+                          };
                           setTeam(newTeam);
                           setHasUnsavedChanges(true);
                         }}
@@ -873,7 +996,9 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Comment</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Comment
+                      </label>
                       <textarea
                         value={member.comment || ''}
                         onChange={(e) => {
@@ -921,20 +1046,23 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                     )}
                     <div className="flex gap-4 text-xs text-gray-500">
                       {member.dateIn && (
-                        <span><span className="font-medium">Date In:</span> {member.dateIn}</span>
+                        <span>
+                          <span className="font-medium">Date In:</span> {member.dateIn}
+                        </span>
                       )}
                       {member.dateOut && (
-                        <span><span className="font-medium">Date Out:</span> {member.dateOut}</span>
+                        <span>
+                          <span className="font-medium">Date Out:</span> {member.dateOut}
+                        </span>
                       )}
                     </div>
                     {member.replacedByUsername && (
                       <div className="text-xs text-gray-500">
-                        <span className="font-medium">Replaced By:</span> {member.replacedByUsername}
+                        <span className="font-medium">Replaced By:</span>{' '}
+                        {member.replacedByUsername}
                       </div>
                     )}
-                    {member.comment && (
-                      <div className="text-gray-600 mt-1">{member.comment}</div>
-                    )}
+                    {member.comment && <div className="text-gray-600 mt-1">{member.comment}</div>}
                   </div>
                 ))
               ) : (
@@ -946,7 +1074,9 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
 
         {/* SLA Information */}
         <div>
-          <h3 className="text-sm font-semibold text-gray-700 mb-2">Service Level Agreement (SLA)</h3>
+          <h3 className="text-sm font-semibold text-gray-700 mb-2">
+            Service Level Agreement (SLA)
+          </h3>
           {isEditable ? (
             <div className="space-y-2">
               <div>
@@ -955,7 +1085,10 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                   type="number"
                   value={sla?.latency || ''}
                   onChange={(e) => {
-                    setSLA({ ...sla, latency: e.target.value ? Number(e.target.value) : undefined });
+                    setSLA({
+                      ...sla,
+                      latency: e.target.value ? Number(e.target.value) : undefined,
+                    });
                     setHasUnsavedChanges(true);
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
@@ -978,12 +1111,17 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Response Time (ms)</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Response Time (ms)
+                </label>
                 <input
                   type="number"
                   value={sla?.response_time || ''}
                   onChange={(e) => {
-                    setSLA({ ...sla, response_time: e.target.value ? Number(e.target.value) : undefined });
+                    setSLA({
+                      ...sla,
+                      response_time: e.target.value ? Number(e.target.value) : undefined,
+                    });
                     setHasUnsavedChanges(true);
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
@@ -991,14 +1129,19 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Error Rate (%)</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Error Rate (%)
+                </label>
                 <input
                   type="number"
                   min="0"
                   max="100"
                   value={sla?.error_rate || ''}
                   onChange={(e) => {
-                    setSLA({ ...sla, error_rate: e.target.value ? Number(e.target.value) : undefined });
+                    setSLA({
+                      ...sla,
+                      error_rate: e.target.value ? Number(e.target.value) : undefined,
+                    });
                     setHasUnsavedChanges(true);
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
@@ -1006,7 +1149,9 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Update Frequency</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Update Frequency
+                </label>
                 <input
                   type="text"
                   value={sla?.update_frequency || ''}
@@ -1021,7 +1166,12 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
             </div>
           ) : (
             <div className="space-y-1 text-sm">
-              {sla && (sla.latency !== undefined || sla.uptime !== undefined || sla.response_time !== undefined || sla.error_rate !== undefined || sla.update_frequency) ? (
+              {sla &&
+              (sla.latency !== undefined ||
+                sla.uptime !== undefined ||
+                sla.response_time !== undefined ||
+                sla.error_rate !== undefined ||
+                sla.update_frequency) ? (
                 <>
                   {sla.latency !== undefined && (
                     <div>
@@ -1080,9 +1230,7 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
               rows={6}
               placeholder='{"quality_tier": "gold", "data_modeling_method": "dimensional"}'
             />
-            <p className="mt-1 text-xs text-gray-500">
-              Enter valid JSON for custom metadata
-            </p>
+            <p className="mt-1 text-xs text-gray-500">Enter valid JSON for custom metadata</p>
           </div>
         )}
 
@@ -1105,9 +1253,7 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
               rows={6}
               placeholder='{"min_rows": 1000, "max_null_percentage": 5}'
             />
-            <p className="mt-1 text-xs text-gray-500">
-              Enter valid JSON for quality rules
-            </p>
+            <p className="mt-1 text-xs text-gray-500">Enter valid JSON for quality rules</p>
           </div>
         )}
 
@@ -1117,9 +1263,7 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
           <div className="space-y-1 text-sm">
             <div>
               <span className="font-medium text-gray-600">Created:</span>{' '}
-              <span className="text-gray-900">
-                {new Date(table.created_at).toLocaleString()}
-              </span>
+              <span className="text-gray-900">{new Date(table.created_at).toLocaleString()}</span>
             </div>
             <div>
               <span className="font-medium text-gray-600">Last Modified:</span>{' '}

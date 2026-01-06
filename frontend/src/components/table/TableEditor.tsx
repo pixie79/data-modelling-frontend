@@ -28,6 +28,7 @@ export interface TableEditorProps {
 export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, onClose }) => {
   const {
     tables,
+    systems,
     updateTable,
     updateTableRemote,
     updateColumnRemote,
@@ -542,6 +543,15 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
       // Create a workspace object with just this table
       const workspace = { tables: [table] } as any;
 
+      // Get system name prefix if table belongs to a system
+      let systemPrefix = '';
+      if (table.metadata && table.metadata.system_id) {
+        const system = systems.find((s) => s.id === table.metadata!.system_id);
+        if (system) {
+          systemPrefix = `${system.name}_`;
+        }
+      }
+
       let content: string;
       let filename: string;
       let mimeType: string;
@@ -549,27 +559,27 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
       switch (format) {
         case 'odcs':
           content = await odcsService.toYAML(workspace);
-          filename = `${table.name}.odcs.yaml`;
+          filename = `${systemPrefix}${table.name}.odcs.yaml`;
           mimeType = 'text/yaml';
           break;
         case 'avro':
           content = await importExportService.exportToAVRO(workspace);
-          filename = `${table.name}.avsc`;
+          filename = `${systemPrefix}${table.name}.avsc`;
           mimeType = 'application/json';
           break;
         case 'protobuf':
           content = await importExportService.exportToProtobuf(workspace);
-          filename = `${table.name}.proto`;
+          filename = `${systemPrefix}${table.name}.proto`;
           mimeType = 'text/plain';
           break;
         case 'json-schema':
           content = await importExportService.exportToJSONSchema(workspace);
-          filename = `${table.name}.schema.json`;
+          filename = `${systemPrefix}${table.name}.schema.json`;
           mimeType = 'application/json';
           break;
         case 'sql':
           content = await importExportService.exportToSQL(workspace, sqlDialect);
-          filename = `${table.name}.${sqlDialect}.sql`;
+          filename = `${systemPrefix}${table.name}.${sqlDialect}.sql`;
           mimeType = 'text/sql';
           break;
         default:
@@ -684,21 +694,217 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
 
   if (!isEditable) {
     return (
-      <div className="p-4 space-y-4">
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <h3 className="text-sm font-semibold text-yellow-800 mb-2">Read-Only Table</h3>
-          <p className="text-sm text-yellow-700">
-            This table belongs to another domain and cannot be edited here. Switch to the primary
-            domain to edit.
-          </p>
+      <div className="p-4 space-y-4 max-h-[90vh] overflow-y-auto">
+        {/* Read-Only Banner */}
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+          <div className="flex items-center gap-2">
+            <svg
+              className="w-5 h-5 text-yellow-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+              />
+            </svg>
+            <div>
+              <h3 className="text-sm font-semibold text-yellow-800">Read-Only View</h3>
+              <p className="text-xs text-yellow-700">
+                This table belongs to another domain. Switch to the primary domain to edit.
+              </p>
+            </div>
+          </div>
         </div>
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">{table.name}</h2>
-          {table.description && <p className="text-sm text-gray-600 mb-2">{table.description}</p>}
+
+        {/* Table Header */}
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-900">{table.name}</h2>
+          <button
+            onClick={onClose}
+            className="px-3 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-700"
+          >
+            Close
+          </button>
+        </div>
+
+        {/* Basic Information */}
+        <div className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+            <input
+              type="text"
+              value={table.name}
+              disabled
+              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700"
+            />
+          </div>
+
+          {table.alias && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Alias</label>
+              <input
+                type="text"
+                value={table.alias}
+                disabled
+                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700"
+              />
+            </div>
+          )}
+
+          {table.description && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <textarea
+                value={table.description}
+                disabled
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700"
+              />
+            </div>
+          )}
+
+          {table.data_level && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Data Level</label>
+              <input
+                type="text"
+                value={table.data_level}
+                disabled
+                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700 capitalize"
+              />
+            </div>
+          )}
+
           {table.owner && (
-            <p className="text-xs text-gray-500">Owner: {table.owner.name || table.owner.email}</p>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Owner</label>
+              <input
+                type="text"
+                value={table.owner.name || table.owner.email || 'Unknown'}
+                disabled
+                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700"
+              />
+            </div>
           )}
         </div>
+
+        {/* Columns */}
+        <div>
+          <h3 className="text-md font-semibold text-gray-900 mb-3">
+            Columns ({table.columns.length})
+          </h3>
+          <div className="border border-gray-300 rounded-md overflow-hidden">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                    Name
+                  </th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                    Type
+                  </th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                    Nullable
+                  </th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                    Keys
+                  </th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                    Description
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {table.columns.map((column) => (
+                  <tr key={column.id} className="hover:bg-gray-50">
+                    <td className="px-3 py-2 text-sm font-medium text-gray-900">{column.name}</td>
+                    <td className="px-3 py-2 text-sm text-gray-700">{column.data_type}</td>
+                    <td className="px-3 py-2 text-sm text-gray-700">
+                      {column.nullable ? (
+                        <span className="text-green-600">✓</span>
+                      ) : (
+                        <span className="text-red-600">✗</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-sm">
+                      {column.is_primary_key && (
+                        <span className="inline-block px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded mr-1">
+                          PK
+                        </span>
+                      )}
+                      {column.is_foreign_key && (
+                        <span className="inline-block px-2 py-0.5 text-xs bg-purple-100 text-purple-800 rounded">
+                          FK
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-sm text-gray-600">{column.description || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Compound Keys */}
+        {table.compoundKeys && table.compoundKeys.length > 0 && (
+          <div>
+            <h3 className="text-md font-semibold text-gray-900 mb-3">Compound Keys</h3>
+            <div className="space-y-2">
+              {table.compoundKeys.map((ck) => (
+                <div key={ck.id} className="border border-gray-300 rounded-md p-3 bg-gray-50">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span
+                      className={`px-2 py-0.5 text-xs rounded ${ck.is_primary ? 'bg-blue-100 text-blue-800' : 'bg-gray-200 text-gray-800'}`}
+                    >
+                      {ck.is_primary ? 'Primary Key' : 'Unique Key'}
+                    </span>
+                    {ck.name && (
+                      <span className="text-sm font-medium text-gray-900">{ck.name}</span>
+                    )}
+                  </div>
+                  <div className="text-sm text-gray-700">
+                    Columns:{' '}
+                    {ck.column_ids
+                      .map((colId) => table.columns.find((c) => c.id === colId)?.name)
+                      .filter(Boolean)
+                      .join(', ')}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Metadata */}
+        {table.metadata && Object.keys(table.metadata).length > 0 && (
+          <div>
+            <h3 className="text-md font-semibold text-gray-900 mb-3">Metadata</h3>
+            <div className="border border-gray-300 rounded-md p-3 bg-gray-50">
+              <pre className="text-xs text-gray-700 overflow-auto max-h-40">
+                {JSON.stringify(table.metadata, null, 2)}
+              </pre>
+            </div>
+          </div>
+        )}
+
+        {/* Tags */}
+        {table.tags && table.tags.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Tags</label>
+            <div className="flex flex-wrap gap-2">
+              {table.tags.map((tag, index) => (
+                <span key={index} className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     );
   }

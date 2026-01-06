@@ -64,41 +64,47 @@ class LocalFileService {
    *     domain-folder-2/
    *       tables.yaml
    *       relationships.yaml
-   * 
+   *
    * Only YAML files are loaded - all other file types are ignored.
    */
   private async parseFolderStructure(files: FileList): Promise<{
-    domains: Map<string, { 
-      name: string; 
-      files: { 
-        domain?: File;
-        tables?: File; 
-        relationships?: File; 
-        systems?: File;
-        odcsFiles?: File[];
-        odpsFiles?: File[];
-        cadsFiles?: File[];
-        bpmnFiles?: File[];
-        dmnFiles?: File[];
-      } 
-    }>;
+    domains: Map<
+      string,
+      {
+        name: string;
+        files: {
+          domain?: File;
+          tables?: File;
+          relationships?: File;
+          systems?: File;
+          odcsFiles?: File[];
+          odpsFiles?: File[];
+          cadsFiles?: File[];
+          bpmnFiles?: File[];
+          dmnFiles?: File[];
+        };
+      }
+    >;
     workspaceName: string;
     workspaceMetadata?: WorkspaceMetadata;
   }> {
-    const domains = new Map<string, { 
-      name: string; 
-      files: { 
-        domain?: File;
-        tables?: File; 
-        relationships?: File; 
-        systems?: File;
-        odcsFiles?: File[];
-        odpsFiles?: File[];
-        cadsFiles?: File[];
-        bpmnFiles?: File[];
-        dmnFiles?: File[];
-      } 
-    }>();
+    const domains = new Map<
+      string,
+      {
+        name: string;
+        files: {
+          domain?: File;
+          tables?: File;
+          relationships?: File;
+          systems?: File;
+          odcsFiles?: File[];
+          odpsFiles?: File[];
+          cadsFiles?: File[];
+          bpmnFiles?: File[];
+          dmnFiles?: File[];
+        };
+      }
+    >();
     let workspaceName = 'Untitled Workspace';
     let workspaceMetadata: WorkspaceMetadata | undefined;
 
@@ -119,9 +125,12 @@ class LocalFileService {
       }
 
       const pathParts = file.webkitRelativePath.split('/');
-      
+
       // Check for workspace.yaml at root level (pathParts.length === 2 means workspace-folder/workspace.yaml)
-      if (pathParts.length === 2 && (fileName === 'workspace.yaml' || fileName === 'workspace.yml')) {
+      if (
+        pathParts.length === 2 &&
+        (fileName === 'workspace.yaml' || fileName === 'workspace.yml')
+      ) {
         try {
           const content = await browserFileService.readFile(file);
           workspaceMetadata = yaml.load(content) as WorkspaceMetadata;
@@ -134,7 +143,7 @@ class LocalFileService {
         }
         continue;
       }
-      
+
       // Skip root level files - we only want files in domain subfolders
       // A file must be in a subfolder to belong to a domain
       if (pathParts.length < 2) {
@@ -143,55 +152,56 @@ class LocalFileService {
 
       // Expected structure: workspace-folder/domain-folder/file.yaml
       // First part is workspace name, second part is domain name (folder), rest is file path
-        const wsName = pathParts[0];
-        const domainName = pathParts[1];
-        const fileBaseName = pathParts[pathParts.length - 1]?.toLowerCase();
+      const wsName = pathParts[0];
+      const domainName = pathParts[1];
+      const fileBaseName = pathParts[pathParts.length - 1]?.toLowerCase();
 
-        if (!wsName || !domainName || !fileBaseName) {
-          continue;
-        }
+      if (!wsName || !domainName || !fileBaseName) {
+        continue;
+      }
 
       // Don't treat files as domains - only treat folder names as domains
       // If the "domain name" is actually a file (has extension), skip it
       const domainNameLower = domainName.toLowerCase();
-      const isDomainNameAFile = domainNameLower.endsWith('.yaml') || 
-                                 domainNameLower.endsWith('.yml') || 
-                                 domainNameLower.endsWith('.bpmn') || 
-                                 domainNameLower.endsWith('.dmn');
-      
+      const isDomainNameAFile =
+        domainNameLower.endsWith('.yaml') ||
+        domainNameLower.endsWith('.yml') ||
+        domainNameLower.endsWith('.bpmn') ||
+        domainNameLower.endsWith('.dmn');
+
       if (isDomainNameAFile) {
         // This is a file at root level, not a domain folder - skip it
-          continue;
-        }
+        continue;
+      }
 
-        workspaceName = wsName;
+      workspaceName = wsName;
 
-        // Create domain entry if it doesn't exist
-        if (!domains.has(domainName)) {
-        domains.set(domainName, { 
-          name: domainName, 
+      // Create domain entry if it doesn't exist
+      if (!domains.has(domainName)) {
+        domains.set(domainName, {
+          name: domainName,
           files: {
             odcsFiles: [],
             odpsFiles: [],
             cadsFiles: [],
             bpmnFiles: [],
             dmnFiles: [],
-          } 
+          },
         });
-        }
+      }
 
-        const domain = domains.get(domainName);
-        if (!domain) {
-          continue;
-        }
-        
+      const domain = domains.get(domainName);
+      if (!domain) {
+        continue;
+      }
+
       // Load domain.yaml, tables.yaml, relationships.yaml, systems.yaml, and individual asset files
       if (fileBaseName === 'domain.yaml' || fileBaseName === 'domain.yml') {
         domain.files.domain = file;
       } else if (fileBaseName === 'tables.yaml' || fileBaseName === 'tables.yml') {
-          domain.files.tables = file;
-        } else if (fileBaseName === 'relationships.yaml' || fileBaseName === 'relationships.yml') {
-          domain.files.relationships = file;
+        domain.files.tables = file;
+      } else if (fileBaseName === 'relationships.yaml' || fileBaseName === 'relationships.yml') {
+        domain.files.relationships = file;
       } else if (fileBaseName === 'systems.yaml' || fileBaseName === 'systems.yml') {
         domain.files.systems = file;
       } else if (fileBaseName.endsWith('.odcs.yaml') || fileBaseName.endsWith('.odcs.yml')) {
@@ -226,7 +236,7 @@ class LocalFileService {
    * In offline mode, only loads folders and YAML files into the session.
    * Subfolders represent different domain canvases.
    * YAML files contain resources (ODCS specs, relationships, data-flow diagrams, etc.)
-   * 
+   *
    * Expected structure:
    *   workspace-folder/
    *     domain-canvas-1/        # Domain canvas (e.g., "conceptual", "logical", "physical")
@@ -240,18 +250,25 @@ class LocalFileService {
    */
   async loadWorkspaceFromFolder(files: FileList): Promise<Workspace> {
     // Parse folder structure - only YAML files are processed
-    const { domains: domainMap, workspaceName, workspaceMetadata } = await this.parseFolderStructure(files);
-    
+    const {
+      domains: domainMap,
+      workspaceName,
+      workspaceMetadata,
+    } = await this.parseFolderStructure(files);
+
     if (domainMap.size === 0) {
-      throw new Error('No domain folders found. Expected structure: workspace-folder/domain-folder/tables.yaml and relationships.yaml. Only YAML files are loaded.');
+      throw new Error(
+        'No domain folders found. Expected structure: workspace-folder/domain-folder/tables.yaml and relationships.yaml. Only YAML files are loaded.'
+      );
     }
 
     // Use workspace ID from workspace.yaml if available, otherwise generate one
     // Always use UUIDs for workspace IDs
     const { generateUUID, isValidUUID } = await import('@/utils/validation');
-    const workspaceId = (workspaceMetadata?.id && isValidUUID(workspaceMetadata.id))
-      ? workspaceMetadata.id
-      : generateUUID();
+    const workspaceId =
+      workspaceMetadata?.id && isValidUUID(workspaceMetadata.id)
+        ? workspaceMetadata.id
+        : generateUUID();
     const domains: DomainType[] = [];
     const allTables: Table[] = [];
     const allRelationships: Relationship[] = [];
@@ -277,13 +294,13 @@ class LocalFileService {
       let domainMetadata: Partial<DomainType> = {};
       let domainSystems: System[] = [];
       let domainRelationships: Relationship[] = [];
-      
+
       if (domainData.files.domain) {
         try {
           const domainContent = await browserFileService.readFile(domainData.files.domain);
           const parsed = yaml.load(domainContent) as any;
           console.log(`[LocalFileService] Loaded domain.yaml for ${domainName}:`, parsed);
-          
+
           // Extract domain metadata
           domainMetadata = {
             id: parsed?.id,
@@ -294,38 +311,54 @@ class LocalFileService {
             last_modified_at: parsed?.last_modified_at,
             view_positions: parsed?.view_positions,
           };
-          
+
           // Extract systems from domain.yaml (merged structure)
           if (parsed?.systems && Array.isArray(parsed.systems)) {
             // Check if it's an array of full system objects or just IDs (backward compatibility)
-            if (parsed.systems.length > 0 && typeof parsed.systems[0] === 'object' && parsed.systems[0].id) {
+            if (
+              parsed.systems.length > 0 &&
+              typeof parsed.systems[0] === 'object' &&
+              parsed.systems[0].id
+            ) {
               // Full system objects
               domainSystems = parsed.systems.map((system: any) => ({
                 ...system,
                 workspace_id: workspaceId,
                 domain_id: parsed?.id || domainId, // Use domain ID from domain.yaml
               }));
-              console.log(`[LocalFileService] Loaded ${domainSystems.length} system(s) from domain.yaml`);
+              console.log(
+                `[LocalFileService] Loaded ${domainSystems.length} system(s) from domain.yaml`
+              );
             } else {
               // Just IDs - fall back to separate systems.yaml file (backward compatibility)
-              console.log(`[LocalFileService] Found system IDs in domain.yaml, checking for systems.yaml (backward compatibility)`);
+              console.log(
+                `[LocalFileService] Found system IDs in domain.yaml, checking for systems.yaml (backward compatibility)`
+              );
             }
           }
-          
+
           // Extract relationships from domain.yaml (merged structure)
           if (parsed?.relationships && Array.isArray(parsed.relationships)) {
             // Check if it's an array of full relationship objects or just IDs (backward compatibility)
-            if (parsed.relationships.length > 0 && typeof parsed.relationships[0] === 'object' && parsed.relationships[0].id) {
+            if (
+              parsed.relationships.length > 0 &&
+              typeof parsed.relationships[0] === 'object' &&
+              parsed.relationships[0].id
+            ) {
               // Full relationship objects
               domainRelationships = parsed.relationships.map((rel: any) => ({
                 ...rel,
                 workspace_id: workspaceId,
                 domain_id: parsed?.id || domainId, // Use domain ID from domain.yaml
               }));
-              console.log(`[LocalFileService] Loaded ${domainRelationships.length} relationship(s) from domain.yaml`);
+              console.log(
+                `[LocalFileService] Loaded ${domainRelationships.length} relationship(s) from domain.yaml`
+              );
             } else {
               // Just IDs - fall back to separate relationships.yaml file (backward compatibility)
-              console.log(`[LocalFileService] Found relationship IDs in domain.yaml, checking for relationships.yaml (backward compatibility)`);
+              console.log(
+                `[LocalFileService] Found relationship IDs in domain.yaml, checking for relationships.yaml (backward compatibility)`
+              );
             }
           }
         } catch (error) {
@@ -337,15 +370,19 @@ class LocalFileService {
       // Preserve domain ID from domain.yaml even if not a valid UUID (for backward compatibility with old files)
       // Only generate a new UUID if domain.yaml doesn't have an ID at all
       const { generateUUID, isValidUUID } = await import('@/utils/validation');
-      const domainId = domainMetadata.id 
-        ? domainMetadata.id  // Use ID from domain.yaml as-is, even if not a valid UUID
+      const domainId = domainMetadata.id
+        ? domainMetadata.id // Use ID from domain.yaml as-is, even if not a valid UUID
         : generateUUID(); // Only generate if no ID present
-      console.log(`[LocalFileService] Using domain ID for ${domainName}: ${domainId} (from domain.yaml: ${domainMetadata.id ? 'yes' : 'generated UUID'}, isValidUUID: ${isValidUUID(domainId)})`);
+      console.log(
+        `[LocalFileService] Using domain ID for ${domainName}: ${domainId} (from domain.yaml: ${domainMetadata.id ? 'yes' : 'generated UUID'}, isValidUUID: ${isValidUUID(domainId)})`
+      );
 
       // If systems weren't loaded from domain.yaml, try loading from systems.yaml (backward compatibility)
       if (domainSystems.length === 0 && domainData.files.systems) {
         try {
-          console.log(`[LocalFileService] Loading systems.yaml from domain: ${domainName} (backward compatibility)`);
+          console.log(
+            `[LocalFileService] Loading systems.yaml from domain: ${domainName} (backward compatibility)`
+          );
           const systemsContent = await browserFileService.readFile(domainData.files.systems);
           const parsed = yaml.load(systemsContent) as any;
           console.log(`[LocalFileService] Parsed systems.yaml:`, parsed);
@@ -355,15 +392,23 @@ class LocalFileService {
               workspace_id: workspaceId,
               domain_id: domainId,
             }));
-            console.log(`[LocalFileService] Loaded ${domainSystems.length} system(s) from systems.yaml`);
+            console.log(
+              `[LocalFileService] Loaded ${domainSystems.length} system(s) from systems.yaml`
+            );
           } else {
-            console.warn(`[LocalFileService] No systems array found in systems.yaml for ${domainName}, parsed:`, parsed);
+            console.warn(
+              `[LocalFileService] No systems array found in systems.yaml for ${domainName}, parsed:`,
+              parsed
+            );
           }
         } catch (error) {
-          console.error(`[LocalFileService] Failed to load systems.yaml from ${domainName}:`, error);
+          console.error(
+            `[LocalFileService] Failed to load systems.yaml from ${domainName}:`,
+            error
+          );
         }
       }
-      
+
       // Add systems to allSystems
       if (domainSystems.length > 0) {
         allSystems.push(...domainSystems);
@@ -374,7 +419,7 @@ class LocalFileService {
         try {
           const tablesContent = await browserFileService.readFile(domainData.files.tables);
           const odcsData = await odcsService.parseYAML(tablesContent);
-          
+
           if (odcsData.tables && Array.isArray(odcsData.tables)) {
             // Update tables with workspace and domain IDs
             const domainTables = odcsData.tables.map((table: any) => ({
@@ -393,25 +438,35 @@ class LocalFileService {
       // If relationships weren't loaded from domain.yaml, try loading from relationships.yaml (backward compatibility)
       if (domainRelationships.length === 0 && domainData.files.relationships) {
         try {
-          console.log(`[LocalFileService] Loading relationships.yaml from domain: ${domainName} (backward compatibility)`);
+          console.log(
+            `[LocalFileService] Loading relationships.yaml from domain: ${domainName} (backward compatibility)`
+          );
           console.log(`[LocalFileService] File object:`, {
             name: domainData.files.relationships.name,
             size: domainData.files.relationships.size,
             type: domainData.files.relationships.type,
             lastModified: domainData.files.relationships.lastModified,
           });
-          
+
           // Check if file is empty
           if (domainData.files.relationships.size === 0) {
-            console.warn(`[LocalFileService] relationships.yaml is empty (0 bytes) for domain: ${domainName}`);
+            console.warn(
+              `[LocalFileService] relationships.yaml is empty (0 bytes) for domain: ${domainName}`
+            );
             // Try to read anyway to see what happens
           }
-          
-          const relationshipsContent = await browserFileService.readFile(domainData.files.relationships);
-          console.log(`[LocalFileService] relationships.yaml content length: ${relationshipsContent.length}`);
-          
+
+          const relationshipsContent = await browserFileService.readFile(
+            domainData.files.relationships
+          );
+          console.log(
+            `[LocalFileService] relationships.yaml content length: ${relationshipsContent.length}`
+          );
+
           if (relationshipsContent.trim().length === 0) {
-            console.warn(`[LocalFileService] relationships.yaml is empty (no content) for domain: ${domainName}`);
+            console.warn(
+              `[LocalFileService] relationships.yaml is empty (no content) for domain: ${domainName}`
+            );
             // Skip empty files
           } else {
             // Try parsing as simple YAML first (for system-to-system relationships)
@@ -425,26 +480,40 @@ class LocalFileService {
               parsed = await odcsService.parseYAML(relationshipsContent);
               console.log(`[LocalFileService] Parsed relationships.yaml via ODCS:`, parsed);
             }
-            
+
             if (parsed?.relationships && Array.isArray(parsed.relationships)) {
-            // Update relationships with workspace and domain IDs
+              // Update relationships with workspace and domain IDs
               domainRelationships = parsed.relationships.map((rel: any) => ({
-              ...rel,
-              workspace_id: workspaceId,
-              domain_id: domainId,
-            }));
-              console.log(`[LocalFileService] Loaded ${domainRelationships.length} relationship(s) from relationships.yaml`);
+                ...rel,
+                workspace_id: workspaceId,
+                domain_id: domainId,
+              }));
+              console.log(
+                `[LocalFileService] Loaded ${domainRelationships.length} relationship(s) from relationships.yaml`
+              );
             } else {
-              console.warn(`[LocalFileService] No relationships array found in relationships.yaml for ${domainName}, parsed:`, parsed);
+              console.warn(
+                `[LocalFileService] No relationships array found in relationships.yaml for ${domainName}, parsed:`,
+                parsed
+              );
             }
           }
         } catch (error) {
-          console.error(`[LocalFileService] Failed to load relationships.yaml from ${domainName}:`, error);
-          console.error(`[LocalFileService] Error details:`, error instanceof Error ? error.message : String(error));
-          console.error(`[LocalFileService] Error stack:`, error instanceof Error ? error.stack : 'No stack');
+          console.error(
+            `[LocalFileService] Failed to load relationships.yaml from ${domainName}:`,
+            error
+          );
+          console.error(
+            `[LocalFileService] Error details:`,
+            error instanceof Error ? error.message : String(error)
+          );
+          console.error(
+            `[LocalFileService] Error stack:`,
+            error instanceof Error ? error.stack : 'No stack'
+          );
         }
       }
-      
+
       // Add relationships to allRelationships
       if (domainRelationships.length > 0) {
         allRelationships.push(...domainRelationships);
@@ -452,7 +521,9 @@ class LocalFileService {
 
       // Load individual ODCS table files
       if (domainData.files.odcsFiles && domainData.files.odcsFiles.length > 0) {
-        console.log(`[LocalFileService] Loading ${domainData.files.odcsFiles.length} ODCS file(s) from domain: ${domainName}`);
+        console.log(
+          `[LocalFileService] Loading ${domainData.files.odcsFiles.length} ODCS file(s) from domain: ${domainName}`
+        );
         for (const file of domainData.files.odcsFiles) {
           try {
             console.log(`[LocalFileService] Loading ODCS file: ${file.name}`);
@@ -466,17 +537,22 @@ class LocalFileService {
                 primary_domain_id: domainId,
                 visible_domains: [domainId],
               }));
-              console.log(`[LocalFileService] Loaded ${domainTables.length} table(s) from ${file.name}`);
-              
+              console.log(
+                `[LocalFileService] Loaded ${domainTables.length} table(s) from ${file.name}`
+              );
+
               // Try to link tables to systems based on filename or metadata
               // Check if filename contains a system name
               const fileNameLower = file.name.toLowerCase();
-              const domainSystems = allSystems.filter(s => s.domain_id === domainId);
-              console.log(`[LocalFileService] Attempting to link tables from ${file.name} to systems. Available systems in domain:`, domainSystems.map(s => ({ id: s.id, name: s.name })));
-              
+              const domainSystems = allSystems.filter((s) => s.domain_id === domainId);
+              console.log(
+                `[LocalFileService] Attempting to link tables from ${file.name} to systems. Available systems in domain:`,
+                domainSystems.map((s) => ({ id: s.id, name: s.name }))
+              );
+
               for (const table of domainTables) {
                 let linked = false;
-                
+
                 // Debug: Log table metadata to see if system_id is present
                 console.log(`[LocalFileService] Table "${table.name}" metadata:`, {
                   hasMetadata: !!table.metadata,
@@ -484,28 +560,34 @@ class LocalFileService {
                   system_id: table.metadata?.system_id,
                   fullMetadata: table.metadata,
                 });
-                
+
                 // PRIORITY 1: Check table metadata for system_id first (most reliable)
                 if (table.metadata?.system_id) {
                   const systemId = table.metadata.system_id;
-                  const system = domainSystems.find(s => s.id === systemId);
+                  const system = domainSystems.find((s) => s.id === systemId);
                   if (system) {
                     if (!system.table_ids) {
                       system.table_ids = [];
                     }
                     if (!system.table_ids.includes(table.id)) {
                       system.table_ids.push(table.id);
-                      console.log(`[LocalFileService] ✓ Linked table "${table.name || table.id}" to system "${system.name}" (${system.id}) based on metadata.system_id (PRIORITY)`);
+                      console.log(
+                        `[LocalFileService] ✓ Linked table "${table.name || table.id}" to system "${system.name}" (${system.id}) based on metadata.system_id (PRIORITY)`
+                      );
                       linked = true;
                     } else {
-                      console.log(`[LocalFileService] Table "${table.name || table.id}" already linked to system "${system.name}" (${system.id})`);
+                      console.log(
+                        `[LocalFileService] Table "${table.name || table.id}" already linked to system "${system.name}" (${system.id})`
+                      );
                       linked = true;
                     }
                   } else {
-                    console.warn(`[LocalFileService] Table "${table.name || table.id}" has metadata.system_id="${systemId}" but no matching system found in domain`);
+                    console.warn(
+                      `[LocalFileService] Table "${table.name || table.id}" has metadata.system_id="${systemId}" but no matching system found in domain`
+                    );
                   }
                 }
-                
+
                 // PRIORITY 2: Try to find matching system by name in filename (fallback)
                 if (!linked) {
                   for (const system of domainSystems) {
@@ -513,24 +595,28 @@ class LocalFileService {
                     // Check if system name appears in filename (e.g., "GlobalBetSystem.odcs.yaml" contains "GlobalBetSystem")
                     // Also try matching table name to system name
                     const tableNameLower = (table.name || '').toLowerCase().replace(/\s+/g, '');
-                    if (fileNameLower.includes(systemNameLower) || 
-                        fileNameLower.includes(system.name.toLowerCase()) ||
-                        tableNameLower === systemNameLower ||
-                        tableNameLower.includes(systemNameLower) ||
-                        systemNameLower.includes(tableNameLower)) {
+                    if (
+                      fileNameLower.includes(systemNameLower) ||
+                      fileNameLower.includes(system.name.toLowerCase()) ||
+                      tableNameLower === systemNameLower ||
+                      tableNameLower.includes(systemNameLower) ||
+                      systemNameLower.includes(tableNameLower)
+                    ) {
                       if (!system.table_ids) {
                         system.table_ids = [];
                       }
                       if (!system.table_ids.includes(table.id)) {
                         system.table_ids.push(table.id);
-                        console.log(`[LocalFileService] ✓ Linked table "${table.name || table.id}" to system "${system.name}" (${system.id}) based on filename/name matching (fallback)`);
+                        console.log(
+                          `[LocalFileService] ✓ Linked table "${table.name || table.id}" to system "${system.name}" (${system.id}) based on filename/name matching (fallback)`
+                        );
                         linked = true;
                         break; // Only link to one system
                       }
                     }
                   }
                 }
-                
+
                 // Fallback: If no match found and there are systems in the domain, link to the first system
                 if (!linked && domainSystems.length > 0) {
                   const fallbackSystem = domainSystems[0];
@@ -540,25 +626,32 @@ class LocalFileService {
                     }
                     if (!fallbackSystem.table_ids.includes(table.id)) {
                       fallbackSystem.table_ids.push(table.id);
-                      console.log(`[LocalFileService] ⚠ Linked table "${table.name || table.id}" to first system "${fallbackSystem.name}" (${fallbackSystem.id}) as fallback (no name match found)`);
+                      console.log(
+                        `[LocalFileService] ⚠ Linked table "${table.name || table.id}" to first system "${fallbackSystem.name}" (${fallbackSystem.id}) as fallback (no name match found)`
+                      );
                       linked = true;
                     }
                   }
                 }
-                
+
                 if (!linked) {
-                  console.warn(`[LocalFileService] ⚠ Could not link table "${table.name || table.id}" to any system. Filename: ${file.name}, Domain has ${domainSystems.length} system(s)`);
+                  console.warn(
+                    `[LocalFileService] ⚠ Could not link table "${table.name || table.id}" to any system. Filename: ${file.name}, Domain has ${domainSystems.length} system(s)`
+                  );
                 }
               }
-              
+
               // Log system table_ids after linking
-              console.log(`[LocalFileService] System table_ids after linking ${file.name}:`, domainSystems.map(s => ({ 
-                id: s.id, 
-                name: s.name, 
-                table_ids: s.table_ids || [],
-                table_count: (s.table_ids || []).length
-              })));
-              
+              console.log(
+                `[LocalFileService] System table_ids after linking ${file.name}:`,
+                domainSystems.map((s) => ({
+                  id: s.id,
+                  name: s.name,
+                  table_ids: s.table_ids || [],
+                  table_count: (s.table_ids || []).length,
+                }))
+              );
+
               allTables.push(...domainTables);
             } else {
               console.warn(`[LocalFileService] No tables found in ODCS file ${file.name}`);
@@ -573,14 +666,18 @@ class LocalFileService {
 
       // Load individual ODPS product files
       if (domainData.files.odpsFiles && domainData.files.odpsFiles.length > 0) {
-        console.log(`[LocalFileService] Loading ${domainData.files.odpsFiles.length} ODPS file(s) from domain: ${domainName}`);
+        console.log(
+          `[LocalFileService] Loading ${domainData.files.odpsFiles.length} ODPS file(s) from domain: ${domainName}`
+        );
         for (const file of domainData.files.odpsFiles) {
           try {
             console.log(`[LocalFileService] Loading ODPS file: ${file.name}`);
             const content = await browserFileService.readFile(file);
             const parsed = await odpsService.parseYAML(content);
             if (parsed) {
-              console.log(`[LocalFileService] Loaded ODPS product: ${(parsed as DataProduct).name || 'unnamed'}`);
+              console.log(
+                `[LocalFileService] Loaded ODPS product: ${(parsed as DataProduct).name || 'unnamed'}`
+              );
               allProducts.push({
                 ...parsed,
                 workspace_id: workspaceId,
@@ -616,14 +713,18 @@ class LocalFileService {
 
       // Load BPMN process files
       if (domainData.files.bpmnFiles && domainData.files.bpmnFiles.length > 0) {
-        console.log(`[LocalFileService] Loading ${domainData.files.bpmnFiles.length} BPMN file(s) from domain: ${domainName}`);
+        console.log(
+          `[LocalFileService] Loading ${domainData.files.bpmnFiles.length} BPMN file(s) from domain: ${domainName}`
+        );
         for (const file of domainData.files.bpmnFiles) {
           try {
             console.log(`[LocalFileService] Loading BPMN file: ${file.name}`);
             const content = await browserFileService.readFile(file);
             const parsed = await bpmnService.parseXML(content);
             if (parsed) {
-              console.log(`[LocalFileService] Loaded BPMN process: ${(parsed as BPMNProcess).name || 'unnamed'}`);
+              console.log(
+                `[LocalFileService] Loaded BPMN process: ${(parsed as BPMNProcess).name || 'unnamed'}`
+              );
               allBpmnProcesses.push({
                 ...parsed,
                 workspace_id: workspaceId,
@@ -640,14 +741,18 @@ class LocalFileService {
 
       // Load DMN decision files
       if (domainData.files.dmnFiles && domainData.files.dmnFiles.length > 0) {
-        console.log(`[LocalFileService] Loading ${domainData.files.dmnFiles.length} DMN file(s) from domain: ${domainName}`);
+        console.log(
+          `[LocalFileService] Loading ${domainData.files.dmnFiles.length} DMN file(s) from domain: ${domainName}`
+        );
         for (const file of domainData.files.dmnFiles) {
           try {
             console.log(`[LocalFileService] Loading DMN file: ${file.name}`);
             const content = await browserFileService.readFile(file);
             const parsed = await dmnService.parseXML(content);
             if (parsed) {
-              console.log(`[LocalFileService] Loaded DMN decision: ${(parsed as DMNDecision).name || 'unnamed'}`);
+              console.log(
+                `[LocalFileService] Loaded DMN decision: ${(parsed as DMNDecision).name || 'unnamed'}`
+              );
               allDmnDecisions.push({
                 ...parsed,
                 workspace_id: workspaceId,
@@ -680,9 +785,9 @@ class LocalFileService {
     }
 
     // Build workspace object
-    const workspace: Workspace & { 
-      tables?: Table[]; 
-      relationships?: Relationship[]; 
+    const workspace: Workspace & {
+      tables?: Table[];
+      relationships?: Relationship[];
       systems?: System[];
       products?: DataProduct[];
       assets?: ComputeAsset[];
@@ -704,18 +809,25 @@ class LocalFileService {
     }
     if (allRelationships.length > 0) {
       (workspace as any).relationships = allRelationships;
-      console.log(`[LocalFileService] Added ${allRelationships.length} relationship(s) to workspace`);
+      console.log(
+        `[LocalFileService] Added ${allRelationships.length} relationship(s) to workspace`
+      );
     }
     if (allSystems.length > 0) {
       (workspace as any).systems = allSystems;
-      console.log(`[LocalFileService] Added ${allSystems.length} system(s) to workspace:`, allSystems.map(s => ({ 
-        id: s.id, 
-        name: s.name, 
-        table_ids: s.table_ids || [],
-        table_count: (s.table_ids || []).length 
-      })));
+      console.log(
+        `[LocalFileService] Added ${allSystems.length} system(s) to workspace:`,
+        allSystems.map((s) => ({
+          id: s.id,
+          name: s.name,
+          table_ids: s.table_ids || [],
+          table_count: (s.table_ids || []).length,
+        }))
+      );
     } else {
-      console.log(`[LocalFileService] No systems to add to workspace (allSystems.length = ${allSystems.length})`);
+      console.log(
+        `[LocalFileService] No systems to add to workspace (allSystems.length = ${allSystems.length})`
+      );
     }
     if (allProducts.length > 0) {
       (workspace as any).products = allProducts;
@@ -727,13 +839,17 @@ class LocalFileService {
     }
     if (allBpmnProcesses.length > 0) {
       (workspace as any).bpmnProcesses = allBpmnProcesses;
-      console.log(`[LocalFileService] Added ${allBpmnProcesses.length} BPMN process(es) to workspace`);
+      console.log(
+        `[LocalFileService] Added ${allBpmnProcesses.length} BPMN process(es) to workspace`
+      );
     }
     if (allDmnDecisions.length > 0) {
       (workspace as any).dmnDecisions = allDmnDecisions;
-      console.log(`[LocalFileService] Added ${allDmnDecisions.length} DMN decision(s) to workspace`);
+      console.log(
+        `[LocalFileService] Added ${allDmnDecisions.length} DMN decision(s) to workspace`
+      );
     }
-    
+
     console.log(`[LocalFileService] Loaded workspace summary:`, {
       domains: domains.length,
       tables: allTables.length,
@@ -744,7 +860,7 @@ class LocalFileService {
       bpmnProcesses: allBpmnProcesses.length,
       dmnDecisions: allDmnDecisions.length,
     });
-    
+
     console.log(`[LocalFileService] Workspace object before return:`, {
       hasTables: !!(workspace as any).tables,
       hasRelationships: !!(workspace as any).relationships,
@@ -762,33 +878,37 @@ class LocalFileService {
    */
   async loadWorkspace(file: File): Promise<Workspace> {
     const odcsWorkspace = await this.readFile(file);
-    
+
     // Convert ODCSWorkspace to Workspace format
     // ODCS files contain tables and relationships, but Workspace needs id, name, etc.
     // Always use UUIDs for workspace and domain IDs
     const { generateUUID, isValidUUID } = await import('@/utils/validation');
-    const workspaceId = (odcsWorkspace.workspace_id && isValidUUID(odcsWorkspace.workspace_id))
-      ? odcsWorkspace.workspace_id
-      : generateUUID();
-    const domainId = (odcsWorkspace.domain_id && isValidUUID(odcsWorkspace.domain_id))
-      ? odcsWorkspace.domain_id
-      : generateUUID();
-    
+    const workspaceId =
+      odcsWorkspace.workspace_id && isValidUUID(odcsWorkspace.workspace_id)
+        ? odcsWorkspace.workspace_id
+        : generateUUID();
+    const domainId =
+      odcsWorkspace.domain_id && isValidUUID(odcsWorkspace.domain_id)
+        ? odcsWorkspace.domain_id
+        : generateUUID();
+
     const workspace: Workspace & { tables?: any[]; relationships?: any[] } = {
       id: workspaceId,
       name: file.name.replace(/\.(yaml|yml)$/i, '') || 'Untitled Workspace',
       owner_id: 'offline-user',
       created_at: new Date().toISOString(),
       last_modified_at: new Date().toISOString(),
-      domains: [{
-        id: domainId,
-        workspace_id: workspaceId,
-        name: 'Default',
-        created_at: new Date().toISOString(),
-        last_modified_at: new Date().toISOString(),
-      }],
+      domains: [
+        {
+          id: domainId,
+          workspace_id: workspaceId,
+          name: 'Default',
+          created_at: new Date().toISOString(),
+          last_modified_at: new Date().toISOString(),
+        },
+      ],
     };
-    
+
     // Store tables and relationships as additional properties for offline access
     if (odcsWorkspace.tables) {
       (workspace as any).tables = odcsWorkspace.tables;
@@ -796,9 +916,9 @@ class LocalFileService {
     if (odcsWorkspace.relationships) {
       (workspace as any).relationships = odcsWorkspace.relationships;
     }
-    
+
     // Legacy data flow diagrams removed - replaced by BPMN processes
-    
+
     return workspace as Workspace;
   }
 
@@ -852,7 +972,9 @@ class LocalFileService {
    */
   async loadBPMNProcesses(_workspaceId: string, _domainId: string): Promise<BPMNProcess[]> {
     // In browser mode, processes are loaded as part of workspace folder structure
-    throw new Error('loadBPMNProcesses not supported in browser mode - use loadWorkspaceFromFolder');
+    throw new Error(
+      'loadBPMNProcesses not supported in browser mode - use loadWorkspaceFromFolder'
+    );
   }
 
   /**
@@ -864,7 +986,6 @@ class LocalFileService {
     throw new Error('loadDMNDecisions not supported in browser mode - use loadWorkspaceFromFolder');
   }
 
-
   /**
    * Save domain definition to domain.yaml
    */
@@ -875,39 +996,69 @@ class LocalFileService {
   }
 
   /**
-   * Save ODCS table to {table-name}.odcs.yaml
+   * Save ODCS table to {systemName_tableName}.odcs.yaml (or {tableName}.odcs.yaml if no system)
    */
   async saveODCSTable(_workspaceId: string, _domainId: string, table: Table): Promise<void> {
+    // Get system name if table is linked to a system
+    let systemName = '';
+    if (table.metadata && table.metadata.system_id) {
+      const { useModelStore } = await import('@/stores/modelStore');
+      const systems = useModelStore.getState().systems;
+      const system = systems.find((s) => s.id === table.metadata!.system_id);
+      if (system) {
+        systemName = `${system.name}_`;
+      }
+    }
+
     const yamlContent = await odcsService.toYAML({ tables: [table] } as any);
-    browserFileService.downloadFile(yamlContent, `${table.name}.odcs.yaml`, 'text/yaml');
+    const filename = `${systemName}${table.name}.odcs.yaml`;
+    browserFileService.downloadFile(yamlContent, filename, 'text/yaml');
   }
 
   /**
    * Save ODPS product to {product-name}.odps.yaml
    */
-  async saveODPSProduct(_workspaceId: string, domainId: string, product: DataProduct): Promise<void> {
+  async saveODPSProduct(
+    _workspaceId: string,
+    domainId: string,
+    product: DataProduct
+  ): Promise<void> {
     // Get domain name from model store
     const { useModelStore } = await import('@/stores/modelStore');
     const domains = useModelStore.getState().domains;
-    const domain = domains.find(d => d.id === domainId);
+    const domain = domains.find((d) => d.id === domainId);
     const domainName = domain?.name || 'unknown';
-    
+
     const yamlContent = await odpsService.toYAML(product, domainName);
     browserFileService.downloadFile(yamlContent, `${product.name}.odps.yaml`, 'text/yaml');
   }
 
   /**
-   * Save CADS asset to {asset-name}.cads.yaml
+   * Save CADS asset to {systemName_assetName}.cads.yaml (or {assetName}.cads.yaml if no system)
    */
   async saveCADSAsset(_workspaceId: string, _domainId: string, asset: ComputeAsset): Promise<void> {
+    // Get system name if asset is linked to a system
+    let systemName = '';
+    const { useModelStore } = await import('@/stores/modelStore');
+    const systems = useModelStore.getState().systems;
+    const system = systems.find((s) => s.asset_ids?.includes(asset.id));
+    if (system) {
+      systemName = `${system.name}_`;
+    }
+
     const yamlContent = await cadsService.toYAML(asset);
-    browserFileService.downloadFile(yamlContent, `${asset.name}.cads.yaml`, 'text/yaml');
+    const filename = `${systemName}${asset.name}.cads.yaml`;
+    browserFileService.downloadFile(yamlContent, filename, 'text/yaml');
   }
 
   /**
    * Save BPMN process to {process-name}.bpmn
    */
-  async saveBPMNProcess(_workspaceId: string, _domainId: string, process: BPMNProcess): Promise<void> {
+  async saveBPMNProcess(
+    _workspaceId: string,
+    _domainId: string,
+    process: BPMNProcess
+  ): Promise<void> {
     const xmlContent = await bpmnService.toXML(process);
     browserFileService.downloadFile(xmlContent, `${process.name}.bpmn`, 'application/xml');
   }
@@ -915,7 +1066,11 @@ class LocalFileService {
   /**
    * Save DMN decision to {decision-name}.dmn
    */
-  async saveDMNDecision(_workspaceId: string, _domainId: string, decision: DMNDecision): Promise<void> {
+  async saveDMNDecision(
+    _workspaceId: string,
+    _domainId: string,
+    decision: DMNDecision
+  ): Promise<void> {
     const xmlContent = await dmnService.toXML(decision);
     browserFileService.downloadFile(xmlContent, `${decision.name}.dmn`, 'application/xml');
   }
@@ -956,25 +1111,25 @@ class LocalFileService {
       domainDefinition.relationships = relationships;
     }
     if (tables.length > 0) {
-      domainDefinition.tables = tables.map(t => t.id);
+      domainDefinition.tables = tables.map((t) => t.id);
     }
     if (products.length > 0) {
-      domainDefinition.products = products.map(p => p.id);
+      domainDefinition.products = products.map((p) => p.id);
     }
     if (assets.length > 0) {
-      domainDefinition.assets = assets.map(a => a.id);
+      domainDefinition.assets = assets.map((a) => a.id);
     }
     if (bpmnProcesses.length > 0) {
-      domainDefinition.processes = bpmnProcesses.map(p => p.id);
+      domainDefinition.processes = bpmnProcesses.map((p) => p.id);
     }
     if (dmnDecisions.length > 0) {
-      domainDefinition.decisions = dmnDecisions.map(d => d.id);
+      domainDefinition.decisions = dmnDecisions.map((d) => d.id);
     }
     if ((domain as any).view_positions) {
       domainDefinition.view_positions = (domain as any).view_positions;
     }
 
-    Object.keys(domainDefinition).forEach(key => {
+    Object.keys(domainDefinition).forEach((key) => {
       if (domainDefinition[key] === undefined) {
         delete domainDefinition[key];
       }
@@ -988,10 +1143,21 @@ class LocalFileService {
     });
     files.push({ path: `${domainName}/domain.yaml`, content: domainYaml });
 
-    // Add table files
+    // Add table files with system name prefix
     for (const table of tables) {
+      // Get system name if table is linked to a system
+      let systemPrefix = '';
+      if (table.metadata && table.metadata.system_id) {
+        const system = systems.find((s) => s.id === table.metadata!.system_id);
+        if (system) {
+          systemPrefix = `${system.name}_`;
+        }
+      }
       const tableYaml = await odcsService.toYAML({ tables: [table] } as any);
-      files.push({ path: `${domainName}/${table.name}.odcs.yaml`, content: tableYaml });
+      files.push({
+        path: `${domainName}/${systemPrefix}${table.name}.odcs.yaml`,
+        content: tableYaml,
+      });
     }
 
     // Add product files
@@ -1000,24 +1166,41 @@ class LocalFileService {
       files.push({ path: `${domainName}/${product.name}.odps.yaml`, content: productYaml });
     }
 
-    // Add asset files
+    // Add asset files with system name prefix
     for (const asset of assets) {
+      // Get system name if asset is linked to a system
+      let systemPrefix = '';
+      const system = systems.find((s) => s.asset_ids?.includes(asset.id));
+      if (system) {
+        systemPrefix = `${system.name}_`;
+      }
       const assetYaml = await cadsService.toYAML(asset);
-      files.push({ path: `${domainName}/${asset.name}.cads.yaml`, content: assetYaml });
+      files.push({
+        path: `${domainName}/${systemPrefix}${asset.name}.cads.yaml`,
+        content: assetYaml,
+      });
     }
 
     // Add BPMN files
     for (const process of bpmnProcesses) {
       const fileName = process.name ? `${process.name}.bpmn` : `process_${process.id}.bpmn`;
       const xmlContent = await bpmnService.toXML(process);
-      files.push({ path: `${domainName}/${fileName}`, content: xmlContent, mimeType: 'application/xml' });
+      files.push({
+        path: `${domainName}/${fileName}`,
+        content: xmlContent,
+        mimeType: 'application/xml',
+      });
     }
 
     // Add DMN files
     for (const decision of dmnDecisions) {
       const fileName = decision.name ? `${decision.name}.dmn` : `decision_${decision.id}.dmn`;
       const xmlContent = await dmnService.toXML(decision);
-      files.push({ path: `${domainName}/${fileName}`, content: xmlContent, mimeType: 'application/xml' });
+      files.push({
+        path: `${domainName}/${fileName}`,
+        content: xmlContent,
+        mimeType: 'application/xml',
+      });
     }
 
     // Try File System Access API first
@@ -1025,10 +1208,15 @@ class LocalFileService {
     if (directoryHandle) {
       try {
         await browserFileService.saveFilesToDirectory(directoryHandle, files);
-        console.log(`[LocalFileService] Saved domain folder using File System Access API: ${domainName}`);
+        console.log(
+          `[LocalFileService] Saved domain folder using File System Access API: ${domainName}`
+        );
         return;
       } catch (error) {
-        console.warn('[LocalFileService] File System Access API failed, falling back to ZIP:', error);
+        console.warn(
+          '[LocalFileService] File System Access API failed, falling back to ZIP:',
+          error
+        );
       }
     }
 
@@ -1053,11 +1241,18 @@ class LocalFileService {
     const directoryHandle = browserFileService.getCachedDirectoryHandle(workspaceName);
     if (directoryHandle) {
       try {
-        await browserFileService.saveFileToDirectory(directoryHandle, 'workspace.yaml', yamlContent);
+        await browserFileService.saveFileToDirectory(
+          directoryHandle,
+          'workspace.yaml',
+          yamlContent
+        );
         console.log('[LocalFileService] Saved workspace.yaml using File System Access API');
         return;
       } catch (error) {
-        console.warn('[LocalFileService] File System Access API failed, falling back to download:', error);
+        console.warn(
+          '[LocalFileService] File System Access API failed, falling back to download:',
+          error
+        );
       }
     }
 
@@ -1069,4 +1264,3 @@ class LocalFileService {
 
 // Export singleton instance
 export const localFileService = new LocalFileService();
-

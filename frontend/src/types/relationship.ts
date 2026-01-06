@@ -37,9 +37,9 @@ export interface Relationship {
   target_key?: string; // UUID of target key (column ID for single column PK, compound key ID for compound keys) - only for table-to-table relationships
   label?: string; // optional relationship label
   description?: string; // optional description or notes about the relationship
+  color?: string; // optional color for the relationship line (hex color, e.g., "#ff0000")
   model_type: ModelType;
   is_circular: boolean; // indicates if relationship creates a cycle
   created_at: string; // ISO timestamp
   last_modified_at: string; // ISO timestamp
 }
-

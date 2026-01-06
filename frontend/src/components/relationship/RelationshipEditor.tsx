@@ -43,6 +43,7 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
   const [targetKey, setTargetKey] = useState<string>('');
   const [label, setLabel] = useState('');
   const [description, setDescription] = useState('');
+  const [color, setColor] = useState<string>('#000000');
   const [isSaving, setIsSaving] = useState(false);
 
   // Load relationship data when dialog opens
@@ -55,6 +56,7 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
       setTargetKey(relationship.target_key || '');
       setLabel(relationship.label || '');
       setDescription(relationship.description || '');
+      setColor(relationship.color || '#000000');
     }
   }, [relationship, isOpen, relationships]);
 
@@ -132,6 +134,7 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
         target_key: isTableToTable && targetKey ? targetKey : undefined,
         label: label.trim() || undefined,
         description: description.trim() || undefined,
+        color: color !== '#000000' ? color : undefined,
         last_modified_at: new Date().toISOString(),
       };
 
@@ -210,6 +213,7 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
             target_cardinality: sourceCardinality, // Swapped
             label: label.trim() || undefined,
             description: description.trim() || undefined,
+            color: color !== '#000000' ? color : undefined,
             last_modified_at: new Date().toISOString(),
           };
           updateRelationship(reverseRelationship.id, reverseUpdates);
@@ -480,6 +484,43 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
             />
             <p className="mt-1 text-xs text-gray-500">
               This label will appear on the canvas next to the relationship line
+            </p>
+          </div>
+
+          {/* Line Color */}
+          <div>
+            <label
+              htmlFor="relationship-color"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Line Color
+            </label>
+            <div className="flex items-center gap-3">
+              <input
+                id="relationship-color"
+                type="color"
+                value={color}
+                onChange={(e) => setColor(e.target.value)}
+                className="h-10 w-20 rounded border border-gray-300 cursor-pointer"
+              />
+              <input
+                type="text"
+                value={color}
+                onChange={(e) => setColor(e.target.value)}
+                placeholder="#000000"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+              />
+              <button
+                type="button"
+                onClick={() => setColor('#000000')}
+                className="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-md hover:bg-gray-50"
+                title="Reset to default (black)"
+              >
+                Reset
+              </button>
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              Choose a color for the relationship line on the canvas
             </p>
           </div>
 

@@ -39,6 +39,14 @@ interface SDKModule {
   export_to_protobuf?(json: string): string;
   import_from_json_schema?(jsonSchema: string): string;
   export_to_json_schema?(json: string): string;
+  // Filtering methods (SDK 1.9.0+)
+  filter_by_tags?(workspace_json: string, tag: string): string;
+  filter_nodes_by_infrastructure_type?(workspace_json: string, infrastructureType: string): string;
+  filter_nodes_by_owner?(workspace_json: string, owner: string): string;
+  filter_relationships_by_infrastructure_type?(
+    workspace_json: string,
+    infrastructureType: string
+  ): string;
 }
 
 class SDKLoader {

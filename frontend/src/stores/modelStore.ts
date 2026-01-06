@@ -40,6 +40,12 @@ interface ModelState {
   isLoading: boolean;
   error: string | null;
 
+  // Tag filter backup (stored when filtering is active)
+  originalTables?: Table[];
+  originalComputeAssets?: ComputeAsset[];
+  originalRelationships?: Relationship[];
+  originalSystems?: System[];
+
   // Actions
   setTables: (tables: Table[]) => void;
   setRelationships: (relationships: Relationship[]) => void;

@@ -14,10 +14,11 @@ export interface TableNodeData {
   modelType?: 'conceptual' | 'logical' | 'physical';
   nodeType?: 'table' | 'system' | 'product' | 'compute-asset';
   isOwnedByDomain?: boolean; // True if owned by current domain
+  isShared?: boolean; // True if this is a shared resource from another domain
 }
 
 export const CanvasNode: React.FC<NodeProps<TableNodeData>> = memo(({ data, selected }) => {
-  const { table, modelType = 'conceptual', isOwnedByDomain } = data;
+  const { table, modelType = 'conceptual', isOwnedByDomain, isShared = false } = data;
   const { selectedDomainId, bpmnProcesses } = useModelStore();
   const isPrimaryDomain = table.primary_domain_id === selectedDomainId;
   const isReadOnly = !isPrimaryDomain || (isOwnedByDomain !== undefined && !isOwnedByDomain);
@@ -32,8 +33,9 @@ export const CanvasNode: React.FC<NodeProps<TableNodeData>> = memo(({ data, sele
         )
     ) ?? false;
 
-  // For cross-domain tables, use pastel shades and dotted border
-  const isCrossDomain = !isPrimaryDomain && table.visible_domains.includes(selectedDomainId || '');
+  // For shared resources (from other domains), use pastel shades and dashed border
+  const isCrossDomain =
+    isShared || (!isPrimaryDomain && table.visible_domains.includes(selectedDomainId || ''));
 
   // Determine what to show based on model type view
   const showColumns = modelType !== 'conceptual'; // Conceptual view: no columns

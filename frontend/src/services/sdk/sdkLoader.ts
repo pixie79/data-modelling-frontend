@@ -128,7 +128,7 @@ class SDKLoader {
       this.verifySDKBindings(module);
 
       return module;
-    } catch (error) {
+    } catch {
       // Fallback: Try relative path (for development)
       try {
         const wasmPath = '../../../../data-modelling-sdk/pkg/data_modelling_sdk.js';
@@ -137,7 +137,7 @@ class SDKLoader {
           await wasmModule.default();
         }
         return wasmModule as SDKModule;
-      } catch (fallbackError) {
+      } catch {
         console.warn('SDK WASM module not available - offline mode will use placeholders');
         console.warn(
           'Build the SDK with: cd ../data-modelling-sdk && wasm-pack build --target web --out-dir pkg --features wasm'

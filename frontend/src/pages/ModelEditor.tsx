@@ -34,6 +34,8 @@ import { ModelNavbar } from '@/components/navbar/ModelNavbar';
 import { TagFilter } from '@/components/common/TagFilter';
 import { filterService } from '@/services/sdk/filterService';
 import { SharedResourcePicker } from '@/components/domain/SharedResourcePicker';
+import { DecisionPanel } from '@/components/decision/DecisionPanel';
+import { KnowledgePanel } from '@/components/knowledge/KnowledgePanel';
 import type { SharedResourceReference } from '@/types/domain';
 
 const ModelEditor: React.FC = () => {
@@ -46,6 +48,8 @@ const ModelEditor: React.FC = () => {
     computeAssets,
     relationships,
     systems,
+    currentView,
+    domains,
     fetchTables,
     fetchRelationships,
     loadDomainAssets,
@@ -539,11 +543,30 @@ const ModelEditor: React.FC = () => {
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Canvas */}
+        {/* Canvas or Panel based on view mode */}
         <div className="flex-1 relative">
-          {selectedDomainId && workspaceId && (
-            <DomainCanvas workspaceId={workspaceId} domainId={selectedDomainId} />
+          {selectedDomainId && workspaceId && currentView === 'decisions' && (
+            <DecisionPanel
+              workspacePath={
+                domains.find((d) => d.id === selectedDomainId)?.workspace_path || workspaceId
+              }
+              domainId={selectedDomainId}
+            />
           )}
+          {selectedDomainId && workspaceId && currentView === 'knowledge' && (
+            <KnowledgePanel
+              workspacePath={
+                domains.find((d) => d.id === selectedDomainId)?.workspace_path || workspaceId
+              }
+              domainId={selectedDomainId}
+            />
+          )}
+          {selectedDomainId &&
+            workspaceId &&
+            currentView !== 'decisions' &&
+            currentView !== 'knowledge' && (
+              <DomainCanvas workspaceId={workspaceId} domainId={selectedDomainId} />
+            )}
         </div>
       </div>
 

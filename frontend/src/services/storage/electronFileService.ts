@@ -13,7 +13,11 @@ import { odpsService } from '@/services/sdk/odpsService';
 import { cadsService } from '@/services/sdk/cadsService';
 import { bpmnService } from '@/services/sdk/bpmnService';
 import { dmnService } from '@/services/sdk/dmnService';
+import { databaseService } from '@/services/sdk/databaseService';
+import { databaseStorage } from '@/services/storage/databaseStorage';
+import { databaseConfigService } from '@/services/storage/databaseConfigService';
 import { getPlatform } from '@/services/platform/platform';
+import { isDatabaseEnabled } from '@/types/database';
 import * as yaml from 'js-yaml';
 // Legacy data flow diagrams removed - replaced by BPMN processes
 import type { Workspace, WorkspaceMetadata } from '@/types/workspace';
@@ -50,6 +54,168 @@ const joinPath = (...segments: string[]): string => {
 };
 
 class ElectronFileService {
+  /**
+   * Flag to enable database-first loading when DuckDB is configured
+   */
+  private useDatabaseBackend: boolean = false;
+
+  /**
+   * Check if database backend should be used for a workspace
+   */
+  async shouldUseDatabaseBackend(workspacePath: string): Promise<boolean> {
+    try {
+      // Check if database service is supported (SDK 1.13.1+)
+      if (!databaseService.isSupported()) {
+        return false;
+      }
+
+      // Check if database is enabled in config
+      const config = await databaseConfigService.loadConfig(workspacePath);
+      if (!isDatabaseEnabled(config)) {
+        return false;
+      }
+
+      // Check if database is initialized
+      if (!databaseService.isInitialized(workspacePath)) {
+        // Try to auto-initialize if configured
+        const autoInitialized = await databaseService.autoInitialize(workspacePath);
+        if (!autoInitialized) {
+          return false;
+        }
+      }
+
+      return true;
+    } catch (error) {
+      console.warn('[ElectronFileService] Database backend check failed:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Set whether to use database backend for loading
+   */
+  setUseDatabaseBackend(enabled: boolean): void {
+    this.useDatabaseBackend = enabled;
+    console.log(`[ElectronFileService] Database backend ${enabled ? 'enabled' : 'disabled'}`);
+  }
+
+  /**
+   * Get current database backend setting
+   */
+  getUseDatabaseBackend(): boolean {
+    return this.useDatabaseBackend;
+  }
+
+  /**
+   * Load tables from database (fast path)
+   */
+  async loadTablesFromDatabase(workspacePath: string, domainId: string): Promise<Table[]> {
+    if (!databaseStorage.isAvailable() || !databaseStorage.isInitialized(workspacePath)) {
+      console.log('[ElectronFileService] Database not available, falling back to YAML');
+      return [];
+    }
+
+    try {
+      const tables = await databaseStorage.getTablesByDomain(workspacePath, domainId);
+      console.log(`[ElectronFileService] Loaded ${tables.length} tables from database`);
+      return tables;
+    } catch (error) {
+      console.warn('[ElectronFileService] Database load failed, falling back to YAML:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Load relationships from database (fast path)
+   */
+  async loadRelationshipsFromDatabase(
+    workspacePath: string,
+    domainId: string
+  ): Promise<Relationship[]> {
+    if (!databaseStorage.isAvailable() || !databaseStorage.isInitialized(workspacePath)) {
+      return [];
+    }
+
+    try {
+      const relationships = await databaseStorage.getRelationshipsByDomain(workspacePath, domainId);
+      console.log(
+        `[ElectronFileService] Loaded ${relationships.length} relationships from database`
+      );
+      return relationships;
+    } catch (error) {
+      console.warn('[ElectronFileService] Database load failed:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Load systems from database (fast path)
+   */
+  async loadSystemsFromDatabase(workspacePath: string, domainId: string): Promise<System[]> {
+    if (!databaseStorage.isAvailable() || !databaseStorage.isInitialized(workspacePath)) {
+      return [];
+    }
+
+    try {
+      const systems = await databaseStorage.getSystemsByDomain(workspacePath, domainId);
+      console.log(`[ElectronFileService] Loaded ${systems.length} systems from database`);
+      return systems;
+    } catch (error) {
+      console.warn('[ElectronFileService] Database load failed:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Load compute assets from database (fast path)
+   */
+  async loadComputeAssetsFromDatabase(
+    workspacePath: string,
+    domainId: string
+  ): Promise<ComputeAsset[]> {
+    if (!databaseStorage.isAvailable() || !databaseStorage.isInitialized(workspacePath)) {
+      return [];
+    }
+
+    try {
+      const assets = await databaseStorage.getComputeAssetsByDomain(workspacePath, domainId);
+      console.log(`[ElectronFileService] Loaded ${assets.length} compute assets from database`);
+      return assets;
+    } catch (error) {
+      console.warn('[ElectronFileService] Database load failed:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Sync workspace to database after loading from YAML
+   */
+  async syncToDatabase(workspacePath: string): Promise<boolean> {
+    if (!databaseService.isSupported()) {
+      return false;
+    }
+
+    try {
+      const config = await databaseConfigService.loadConfig(workspacePath);
+      if (!isDatabaseEnabled(config)) {
+        return false;
+      }
+
+      // Initialize if needed
+      if (!databaseService.isInitialized(workspacePath)) {
+        await databaseService.initializeDatabase(workspacePath);
+      }
+
+      // Sync files to database
+      const result = await databaseService.syncToDatabase(workspacePath);
+      console.log(`[ElectronFileService] Database sync completed:`, result);
+      return result.success;
+    } catch (error) {
+      console.error('[ElectronFileService] Database sync failed:', error);
+      return false;
+    }
+  }
+
   /**
    * Read ODCS file from file path
    */

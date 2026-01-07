@@ -7,6 +7,8 @@ import React, { useState } from 'react';
 import { useModelStore } from '@/stores/modelStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { useDecisionStore } from '@/stores/decisionStore';
+import { useKnowledgeStore } from '@/stores/knowledgeStore';
 import { workspaceService } from '@/services/api/workspaceService';
 import { useSDKModeStore } from '@/services/sdk/sdkMode';
 import { HelpText } from '@/components/common/HelpText';
@@ -40,6 +42,8 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
   } = useModelStore();
   const { addToast } = useUIStore();
   const { mode } = useSDKModeStore();
+  const { decisions } = useDecisionStore();
+  const { articles } = useKnowledgeStore();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showBPMNEditor, setShowBPMNEditor] = useState(false);
   const [editingProcessId, setEditingProcessId] = useState<string | null>(null);
@@ -807,6 +811,8 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
       >
         {domains.map((domain) => {
           const isSelected = selectedDomainId === domain.id;
+          const domainDecisionCount = decisions.filter((d) => d.domain_id === domain.id).length;
+          const domainArticleCount = articles.filter((a) => a.domain_id === domain.id).length;
           return (
             <div key={domain.id} className="flex items-center group">
               <button
@@ -826,6 +832,27 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
               >
                 <div className="flex items-center gap-2">
                   <span>{domain.name}</span>
+                  {/* Decision and Knowledge counts */}
+                  {(domainDecisionCount > 0 || domainArticleCount > 0) && (
+                    <div className="flex items-center gap-1">
+                      {domainDecisionCount > 0 && (
+                        <span
+                          className="px-1.5 py-0.5 text-xs rounded-full bg-amber-100 text-amber-700"
+                          title={`${domainDecisionCount} decision${domainDecisionCount !== 1 ? 's' : ''}`}
+                        >
+                          {domainDecisionCount}D
+                        </span>
+                      )}
+                      {domainArticleCount > 0 && (
+                        <span
+                          className="px-1.5 py-0.5 text-xs rounded-full bg-emerald-100 text-emerald-700"
+                          title={`${domainArticleCount} knowledge article${domainArticleCount !== 1 ? 's' : ''}`}
+                        >
+                          {domainArticleCount}K
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </button>
               {domains.length > 1 && (

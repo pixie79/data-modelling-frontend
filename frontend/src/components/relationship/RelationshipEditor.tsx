@@ -44,6 +44,7 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
   const [label, setLabel] = useState('');
   const [description, setDescription] = useState('');
   const [color, setColor] = useState<string>('#000000');
+  const [drawioEdgeId, setDrawioEdgeId] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
 
   // Load relationship data when dialog opens
@@ -57,6 +58,7 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
       setLabel(relationship.label || '');
       setDescription(relationship.description || '');
       setColor(relationship.color || '#000000');
+      setDrawioEdgeId(relationship.drawio_edge_id || '');
     }
   }, [relationship, isOpen, relationships]);
 
@@ -135,6 +137,7 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
         label: label.trim() || undefined,
         description: description.trim() || undefined,
         color: color !== '#000000' ? color : undefined,
+        drawio_edge_id: drawioEdgeId.trim() || undefined,
         last_modified_at: new Date().toISOString(),
       };
 
@@ -521,6 +524,27 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
             </div>
             <p className="mt-1 text-xs text-gray-500">
               Choose a color for the relationship line on the canvas
+            </p>
+          </div>
+
+          {/* DrawIO Edge ID */}
+          <div>
+            <label
+              htmlFor="drawio-edge-id"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              DrawIO Edge ID (Optional)
+            </label>
+            <input
+              id="drawio-edge-id"
+              type="text"
+              value={drawioEdgeId}
+              onChange={(e) => setDrawioEdgeId(e.target.value)}
+              placeholder="e.g., edge-1, mxCell-123"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Link this relationship to a specific edge in a DrawIO diagram for synchronization
             </p>
           </div>
 

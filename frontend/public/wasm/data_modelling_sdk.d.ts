@@ -78,6 +78,23 @@ export function add_odcs_node_to_domain(
 ): string;
 
 /**
+ * Add a relationship to a workspace.
+ *
+ * # Arguments
+ *
+ * * `workspace_json` - JSON string containing Workspace
+ * * `relationship_json` - JSON string containing Relationship
+ *
+ * # Returns
+ *
+ * JSON string containing updated Workspace, or JsValue error
+ */
+export function add_relationship_to_workspace(
+  workspace_json: string,
+  relationship_json: string
+): string;
+
+/**
  * Add a system to a domain in a DataModel.
  *
  * # Arguments
@@ -461,6 +478,40 @@ export function filter_relationships_by_owner(workspace_json: string, owner: str
 export function get_domain_config_id(config_json: string): string;
 
 /**
+ * Get relationships for a source table from a workspace.
+ *
+ * # Arguments
+ *
+ * * `workspace_json` - JSON string containing Workspace
+ * * `source_table_id` - Source table UUID as string
+ *
+ * # Returns
+ *
+ * JSON string containing array of Relationships, or JsValue error
+ */
+export function get_workspace_relationships_for_source(
+  workspace_json: string,
+  source_table_id: string
+): string;
+
+/**
+ * Get relationships for a target table from a workspace.
+ *
+ * # Arguments
+ *
+ * * `workspace_json` - JSON string containing Workspace
+ * * `target_table_id` - Target table UUID as string
+ *
+ * # Returns
+ *
+ * JSON string containing array of Relationships, or JsValue error
+ */
+export function get_workspace_relationships_for_target(
+  workspace_json: string,
+  target_table_id: string
+): string;
+
+/**
  * Import data model from AVRO schema.
  *
  * # Arguments
@@ -728,6 +779,23 @@ export function remove_entity_from_domain_config(
 ): string;
 
 /**
+ * Remove a relationship from a workspace.
+ *
+ * # Arguments
+ *
+ * * `workspace_json` - JSON string containing Workspace
+ * * `relationship_id` - Relationship UUID as string to remove
+ *
+ * # Returns
+ *
+ * JSON string containing updated Workspace, or JsValue error
+ */
+export function remove_relationship_from_workspace(
+  workspace_json: string,
+  relationship_id: string
+): string;
+
+/**
  * Sanitize a description string.
  *
  * # Arguments
@@ -946,6 +1014,12 @@ export interface InitOutput {
     e: number,
     f: number
   ) => [number, number, number, number];
+  readonly add_relationship_to_workspace: (
+    a: number,
+    b: number,
+    c: number,
+    d: number
+  ) => [number, number, number, number];
   readonly add_system_to_domain: (
     a: number,
     b: number,
@@ -1055,6 +1129,18 @@ export interface InitOutput {
     d: number
   ) => [number, number, number, number];
   readonly get_domain_config_id: (a: number, b: number) => [number, number, number, number];
+  readonly get_workspace_relationships_for_source: (
+    a: number,
+    b: number,
+    c: number,
+    d: number
+  ) => [number, number, number, number];
+  readonly get_workspace_relationships_for_target: (
+    a: number,
+    b: number,
+    c: number,
+    d: number
+  ) => [number, number, number, number];
   readonly import_from_avro: (a: number, b: number) => [number, number, number, number];
   readonly import_from_cads: (a: number, b: number) => [number, number, number, number];
   readonly import_from_domain: (a: number, b: number) => [number, number, number, number];
@@ -1102,6 +1188,12 @@ export interface InitOutput {
     e: number,
     f: number
   ) => [number, number, number, number];
+  readonly remove_relationship_from_workspace: (
+    a: number,
+    b: number,
+    c: number,
+    d: number
+  ) => [number, number, number, number];
   readonly sanitize_description: (a: number, b: number) => [number, number];
   readonly sanitize_sql_identifier: (
     a: number,
@@ -1139,12 +1231,12 @@ export interface InitOutput {
   readonly validate_pattern_exclusivity: (a: number, b: number) => [number, number, number, number];
   readonly validate_table_name: (a: number, b: number) => [number, number, number, number];
   readonly validate_uuid: (a: number, b: number) => [number, number, number, number];
-  readonly wasm_bindgen__convert__closures________invoke__h77a3054d216d9e82: (
+  readonly wasm_bindgen__convert__closures________invoke__h9df7878001327b6f: (
     a: number,
     b: number,
     c: any
   ) => void;
-  readonly wasm_bindgen__closure__destroy__h5f86de003d865d06: (a: number, b: number) => void;
+  readonly wasm_bindgen__closure__destroy__h02c1026866e56e90: (a: number, b: number) => void;
   readonly wasm_bindgen__convert__closures_____invoke__h3aa4f50d9cb64e36: (
     a: number,
     b: number,

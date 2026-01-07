@@ -8,6 +8,8 @@ import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { workspaceService } from '@/services/api/workspaceService';
 import { useUIStore } from '@/stores/uiStore';
 import type { Workspace } from '@/types/workspace';
+import { AutoSaveSettings } from '@/components/settings/AutoSaveSettings';
+import { DatabaseSettings } from '@/components/settings/DatabaseSettings';
 
 export interface WorkspaceSettingsProps {
   workspaceId: string;
@@ -185,6 +187,18 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Auto-Save Settings */}
+        <div className="mb-6 border-t pt-6">
+          <AutoSaveSettings />
+        </div>
+
+        {/* Database Settings (SDK 1.13.1+) */}
+        {workspace.domains && workspace.domains[0]?.workspace_path && (
+          <div className="mb-6 border-t pt-6">
+            <DatabaseSettings workspacePath={workspace.domains[0].workspace_path} />
           </div>
         )}
 

@@ -19,7 +19,14 @@ import type { DMNDecision } from '@/types/dmn';
 import type { System } from '@/types/system';
 import type { CreateTableRequest, CreateRelationshipRequest } from '@/types/api';
 
-export type ViewMode = 'systems' | 'process' | 'operational' | 'analytical' | 'products';
+export type ViewMode =
+  | 'systems'
+  | 'process'
+  | 'operational'
+  | 'analytical'
+  | 'products'
+  | 'decisions'
+  | 'knowledge';
 export type DataLevel = 'operational' | 'bronze' | 'silver' | 'gold';
 
 interface ModelState {

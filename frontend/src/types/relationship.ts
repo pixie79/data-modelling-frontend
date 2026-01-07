@@ -38,6 +38,7 @@ export interface Relationship {
   label?: string; // optional relationship label
   description?: string; // optional description or notes about the relationship
   color?: string; // optional color for the relationship line (hex color, e.g., "#ff0000")
+  drawio_edge_id?: string; // optional DrawIO edge ID for diagram integration (SDK 1.13.1+)
   model_type: ModelType;
   is_circular: boolean; // indicates if relationship creates a cycle
   created_at: string; // ISO timestamp

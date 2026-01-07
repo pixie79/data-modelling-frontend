@@ -1,11 +1,13 @@
 /**
  * Type definitions for CADS (Compute Asset Definition Standard) Compute Asset entity
+ * Updated for SDK 1.13.1+
  */
 
 import type { Owner } from './table';
+import type { Tag } from './decision';
 
-// Re-export Owner for convenience
-export type { Owner };
+// Re-export for convenience
+export type { Owner, Tag };
 
 export type ComputeAssetType = 'ai' | 'ml' | 'app';
 export type ComputeAssetStatus = 'development' | 'production' | 'deprecated';
@@ -26,7 +28,7 @@ export interface ComputeAsset {
   openapi_specs?: CADSOpenAPISpec[];
   status?: ComputeAssetStatus;
   kind?: CADSKind;
-  tags?: string[]; // optional tags for categorization (supports Simple, Pair, and List formats)
+  tags?: Tag[]; // optional tags for categorization (supports Simple, Pair, and List formats - SDK 1.13.1+)
   custom_properties?: Record<string, unknown>;
   position_x?: number; // canvas position
   position_y?: number; // canvas position

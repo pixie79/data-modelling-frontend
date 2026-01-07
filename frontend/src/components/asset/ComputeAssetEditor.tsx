@@ -10,7 +10,29 @@ import { useUIStore } from '@/stores/uiStore';
 import { AssetMetadataForm } from './AssetMetadataForm';
 import { BPMNLink } from './BPMNLink';
 import { DMNLink } from './DMNLink';
-import type { ComputeAsset } from '@/types/cads';
+import { OpenAPILink } from './OpenAPILink';
+import type { ComputeAsset, Tag, CADSOpenAPISpec } from '@/types/cads';
+
+/**
+ * Convert a Tag to its string representation
+ */
+function tagToString(tag: Tag): string {
+  if (typeof tag === 'string') {
+    return tag;
+  }
+  if ('values' in tag) {
+    return `${tag.key}:${tag.values.join(',')}`;
+  }
+  return `${tag.key}:${tag.value}`;
+}
+
+/**
+ * Convert Tag[] to string[] for display
+ */
+function tagsToStrings(tags: Tag[] | undefined): string[] {
+  if (!tags) return [];
+  return tags.map(tagToString);
+}
 
 export interface ComputeAssetEditorProps {
   asset?: ComputeAsset;
@@ -39,6 +61,7 @@ export const ComputeAssetEditor: React.FC<ComputeAssetEditorProps> = ({
   const [sourceRepo, setSourceRepo] = useState('');
   const [bpmnLink, setBpmnLink] = useState<string | undefined>(undefined);
   const [dmnLink, setDmnLink] = useState<string | undefined>(undefined);
+  const [openapiSpecs, setOpenapiSpecs] = useState<CADSOpenAPISpec[]>([]);
   const [status, setStatus] = useState<'development' | 'production' | 'deprecated'>('development');
   const [tags, setTags] = useState<string[]>([]);
   const [tagsInput, setTagsInput] = useState('');
@@ -55,6 +78,7 @@ export const ComputeAssetEditor: React.FC<ComputeAssetEditorProps> = ({
       setSourceRepo('');
       setBpmnLink(undefined);
       setDmnLink(undefined);
+      setOpenapiSpecs([]);
       setStatus('development');
       setTags([]);
       setTagsInput('');
@@ -71,9 +95,10 @@ export const ComputeAssetEditor: React.FC<ComputeAssetEditorProps> = ({
       setSourceRepo(asset.source_repo || '');
       setBpmnLink(asset.bpmn_link);
       setDmnLink(asset.dmn_link);
+      setOpenapiSpecs(asset.openapi_specs || []);
       setStatus(asset.status || 'development');
-      setTags(asset.tags || []);
-      setTagsInput((asset.tags || []).join(', '));
+      setTags(tagsToStrings(asset.tags));
+      setTagsInput(tagsToStrings(asset.tags).join(', '));
     }
   }, [asset, isOpen]);
 
@@ -111,6 +136,7 @@ export const ComputeAssetEditor: React.FC<ComputeAssetEditorProps> = ({
       source_repo: sourceRepo.trim() || undefined,
       bpmn_link: bpmnLink,
       dmn_link: dmnLink,
+      openapi_specs: openapiSpecs.length > 0 ? openapiSpecs : undefined,
       status,
       tags: tags.length > 0 ? tags : undefined,
       created_at: asset?.created_at || new Date().toISOString(),
@@ -268,7 +294,7 @@ export const ComputeAssetEditor: React.FC<ComputeAssetEditorProps> = ({
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Tags</label>
               <div className="flex flex-wrap gap-2">
-                {asset.tags.map((tag, index) => (
+                {tagsToStrings(asset.tags).map((tag, index) => (
                   <span key={index} className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">
                     {tag}
                   </span>
@@ -466,6 +492,13 @@ export const ComputeAssetEditor: React.FC<ComputeAssetEditorProps> = ({
           domainId={domainId}
           currentLinkId={dmnLink}
           onLinkChange={setDmnLink}
+        />
+
+        {/* OpenAPI Specs */}
+        <OpenAPILink
+          assetId={asset?.id || 'new'}
+          currentSpecs={openapiSpecs}
+          onSpecsChange={setOpenapiSpecs}
         />
 
         {/* Actions */}

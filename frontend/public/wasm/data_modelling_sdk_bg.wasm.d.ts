@@ -33,6 +33,12 @@ export const add_odcs_node_to_domain: (
   e: number,
   f: number
 ) => [number, number, number, number];
+export const add_relationship_to_workspace: (
+  a: number,
+  b: number,
+  c: number,
+  d: number
+) => [number, number, number, number];
 export const add_system_to_domain: (
   a: number,
   b: number,
@@ -145,6 +151,18 @@ export const filter_relationships_by_owner: (
   d: number
 ) => [number, number, number, number];
 export const get_domain_config_id: (a: number, b: number) => [number, number, number, number];
+export const get_workspace_relationships_for_source: (
+  a: number,
+  b: number,
+  c: number,
+  d: number
+) => [number, number, number, number];
+export const get_workspace_relationships_for_target: (
+  a: number,
+  b: number,
+  c: number,
+  d: number
+) => [number, number, number, number];
 export const import_from_avro: (a: number, b: number) => [number, number, number, number];
 export const import_from_cads: (a: number, b: number) => [number, number, number, number];
 export const import_from_domain: (a: number, b: number) => [number, number, number, number];
@@ -192,6 +210,12 @@ export const remove_entity_from_domain_config: (
   e: number,
   f: number
 ) => [number, number, number, number];
+export const remove_relationship_from_workspace: (
+  a: number,
+  b: number,
+  c: number,
+  d: number
+) => [number, number, number, number];
 export const sanitize_description: (a: number, b: number) => [number, number];
 export const sanitize_sql_identifier: (
   a: number,
@@ -232,12 +256,12 @@ export const validate_pattern_exclusivity: (
 ) => [number, number, number, number];
 export const validate_table_name: (a: number, b: number) => [number, number, number, number];
 export const validate_uuid: (a: number, b: number) => [number, number, number, number];
-export const wasm_bindgen__convert__closures________invoke__h77a3054d216d9e82: (
+export const wasm_bindgen__convert__closures________invoke__h9df7878001327b6f: (
   a: number,
   b: number,
   c: any
 ) => void;
-export const wasm_bindgen__closure__destroy__h5f86de003d865d06: (a: number, b: number) => void;
+export const wasm_bindgen__closure__destroy__h02c1026866e56e90: (a: number, b: number) => void;
 export const wasm_bindgen__convert__closures_____invoke__h3aa4f50d9cb64e36: (
   a: number,
   b: number,

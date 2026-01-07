@@ -4,10 +4,33 @@
  */
 
 import { sdkLoader } from './sdkLoader';
+import { databaseService } from './databaseService';
+import { databaseStorage } from '@/services/storage/databaseStorage';
 import type { Table } from '@/types/table';
-import type { ComputeAsset } from '@/types/cads';
+import type { ComputeAsset, Tag } from '@/types/cads';
 import type { Relationship } from '@/types/relationship';
 import type { System } from '@/types/system';
+
+/**
+ * Convert a Tag to its string representation
+ */
+function tagToString(tag: Tag): string {
+  if (typeof tag === 'string') {
+    return tag;
+  }
+  if ('values' in tag) {
+    return `${tag.key}:${tag.values.join(',')}`;
+  }
+  return `${tag.key}:${tag.value}`;
+}
+
+/**
+ * Convert Tag[] to string[] for filtering
+ */
+function tagsToStrings(tags: Tag[] | undefined): string[] | undefined {
+  if (!tags) return undefined;
+  return tags.map(tagToString);
+}
 
 export interface FilteredWorkspace {
   tables: Table[];
@@ -172,7 +195,7 @@ function clientSideFilterByTags(
 
   // Filter tables and compute assets
   const filteredTables = workspace.tables.filter((t) => matchesTags(t.tags));
-  const filteredAssets = workspace.computeAssets.filter((a) => matchesTags(a.tags));
+  const filteredAssets = workspace.computeAssets.filter((a) => matchesTags(tagsToStrings(a.tags)));
 
   // Get IDs of filtered resources
   const resourceIds = new Set([
@@ -200,6 +223,182 @@ function clientSideFilterByTags(
   };
 }
 
+/**
+ * Filter tables by tags using database query (fast path)
+ * Falls back to client-side filtering if database is not available
+ */
+export async function filterTablesByTagsFromDatabase(
+  workspacePath: string,
+  tags: string[]
+): Promise<Table[]> {
+  // Check if database is available
+  if (!databaseService.isSupported() || !databaseStorage.isInitialized(workspacePath)) {
+    return [];
+  }
+
+  try {
+    // For now, use individual tag queries and intersect results
+    // A more sophisticated approach would use SQL with multiple conditions
+    const results: Table[] = [];
+
+    for (const tag of tags) {
+      const tables = await databaseStorage.getTablesByTag(workspacePath, tag);
+      if (results.length === 0) {
+        results.push(...tables);
+      } else {
+        // Intersect with existing results
+        const tableIds = new Set(tables.map((t) => t.id));
+        results.splice(0, results.length, ...results.filter((t) => tableIds.has(t.id)));
+      }
+    }
+
+    console.log(`[filterService] Database filter returned ${results.length} tables`);
+    return results;
+  } catch (error) {
+    console.warn('[filterService] Database filter failed:', error);
+    return [];
+  }
+}
+
+/**
+ * Filter compute assets by tags using database query (fast path)
+ */
+export async function filterAssetsByTagsFromDatabase(
+  workspacePath: string,
+  tags: string[]
+): Promise<ComputeAsset[]> {
+  if (!databaseService.isSupported() || !databaseStorage.isInitialized(workspacePath)) {
+    return [];
+  }
+
+  try {
+    const results: ComputeAsset[] = [];
+
+    for (const tag of tags) {
+      const assets = await databaseStorage.getComputeAssetsByTag(workspacePath, tag);
+      if (results.length === 0) {
+        results.push(...assets);
+      } else {
+        const assetIds = new Set(assets.map((a) => a.id));
+        results.splice(0, results.length, ...results.filter((a) => assetIds.has(a.id)));
+      }
+    }
+
+    console.log(`[filterService] Database filter returned ${results.length} assets`);
+    return results;
+  } catch (error) {
+    console.warn('[filterService] Database filter failed:', error);
+    return [];
+  }
+}
+
+/**
+ * Filter tables by owner using database query
+ */
+export async function filterTablesByOwnerFromDatabase(
+  workspacePath: string,
+  ownerName: string
+): Promise<Table[]> {
+  if (!databaseService.isSupported() || !databaseStorage.isInitialized(workspacePath)) {
+    return [];
+  }
+
+  try {
+    return await databaseStorage.getTablesByOwner(workspacePath, ownerName);
+  } catch (error) {
+    console.warn('[filterService] Database filter by owner failed:', error);
+    return [];
+  }
+}
+
+/**
+ * Get related tables using database graph query
+ */
+export async function getRelatedTablesFromDatabase(
+  workspacePath: string,
+  tableId: string,
+  depth: number = 1
+): Promise<Table[]> {
+  if (!databaseService.isSupported() || !databaseStorage.isInitialized(workspacePath)) {
+    return [];
+  }
+
+  try {
+    return await databaseStorage.getRelatedTables(workspacePath, tableId, depth);
+  } catch (error) {
+    console.warn('[filterService] Database related tables query failed:', error);
+    return [];
+  }
+}
+
+/**
+ * Hybrid filter: tries database first, falls back to client-side
+ */
+export async function filterByTagsHybrid(
+  workspacePath: string,
+  workspace: {
+    tables: Table[];
+    computeAssets: ComputeAsset[];
+    relationships: Relationship[];
+    systems: System[];
+  },
+  tags: string[]
+): Promise<FilteredWorkspace> {
+  // If no tags, return everything
+  if (tags.length === 0) {
+    return {
+      tables: workspace.tables,
+      computeAssets: workspace.computeAssets,
+      relationships: workspace.relationships,
+      systems: workspace.systems,
+    };
+  }
+
+  // Try database path first
+  if (databaseService.isSupported() && databaseStorage.isInitialized(workspacePath)) {
+    try {
+      const [dbTables, dbAssets] = await Promise.all([
+        filterTablesByTagsFromDatabase(workspacePath, tags),
+        filterAssetsByTagsFromDatabase(workspacePath, tags),
+      ]);
+
+      if (dbTables.length > 0 || dbAssets.length > 0) {
+        // Get IDs of filtered resources
+        const resourceIds = new Set([...dbTables.map((t) => t.id), ...dbAssets.map((a) => a.id)]);
+
+        // Filter relationships and systems from in-memory data
+        const filteredRelationships = workspace.relationships.filter(
+          (rel) => resourceIds.has(rel.source_id) || resourceIds.has(rel.target_id)
+        );
+
+        const filteredSystems = workspace.systems.filter((system) => {
+          const hasFilteredTables = (system.table_ids || []).some((id) => resourceIds.has(id));
+          const hasFilteredAssets = (system.asset_ids || []).some((id) => resourceIds.has(id));
+          return hasFilteredTables || hasFilteredAssets;
+        });
+
+        console.log('[filterService] Used database path for filtering');
+        return {
+          tables: dbTables,
+          computeAssets: dbAssets,
+          relationships: filteredRelationships,
+          systems: filteredSystems,
+        };
+      }
+    } catch (error) {
+      console.warn('[filterService] Database filter failed, falling back:', error);
+    }
+  }
+
+  // Fall back to standard filtering
+  return filterByTags(workspace, tags);
+}
+
 export const filterService = {
   filterByTags,
+  filterByTagsHybrid,
+  filterTablesByTagsFromDatabase,
+  filterAssetsByTagsFromDatabase,
+  filterTablesByOwnerFromDatabase,
+  getRelatedTablesFromDatabase,
 };

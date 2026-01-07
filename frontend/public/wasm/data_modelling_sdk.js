@@ -221,8 +221,8 @@ if (!('encodeInto' in cachedTextEncoder)) {
 
 let WASM_VECTOR_LEN = 0;
 
-function wasm_bindgen__convert__closures________invoke__h77a3054d216d9e82(arg0, arg1, arg2) {
-  wasm.wasm_bindgen__convert__closures________invoke__h77a3054d216d9e82(arg0, arg1, arg2);
+function wasm_bindgen__convert__closures________invoke__h9df7878001327b6f(arg0, arg1, arg2) {
+  wasm.wasm_bindgen__convert__closures________invoke__h9df7878001327b6f(arg0, arg1, arg2);
 }
 
 function wasm_bindgen__convert__closures_____invoke__h3aa4f50d9cb64e36(arg0, arg1, arg2) {
@@ -410,6 +410,49 @@ export function add_odcs_node_to_domain(workspace_json, domain_id, node_json) {
     return getStringFromWasm0(ptr4, len4);
   } finally {
     wasm.__wbindgen_free(deferred5_0, deferred5_1, 1);
+  }
+}
+
+/**
+ * Add a relationship to a workspace.
+ *
+ * # Arguments
+ *
+ * * `workspace_json` - JSON string containing Workspace
+ * * `relationship_json` - JSON string containing Relationship
+ *
+ * # Returns
+ *
+ * JSON string containing updated Workspace, or JsValue error
+ * @param {string} workspace_json
+ * @param {string} relationship_json
+ * @returns {string}
+ */
+export function add_relationship_to_workspace(workspace_json, relationship_json) {
+  let deferred4_0;
+  let deferred4_1;
+  try {
+    const ptr0 = passStringToWasm0(workspace_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(
+      relationship_json,
+      wasm.__wbindgen_malloc,
+      wasm.__wbindgen_realloc
+    );
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.add_relationship_to_workspace(ptr0, len0, ptr1, len1);
+    var ptr3 = ret[0];
+    var len3 = ret[1];
+    if (ret[3]) {
+      ptr3 = 0;
+      len3 = 0;
+      throw takeFromExternrefTable0(ret[2]);
+    }
+    deferred4_0 = ptr3;
+    deferred4_1 = len3;
+    return getStringFromWasm0(ptr3, len3);
+  } finally {
+    wasm.__wbindgen_free(deferred4_0, deferred4_1, 1);
   }
 }
 
@@ -1443,6 +1486,92 @@ export function get_domain_config_id(config_json) {
 }
 
 /**
+ * Get relationships for a source table from a workspace.
+ *
+ * # Arguments
+ *
+ * * `workspace_json` - JSON string containing Workspace
+ * * `source_table_id` - Source table UUID as string
+ *
+ * # Returns
+ *
+ * JSON string containing array of Relationships, or JsValue error
+ * @param {string} workspace_json
+ * @param {string} source_table_id
+ * @returns {string}
+ */
+export function get_workspace_relationships_for_source(workspace_json, source_table_id) {
+  let deferred4_0;
+  let deferred4_1;
+  try {
+    const ptr0 = passStringToWasm0(workspace_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(
+      source_table_id,
+      wasm.__wbindgen_malloc,
+      wasm.__wbindgen_realloc
+    );
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.get_workspace_relationships_for_source(ptr0, len0, ptr1, len1);
+    var ptr3 = ret[0];
+    var len3 = ret[1];
+    if (ret[3]) {
+      ptr3 = 0;
+      len3 = 0;
+      throw takeFromExternrefTable0(ret[2]);
+    }
+    deferred4_0 = ptr3;
+    deferred4_1 = len3;
+    return getStringFromWasm0(ptr3, len3);
+  } finally {
+    wasm.__wbindgen_free(deferred4_0, deferred4_1, 1);
+  }
+}
+
+/**
+ * Get relationships for a target table from a workspace.
+ *
+ * # Arguments
+ *
+ * * `workspace_json` - JSON string containing Workspace
+ * * `target_table_id` - Target table UUID as string
+ *
+ * # Returns
+ *
+ * JSON string containing array of Relationships, or JsValue error
+ * @param {string} workspace_json
+ * @param {string} target_table_id
+ * @returns {string}
+ */
+export function get_workspace_relationships_for_target(workspace_json, target_table_id) {
+  let deferred4_0;
+  let deferred4_1;
+  try {
+    const ptr0 = passStringToWasm0(workspace_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(
+      target_table_id,
+      wasm.__wbindgen_malloc,
+      wasm.__wbindgen_realloc
+    );
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.get_workspace_relationships_for_target(ptr0, len0, ptr1, len1);
+    var ptr3 = ret[0];
+    var len3 = ret[1];
+    if (ret[3]) {
+      ptr3 = 0;
+      len3 = 0;
+      throw takeFromExternrefTable0(ret[2]);
+    }
+    deferred4_0 = ptr3;
+    deferred4_1 = len3;
+    return getStringFromWasm0(ptr3, len3);
+  } finally {
+    wasm.__wbindgen_free(deferred4_0, deferred4_1, 1);
+  }
+}
+
+/**
  * Import data model from AVRO schema.
  *
  * # Arguments
@@ -2096,6 +2225,49 @@ export function remove_entity_from_domain_config(config_json, entity_type, entit
     return getStringFromWasm0(ptr4, len4);
   } finally {
     wasm.__wbindgen_free(deferred5_0, deferred5_1, 1);
+  }
+}
+
+/**
+ * Remove a relationship from a workspace.
+ *
+ * # Arguments
+ *
+ * * `workspace_json` - JSON string containing Workspace
+ * * `relationship_id` - Relationship UUID as string to remove
+ *
+ * # Returns
+ *
+ * JSON string containing updated Workspace, or JsValue error
+ * @param {string} workspace_json
+ * @param {string} relationship_id
+ * @returns {string}
+ */
+export function remove_relationship_from_workspace(workspace_json, relationship_id) {
+  let deferred4_0;
+  let deferred4_1;
+  try {
+    const ptr0 = passStringToWasm0(workspace_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(
+      relationship_id,
+      wasm.__wbindgen_malloc,
+      wasm.__wbindgen_realloc
+    );
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.remove_relationship_from_workspace(ptr0, len0, ptr1, len1);
+    var ptr3 = ret[0];
+    var len3 = ret[1];
+    if (ret[3]) {
+      ptr3 = 0;
+      len3 = 0;
+      throw takeFromExternrefTable0(ret[2]);
+    }
+    deferred4_0 = ptr3;
+    deferred4_1 = len3;
+    return getStringFromWasm0(ptr3, len3);
+  } finally {
+    wasm.__wbindgen_free(deferred4_0, deferred4_1, 1);
   }
 }
 
@@ -2848,23 +3020,23 @@ function __wbg_get_imports() {
       return ret;
     }, arguments);
   };
-  imports.wbg.__wbindgen_cast_02d4f0828072b4bf = function (arg0, arg1) {
-    // Cast intrinsic for `Closure(Closure { dtor_idx: 261, function: Function { arguments: [Ref(NamedExternref("IDBVersionChangeEvent"))], shim_idx: 262, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
-    const ret = makeMutClosure(
-      arg0,
-      arg1,
-      wasm.wasm_bindgen__closure__destroy__h5f86de003d865d06,
-      wasm_bindgen__convert__closures________invoke__h77a3054d216d9e82
-    );
-    return ret;
-  };
   imports.wbg.__wbindgen_cast_2241b6af4c4b2941 = function (arg0, arg1) {
     // Cast intrinsic for `Ref(String) -> Externref`.
     const ret = getStringFromWasm0(arg0, arg1);
     return ret;
   };
-  imports.wbg.__wbindgen_cast_750b0dd544a6e43a = function (arg0, arg1) {
-    // Cast intrinsic for `Closure(Closure { dtor_idx: 627, function: Function { arguments: [Externref], shim_idx: 628, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+  imports.wbg.__wbindgen_cast_3da92dc1cdcb3e00 = function (arg0, arg1) {
+    // Cast intrinsic for `Closure(Closure { dtor_idx: 112, function: Function { arguments: [Ref(NamedExternref("IDBVersionChangeEvent"))], shim_idx: 113, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+    const ret = makeMutClosure(
+      arg0,
+      arg1,
+      wasm.wasm_bindgen__closure__destroy__h02c1026866e56e90,
+      wasm_bindgen__convert__closures________invoke__h9df7878001327b6f
+    );
+    return ret;
+  };
+  imports.wbg.__wbindgen_cast_549a70017b889585 = function (arg0, arg1) {
+    // Cast intrinsic for `Closure(Closure { dtor_idx: 601, function: Function { arguments: [Externref], shim_idx: 602, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
     const ret = makeMutClosure(
       arg0,
       arg1,

@@ -7,6 +7,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-01-07
+
+### Added
+- **SDK 1.13.1 Upgrade**: Major upgrade to data-modelling-sdk v1.13.1 with new features
+- **Decision Logs (MADR)**: Architecture Decision Records management
+  - MADR format support with status workflow (Draft → Proposed → Accepted/Rejected → Superseded)
+  - Decision categories: Architecture, Technology, Process, Security, Data, Integration
+  - Decision options with pros/cons tracking
+  - Related decisions and knowledge articles linking
+  - Markdown export functionality
+  - Full-text search and filtering by status, category, domain
+- **Knowledge Base**: Documentation and knowledge management system
+  - Article types: Guide, Tutorial, Reference, Concept, Troubleshooting, Runbook
+  - Publishing workflow: Draft → Review → Published → Archived
+  - Full-text search across articles
+  - Related articles and decisions cross-referencing
+  - Prerequisites and See Also linking
+  - Author and reviewer tracking
+  - Markdown content with rich rendering
+- **DuckDB Backend**: Optional embedded analytical database
+  - YAML ↔ Database synchronization
+  - SQL query execution for advanced analytics
+  - Connection status monitoring
+  - Configurable sync strategies (auto-sync, watch, sync-on-save)
+  - Conflict resolution options (database-wins, yaml-wins, prompt)
+- **PostgreSQL Backend**: Server-based database option
+  - Full PostgreSQL connection support with SSL
+  - Connection pooling configuration
+  - Team collaboration support
+- **Database Configuration**: New `.data-model.toml` configuration file
+  - Database backend selection (none, duckdb, postgres)
+  - Sync configuration options
+  - Git hooks integration for version control
+- **UI Components**: New components for decisions and knowledge
+  - DecisionList with filtering, sorting, search
+  - DecisionViewer with status workflow actions
+  - DecisionEditor for creating and editing decisions
+  - KnowledgeList with type and status filtering
+  - ArticleViewer with markdown rendering
+  - ArticleEditor for content management
+  - Status and category badges
+- **Domain Integration**: Link decisions and knowledge to domains
+  - Decision counts shown in domain tabs
+  - Knowledge article counts in domain tabs
+  - Domain-scoped views for decisions and articles
+- **Cross-Model Linking**: OpenAPI/CADS asset linking
+  - Link decisions to external specifications
+  - Reference knowledge from API definitions
+
+### Changed
+- **SDK Version**: Upgraded from 1.11.0 to 1.13.1
+- **README**: Updated with SDK 1.13.1 features and documentation links
+- **Test Coverage**: Added comprehensive test suites for new features
+  - Unit tests for decision and knowledge services
+  - Unit tests for database service
+  - Store tests for decision and knowledge state management
+  - Component tests for decision and knowledge UI
+  - Integration tests for database sync
+  - E2E tests for decision and knowledge workflows
+
+### Documentation
+- **Configuration Guide**: New `docs/CONFIGURATION.md` for database setup
+- **Decision Logs Guide**: New `docs/DECISION_LOGS.md` user guide
+- **Knowledge Base Guide**: New `docs/KNOWLEDGE_BASE.md` user guide
+
 ## [1.1.2] - 2026-01-06
 
 ### Added
@@ -247,7 +312,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - TypeScript strict mode
 - GitHub Actions CI/CD workflow
 
-[Unreleased]: https://github.com/your-org/data-modelling-app/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/your-org/data-modelling-app/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/your-org/data-modelling-app/compare/v1.1.2...v2.0.0
+[1.1.2]: https://github.com/your-org/data-modelling-app/compare/v1.1.0...v1.1.2
 [1.1.0]: https://github.com/your-org/data-modelling-app/compare/v0.1.0...v1.1.0
 [0.1.0]: https://github.com/your-org/data-modelling-app/releases/tag/v0.1.0
 

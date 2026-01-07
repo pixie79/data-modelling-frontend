@@ -3,43 +3,57 @@
  * Loads and initializes the data-modelling-sdk WASM module
  */
 
-// SDK module type definition (SDK 1.8.4+)
+// SDK module type definition (SDK 1.13.1+)
 interface SDKModule {
   init(): Promise<void>;
-  // ODCS methods
+
+  // === ODCS methods ===
   parse_odcs_yaml?(yaml: string): string;
   export_to_odcs_yaml?(json: string): string;
-  // ODCL methods (SDK 1.8.4+)
+
+  // === ODCL methods (SDK 1.8.4+) ===
   parse_odcl_yaml?(yaml: string): string;
-  // ODPS methods (SDK 1.5.0+)
+
+  // === ODPS methods (SDK 1.5.0+) ===
   parse_odps_yaml?(yaml: string): string;
   export_to_odps_yaml?(json: string): string;
-  // CADS methods (SDK 1.5.0+)
+  import_from_odps?(yaml: string): string;
+  export_to_odps?(json: string): string;
+
+  // === CADS methods (SDK 1.5.0+) ===
   parse_cads_yaml?(yaml: string): string;
   export_to_cads_yaml?(json: string): string;
-  // BPMN methods (SDK 1.5.0+)
+  import_from_cads?(yaml: string): string;
+  export_to_cads?(json: string): string;
+
+  // === BPMN methods (SDK 1.5.0+) ===
   parse_bpmn_xml?(xml: string): string;
   export_to_bpmn_xml?(json: string): string;
   validate_bpmn_xml?(xml: string): string;
-  // DMN methods (SDK 1.5.0+)
+
+  // === DMN methods (SDK 1.5.0+) ===
   parse_dmn_xml?(xml: string): string;
   export_to_dmn_xml?(json: string): string;
   validate_dmn_xml?(xml: string): string;
-  // OpenAPI methods (SDK 1.5.0+)
+
+  // === OpenAPI methods (SDK 1.5.0+) ===
   parse_openapi?(content: string, format: 'yaml' | 'json'): string;
   export_openapi?(json: string, format: 'yaml' | 'json'): string;
   openapi_to_odcs?(json: string): string;
-  // SQL Import/Export methods (SDK 1.6.1+)
+
+  // === SQL Import/Export methods (SDK 1.6.1+) ===
   import_from_sql?(sql: string, dialect: string): string;
   export_to_sql?(json: string, dialect: string): string;
-  // AVRO/Protobuf/JSON Schema methods (SDK 1.8.1+)
+
+  // === AVRO/Protobuf/JSON Schema methods (SDK 1.8.1+) ===
   import_from_avro?(avro: string): string;
   export_to_avro?(json: string): string;
   import_from_protobuf?(protobuf: string): string;
   export_to_protobuf?(json: string): string;
   import_from_json_schema?(jsonSchema: string): string;
   export_to_json_schema?(json: string): string;
-  // Filtering methods (SDK 1.9.0+)
+
+  // === Filtering methods (SDK 1.9.0+) ===
   filter_by_tags?(workspace_json: string, tag: string): string;
   filter_nodes_by_infrastructure_type?(workspace_json: string, infrastructureType: string): string;
   filter_nodes_by_owner?(workspace_json: string, owner: string): string;
@@ -47,6 +61,42 @@ interface SDKModule {
     workspace_json: string,
     infrastructureType: string
   ): string;
+
+  // === Decision methods (SDK 1.13.1+) ===
+  load_decisions?(workspace_path: string): string;
+  load_decision?(decision_path: string): string;
+  load_decision_index?(workspace_path: string): string;
+  load_decisions_by_domain?(workspace_path: string, domain_id: string): string;
+  save_decision?(decision_json: string, workspace_path: string): string;
+  save_decision_index?(index_json: string, workspace_path: string): string;
+  export_decision_markdown?(decision_json: string): string;
+
+  // === Knowledge methods (SDK 1.13.1+) ===
+  load_knowledge?(workspace_path: string): string;
+  load_knowledge_article?(article_path: string): string;
+  load_knowledge_index?(workspace_path: string): string;
+  load_knowledge_by_domain?(workspace_path: string, domain_id: string): string;
+  save_knowledge?(article_json: string, workspace_path: string): string;
+  save_knowledge_index?(index_json: string, workspace_path: string): string;
+  export_knowledge_markdown?(article_json: string): string;
+  search_knowledge?(workspace_path: string, query: string): string;
+
+  // === Database methods (SDK 1.13.1+) ===
+  db_init?(workspace_path: string, config_json: string): string;
+  db_sync?(workspace_path: string): string;
+  db_status?(workspace_path: string): string;
+  db_export?(workspace_path: string): string;
+  db_query?(workspace_path: string, sql: string): string;
+
+  // === Workspace methods (SDK 1.13.1+) ===
+  parse_workspace_yaml?(yaml: string): string;
+  export_workspace_yaml?(json: string): string;
+  scan_workspace_files?(workspace_path: string): string;
+
+  // === Domain methods (SDK 1.13.1+) ===
+  load_domains?(workspace_path: string): string;
+  load_domain?(workspace_path: string, domain_id: string): string;
+  save_domain?(domain_json: string, workspace_path: string): string;
 }
 
 class SDKLoader {
@@ -213,7 +263,7 @@ class SDKLoader {
   }
 
   /**
-   * Verify SDK 1.8.1+ bindings are available
+   * Verify SDK bindings are available
    */
   private verifySDKBindings(module: SDKModule): void {
     // Core methods from SDK 1.5.0+ (using actual exported method names)
@@ -240,39 +290,46 @@ class SDKLoader {
     ];
 
     // SDK 1.8.4+ specific methods (separate ODCL parser, improved validations)
-    const v182Methods = [
+    const v184Methods = [
       'parse_odcl_yaml', // ODCL import (separate from ODCS)
     ];
 
-    const missingCoreMethods: string[] = [];
-    const missingV161Methods: string[] = [];
-    const missingV181Methods: string[] = [];
-    const missingV182Methods: string[] = [];
+    // SDK 1.13.1+ specific methods (Decision logs, Knowledge base, DuckDB)
+    const v1131Methods = [
+      // Decision methods
+      'load_decisions',
+      'load_decision_index',
+      'save_decision',
+      'export_decision_markdown',
+      // Knowledge methods
+      'load_knowledge',
+      'load_knowledge_index',
+      'save_knowledge',
+      'search_knowledge',
+      'export_knowledge_markdown',
+      // Database methods
+      'db_init',
+      'db_sync',
+      'db_status',
+      'db_export',
+      'db_query',
+      // Workspace/Domain methods
+      'parse_workspace_yaml',
+      'export_workspace_yaml',
+      'load_domains',
+    ];
 
-    for (const method of coreMethods) {
-      if (typeof (module as any)[method] !== 'function') {
-        missingCoreMethods.push(method);
-      }
-    }
+    const checkMethods = (methods: string[]): string[] => {
+      return methods.filter((method) => typeof (module as any)[method] !== 'function');
+    };
 
-    for (const method of v161Methods) {
-      if (typeof (module as any)[method] !== 'function') {
-        missingV161Methods.push(method);
-      }
-    }
+    const missingCoreMethods = checkMethods(coreMethods);
+    const missingV161Methods = checkMethods(v161Methods);
+    const missingV181Methods = checkMethods(v181Methods);
+    const missingV184Methods = checkMethods(v184Methods);
+    const missingV1131Methods = checkMethods(v1131Methods);
 
-    for (const method of v181Methods) {
-      if (typeof (module as any)[method] !== 'function') {
-        missingV181Methods.push(method);
-      }
-    }
-
-    for (const method of v182Methods) {
-      if (typeof (module as any)[method] !== 'function') {
-        missingV182Methods.push(method);
-      }
-    }
-
+    // Log warnings for missing methods
     if (missingCoreMethods.length > 0) {
       console.warn('[SDKLoader] SDK 1.5.0+ core methods not available:', missingCoreMethods);
       console.warn('[SDKLoader] Some features may not work. Ensure SDK version >= 1.5.0');
@@ -280,69 +337,86 @@ class SDKLoader {
 
     if (missingV161Methods.length > 0) {
       console.warn('[SDKLoader] SDK 1.6.1+ methods not available:', missingV161Methods);
-      console.warn(
-        '[SDKLoader] Enhanced SQL import/export (including Databricks support) requires SDK version >= 1.6.1'
-      );
-      console.warn('[SDKLoader] Current SDK may not support Databricks SQL syntax natively');
+      console.warn('[SDKLoader] Enhanced SQL import/export requires SDK version >= 1.6.1');
     }
 
     if (missingV181Methods.length > 0) {
       console.warn('[SDKLoader] SDK 1.8.1+ methods not available:', missingV181Methods);
-      console.warn(
-        '[SDKLoader] Enhanced AVRO/Protobuf/JSON Schema/ODPS export/import requires SDK version >= 1.8.1'
-      );
-      console.warn('[SDKLoader] Current SDK may not have enhanced schema export/import support');
+      console.warn('[SDKLoader] Enhanced schema export/import requires SDK version >= 1.8.1');
     }
 
-    if (missingV182Methods.length > 0) {
-      console.warn('[SDKLoader] SDK 1.8.4+ methods not available:', missingV182Methods);
+    if (missingV184Methods.length > 0) {
+      console.warn('[SDKLoader] SDK 1.8.4+ methods not available:', missingV184Methods);
       console.warn('[SDKLoader] ODCL import with separate parser requires SDK version >= 1.8.4');
-      console.warn('[SDKLoader] ODCL files may need to be imported as ODCS (with limitations)');
     }
 
-    if (
-      missingCoreMethods.length === 0 &&
-      missingV161Methods.length === 0 &&
-      missingV181Methods.length === 0 &&
-      missingV182Methods.length === 0
-    ) {
-      console.log('[SDKLoader] SDK 1.8.4+ bindings verified successfully');
-    } else if (
-      missingCoreMethods.length === 0 &&
-      missingV161Methods.length === 0 &&
-      missingV181Methods.length === 0 &&
-      missingV182Methods.length > 0
-    ) {
-      console.log('[SDKLoader] SDK 1.8.1+ core bindings verified, but 1.8.4+ features are missing');
-      console.log(
-        '[SDKLoader] Available methods:',
-        Object.keys(module).filter((key) => typeof (module as any)[key] === 'function')
-      );
-      console.log('[SDKLoader] Missing 1.8.4+ methods:', missingV182Methods);
-    } else if (
-      missingCoreMethods.length === 0 &&
-      missingV161Methods.length === 0 &&
-      missingV181Methods.length > 0
-    ) {
-      console.log('[SDKLoader] SDK 1.6.1+ core bindings verified, but 1.8.1+ features are missing');
-      console.log(
-        '[SDKLoader] Available methods:',
-        Object.keys(module).filter((key) => typeof (module as any)[key] === 'function')
-      );
-      console.log('[SDKLoader] Missing 1.8.1+ methods:', missingV181Methods);
-    } else if (missingCoreMethods.length === 0 && missingV161Methods.length > 0) {
-      console.log('[SDKLoader] SDK 1.5.0+ core bindings verified, but 1.6.1+ features are missing');
-      console.log(
-        '[SDKLoader] Available methods:',
-        Object.keys(module).filter((key) => typeof (module as any)[key] === 'function')
-      );
-      console.log('[SDKLoader] Missing 1.6.1+ methods:', missingV161Methods);
-    } else {
-      console.log(
-        '[SDKLoader] Available methods:',
-        Object.keys(module).filter((key) => typeof (module as any)[key] === 'function')
+    if (missingV1131Methods.length > 0) {
+      console.warn('[SDKLoader] SDK 1.13.1+ methods not available:', missingV1131Methods);
+      console.warn(
+        '[SDKLoader] Decision logs, Knowledge base, and DuckDB features require SDK version >= 1.13.1'
       );
     }
+
+    // Determine detected SDK version
+    const detectedVersion = this.detectSDKVersion(
+      missingCoreMethods,
+      missingV161Methods,
+      missingV181Methods,
+      missingV184Methods,
+      missingV1131Methods
+    );
+
+    console.log(`[SDKLoader] Detected SDK version: ${detectedVersion}`);
+    console.log(
+      '[SDKLoader] Available methods:',
+      Object.keys(module).filter((key) => typeof (module as any)[key] === 'function')
+    );
+  }
+
+  /**
+   * Detect the SDK version based on available methods
+   */
+  private detectSDKVersion(
+    missingCore: string[],
+    missing161: string[],
+    missing181: string[],
+    missing184: string[],
+    missing1131: string[]
+  ): string {
+    if (missing1131.length === 0) {
+      return '1.13.1+';
+    } else if (missing184.length === 0) {
+      return '1.8.4+ (Decision/Knowledge/DuckDB features unavailable)';
+    } else if (missing181.length === 0) {
+      return '1.8.1+ (ODCL/Decision/Knowledge/DuckDB features unavailable)';
+    } else if (missing161.length === 0) {
+      return '1.6.1+ (Schema/ODCL/Decision/Knowledge/DuckDB features unavailable)';
+    } else if (missingCore.length === 0) {
+      return '1.5.0+ (SQL/Schema/ODCL/Decision/Knowledge/DuckDB features unavailable)';
+    } else {
+      return '<1.5.0 (Many features unavailable)';
+    }
+  }
+
+  /**
+   * Check if SDK 1.13.1+ features are available
+   */
+  hasDecisionSupport(): boolean {
+    return this.module !== null && typeof (this.module as any).load_decisions === 'function';
+  }
+
+  /**
+   * Check if SDK 1.13.1+ knowledge features are available
+   */
+  hasKnowledgeSupport(): boolean {
+    return this.module !== null && typeof (this.module as any).load_knowledge === 'function';
+  }
+
+  /**
+   * Check if SDK 1.13.1+ database features are available
+   */
+  hasDatabaseSupport(): boolean {
+    return this.module !== null && typeof (this.module as any).db_init === 'function';
   }
 
   /**

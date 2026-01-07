@@ -1484,6 +1484,7 @@ class ODCSService {
           col.description || col.desc || (colConstraints.description as string) || undefined,
         constraints: Object.keys(colConstraints).length > 0 ? colConstraints : undefined,
         quality_rules: qualityArray || colQualityRules, // Store quality array if present, otherwise use quality_rules object
+        quality: qualityArray, // Preserve raw quality array for UI components
         order: col.order ?? colIndex,
         created_at: col.created_at || col.createdAt || now,
       };

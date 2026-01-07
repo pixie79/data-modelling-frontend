@@ -10,6 +10,9 @@ import { cadsService } from '@/services/sdk/cadsService';
 import { bpmnService } from '@/services/sdk/bpmnService';
 import { dmnService } from '@/services/sdk/dmnService';
 import * as yaml from 'js-yaml';
+import { FileMigration } from '@/utils/fileMigration';
+import { WorkspaceV2Loader } from './workspaceV2Loader';
+import { WorkspaceV2Saver } from './workspaceV2Saver';
 import type { Workspace, WorkspaceMetadata } from '@/types/workspace';
 import type { Domain as DomainType } from '@/types/domain';
 import type { Table } from '@/types/table';
@@ -238,17 +241,43 @@ class LocalFileService {
    * YAML files contain resources (ODCS specs, relationships, data-flow diagrams, etc.)
    *
    * Expected structure:
-   *   workspace-folder/
-   *     domain-canvas-1/        # Domain canvas (e.g., "conceptual", "logical", "physical")
-   *       tables.yaml            # ODCS tables specification
-   *       relationships.yaml     # ODCS relationships specification
-   *       data-flow.yaml         # Data flow diagrams for this domain (optional)
-   *     domain-canvas-2/
-   *       tables.yaml
-   *       relationships.yaml
-   *       data-flow.yaml
+   *   V1 (folder-based):
+   *     workspace-folder/
+   *       domain-canvas-1/        # Domain canvas (e.g., "conceptual", "logical", "physical")
+   *         tables.yaml            # ODCS tables specification
+   *         relationships.yaml     # ODCS relationships specification
+   *       domain-canvas-2/
+   *         tables.yaml
+   *         relationships.yaml
+   *
+   *   V2 (flat file):
+   *     workspace-folder/
+   *       myworkspace.workspace.yaml              # Workspace + domains + systems + relationships
+   *       myworkspace_domain_table.odcs.yaml      # Individual resources
+   *       myworkspace_domain_product.odps.yaml
+   *       myworkspace_domain_process.bpmn
    */
   async loadWorkspaceFromFolder(files: FileList): Promise<Workspace> {
+    // Detect format (v1 or v2) and route to appropriate loader
+    const fileNames = Array.from(files).map((f) => f.name);
+    const format = FileMigration.detectWorkspaceFormat(fileNames);
+
+    console.log(`[LocalFileService] Detected workspace format: ${format}`);
+
+    if (format === 'v2') {
+      // Use new flat file loader
+      return await WorkspaceV2Loader.loadFromFiles(files);
+    }
+
+    // V1 format - use existing folder-based loader
+    return await this.loadWorkspaceFromFolderV1(files);
+  }
+
+  /**
+   * Load workspace from folder structure (V1 format - backward compatibility)
+   * @deprecated Use loadWorkspaceFromFolder which auto-detects format
+   */
+  private async loadWorkspaceFromFolderV1(files: FileList): Promise<Workspace> {
     // Parse folder structure - only YAML files are processed
     const {
       domains: domainMap,
@@ -1259,6 +1288,54 @@ class LocalFileService {
     // Fall back to download
     browserFileService.downloadFile(yamlContent, 'workspace.yaml', 'text/yaml');
     console.log('[LocalFileService] Downloaded workspace.yaml');
+  }
+
+  /**
+   * Save workspace in V2 format (flat file structure)
+   * Generates all files and saves as ZIP or using File System Access API
+   */
+  async saveWorkspaceV2(
+    workspace: Workspace,
+    domains: DomainType[],
+    allTables: Table[],
+    allSystems: System[],
+    allProducts: DataProduct[],
+    allAssets: ComputeAsset[],
+    allBpmnProcesses: BPMNProcess[],
+    allDmnDecisions: DMNDecision[]
+  ): Promise<void> {
+    console.log('[LocalFileService] Saving workspace in V2 format:', workspace.name);
+
+    // Generate all files
+    const files = await WorkspaceV2Saver.generateFiles(
+      workspace,
+      domains,
+      allTables,
+      allSystems,
+      allProducts,
+      allAssets,
+      allBpmnProcesses,
+      allDmnDecisions
+    );
+
+    const workspaceName = FileMigration.sanitizeFileName(workspace.name);
+
+    // Try File System Access API first (if available)
+    if ('showDirectoryPicker' in window) {
+      try {
+        const directoryHandle = await (window as any).showDirectoryPicker();
+        await WorkspaceV2Saver.saveWithFileSystemAPI(files, directoryHandle);
+        console.log('[LocalFileService] Saved workspace using File System Access API');
+        return;
+      } catch (error) {
+        console.warn('[LocalFileService] File System Access API failed:', error);
+      }
+    }
+
+    // Fall back to ZIP download
+    const zipName = `${workspaceName}.zip`;
+    await WorkspaceV2Saver.saveAsZip(files, zipName);
+    console.log('[LocalFileService] Downloaded workspace as ZIP:', zipName);
   }
 }
 

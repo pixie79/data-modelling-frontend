@@ -168,6 +168,8 @@ export class FileMigration {
     const cadsPattern = /_.*\.cads\.yaml$/;
     const bpmnPattern = /\.bpmn$/;
     const dmnPattern = /\.dmn$/;
+    const kbPattern = /_.*\.kb\.yaml$/;
+    const adrPattern = /_.*\.adr\.yaml$/;
 
     return {
       workspace: fileNames.find((f) => workspacePattern.test(f)),
@@ -176,6 +178,8 @@ export class FileMigration {
       cads: fileNames.filter((f) => cadsPattern.test(f)),
       bpmn: fileNames.filter((f) => bpmnPattern.test(f)),
       dmn: fileNames.filter((f) => dmnPattern.test(f)),
+      kb: fileNames.filter((f) => kbPattern.test(f)),
+      adr: fileNames.filter((f) => adrPattern.test(f)),
     };
   }
 
@@ -199,6 +203,8 @@ export class FileMigration {
       cads: filterByPrefix(categorized.cads),
       bpmn: filterByPrefix(categorized.bpmn),
       dmn: filterByPrefix(categorized.dmn),
+      kb: filterByPrefix(categorized.kb),
+      adr: filterByPrefix(categorized.adr),
     };
   }
 

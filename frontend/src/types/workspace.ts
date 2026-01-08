@@ -144,6 +144,8 @@ export interface CategorizedFiles {
   cads: string[];
   bpmn: string[];
   dmn: string[];
+  kb: string[]; // Knowledge base articles (.kb.yaml)
+  adr: string[]; // Architecture decision records (.adr.yaml)
 }
 
 /**
@@ -155,6 +157,8 @@ export interface DomainFiles {
   cads: File[];
   bpmn: File[];
   dmn: File[];
+  kb: File[]; // Knowledge base articles (.kb.yaml)
+  adr: File[]; // Architecture decision records (.adr.yaml)
 }
 
 // Legacy ModelType - deprecated, kept for backward compatibility

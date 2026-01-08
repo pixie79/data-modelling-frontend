@@ -9,6 +9,8 @@ import { odpsService } from '@/services/sdk/odpsService';
 import { cadsService } from '@/services/sdk/cadsService';
 import { bpmnService } from '@/services/sdk/bpmnService';
 import { dmnService } from '@/services/sdk/dmnService';
+import { knowledgeService } from '@/services/sdk/knowledgeService';
+import { decisionService } from '@/services/sdk/decisionService';
 import * as yaml from 'js-yaml';
 import { FileMigration } from '@/utils/fileMigration';
 import type {
@@ -28,6 +30,8 @@ import type { DataProduct } from '@/types/odps';
 import type { ComputeAsset } from '@/types/cads';
 import type { BPMNProcess } from '@/types/bpmn';
 import type { DMNDecision } from '@/types/dmn';
+import type { KnowledgeArticle } from '@/types/knowledge';
+import type { Decision } from '@/types/decision';
 
 /**
  * Result of loading a domain with all its resources
@@ -40,6 +44,8 @@ interface DomainLoadResult {
   processes: BPMNProcess[];
   decisions: DMNDecision[];
   systems: System[];
+  knowledgeArticles: KnowledgeArticle[];
+  decisionRecords: Decision[];
 }
 
 export class WorkspaceV2Loader {
@@ -75,6 +81,8 @@ export class WorkspaceV2Loader {
       cads: categorized.cads.length,
       bpmn: categorized.bpmn.length,
       dmn: categorized.dmn.length,
+      kb: categorized.kb.length,
+      adr: categorized.adr.length,
     });
 
     // 3. Load each domain's resources - collect all resources
@@ -99,6 +107,8 @@ export class WorkspaceV2Loader {
     const allProcesses: BPMNProcess[] = [];
     const allDecisions: DMNDecision[] = [];
     const allSystems: System[] = [];
+    const allKnowledgeArticles: KnowledgeArticle[] = [];
+    const allDecisionRecords: Decision[] = [];
 
     for (const result of domainResults) {
       domains.push(result.domain);
@@ -108,6 +118,8 @@ export class WorkspaceV2Loader {
       allProcesses.push(...result.processes);
       allDecisions.push(...result.decisions);
       allSystems.push(...result.systems);
+      allKnowledgeArticles.push(...result.knowledgeArticles);
+      allDecisionRecords.push(...result.decisionRecords);
     }
 
     // 5. Load relationships from workspace.yaml (SDK schema stores them at workspace level)
@@ -125,6 +137,8 @@ export class WorkspaceV2Loader {
       assets?: ComputeAsset[];
       bpmnProcesses?: BPMNProcess[];
       dmnDecisions?: DMNDecision[];
+      knowledgeArticles?: KnowledgeArticle[];
+      decisionRecords?: Decision[];
     } = {
       id: workspaceId,
       name: workspaceName,
@@ -165,6 +179,18 @@ export class WorkspaceV2Loader {
       workspace.dmnDecisions = allDecisions;
       console.log(`[WorkspaceV2Loader] Added ${allDecisions.length} DMN decision(s) to workspace`);
     }
+    if (allKnowledgeArticles.length > 0) {
+      workspace.knowledgeArticles = allKnowledgeArticles;
+      console.log(
+        `[WorkspaceV2Loader] Added ${allKnowledgeArticles.length} knowledge article(s) to workspace`
+      );
+    }
+    if (allDecisionRecords.length > 0) {
+      workspace.decisionRecords = allDecisionRecords;
+      console.log(
+        `[WorkspaceV2Loader] Added ${allDecisionRecords.length} decision record(s) to workspace`
+      );
+    }
 
     console.log('[WorkspaceV2Loader] Loaded workspace with', domains.length, 'domains');
     console.log('[WorkspaceV2Loader] Workspace summary:', {
@@ -176,6 +202,8 @@ export class WorkspaceV2Loader {
       assets: allAssets.length,
       bpmnProcesses: allProcesses.length,
       dmnDecisions: allDecisions.length,
+      knowledgeArticles: allKnowledgeArticles.length,
+      decisionRecords: allDecisionRecords.length,
     });
 
     return workspace;
@@ -205,6 +233,8 @@ export class WorkspaceV2Loader {
       cads: domainFiles.cads.length,
       bpmn: domainFiles.bpmn.length,
       dmn: domainFiles.dmn.length,
+      kb: domainFiles.kb.length,
+      adr: domainFiles.adr.length,
     });
 
     // Load tables
@@ -219,8 +249,14 @@ export class WorkspaceV2Loader {
     // Load processes
     const processes = await this.loadProcesses(domainFiles.bpmn, domainSpec);
 
-    // Load decisions
+    // Load DMN decisions
     const decisions = await this.loadDecisions(domainFiles.dmn, domainSpec);
+
+    // Load knowledge articles
+    const knowledgeArticles = await this.loadKnowledgeArticles(domainFiles.kb, domainSpec);
+
+    // Load decision records (ADRs)
+    const decisionRecords = await this.loadDecisionRecords(domainFiles.adr, domainSpec);
 
     // Convert systems from DomainV2 format to System format
     const systems = this.loadSystems(domainSpec.systems || [], domainSpec.id, workspaceId, tables);
@@ -249,6 +285,8 @@ export class WorkspaceV2Loader {
       processes,
       decisions,
       systems,
+      knowledgeArticles,
+      decisionRecords,
     };
   }
 
@@ -380,6 +418,8 @@ export class WorkspaceV2Loader {
       cads: filterByPrefix(categorized.cads),
       bpmn: filterByPrefix(categorized.bpmn),
       dmn: filterByPrefix(categorized.dmn),
+      kb: filterByPrefix(categorized.kb),
+      adr: filterByPrefix(categorized.adr),
     };
   }
 
@@ -503,6 +543,66 @@ export class WorkspaceV2Loader {
         }
       } catch (error) {
         console.error(`[WorkspaceV2Loader] Failed to load decision from ${file.name}:`, error);
+      }
+    }
+
+    return decisions;
+  }
+
+  /**
+   * Load knowledge articles from .kb.yaml files
+   */
+  private static async loadKnowledgeArticles(
+    files: File[],
+    domainSpec: DomainV2
+  ): Promise<KnowledgeArticle[]> {
+    const articles: KnowledgeArticle[] = [];
+
+    for (const file of files) {
+      try {
+        const content = await browserFileService.readFile(file);
+        const article = await knowledgeService.parseKnowledgeYaml(content);
+
+        if (article && typeof article === 'object' && 'id' in article) {
+          (article as any).domain_id = domainSpec.id;
+          articles.push(article as KnowledgeArticle);
+          console.log(`[WorkspaceV2Loader] Loaded knowledge article: ${article.title}`);
+        }
+      } catch (error) {
+        console.error(
+          `[WorkspaceV2Loader] Failed to load knowledge article from ${file.name}:`,
+          error
+        );
+      }
+    }
+
+    return articles;
+  }
+
+  /**
+   * Load decision records (ADRs) from .adr.yaml files
+   */
+  private static async loadDecisionRecords(
+    files: File[],
+    domainSpec: DomainV2
+  ): Promise<Decision[]> {
+    const decisions: Decision[] = [];
+
+    for (const file of files) {
+      try {
+        const content = await browserFileService.readFile(file);
+        const decision = await decisionService.parseDecisionYaml(content);
+
+        if (decision && typeof decision === 'object' && 'id' in decision) {
+          (decision as any).domain_id = domainSpec.id;
+          decisions.push(decision as Decision);
+          console.log(`[WorkspaceV2Loader] Loaded decision record: ${decision.title}`);
+        }
+      } catch (error) {
+        console.error(
+          `[WorkspaceV2Loader] Failed to load decision record from ${file.name}:`,
+          error
+        );
       }
     }
 

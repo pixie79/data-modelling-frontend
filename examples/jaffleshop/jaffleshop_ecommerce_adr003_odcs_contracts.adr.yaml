@@ -1,0 +1,109 @@
+id: js-adr-0003
+number: 3
+title: Use ODCS Data Contracts for Schema Documentation
+status: accepted
+category: process
+context: |
+  As the Jaffleshop data platform scales, we face challenges with:
+
+  - Schema drift between producers and consumers
+  - Unclear ownership of data assets
+  - Missing or outdated documentation
+  - Inconsistent metadata across tables
+  - Difficult impact analysis for schema changes
+
+  We need a standardized way to define, document, and enforce data
+  contracts between data producers and consumers.
+
+decision: |
+  We will use Open Data Contract Standard (ODCS) v3.1.0 for defining
+  all data contracts. Each table will have a corresponding `.odcs.yaml`
+  file that defines:
+
+  - Schema with column descriptions and data types
+  - Data quality rules and validation
+  - Ownership and contact information
+  - SLA requirements
+  - Custom properties for system linking
+
+  All ODCS contracts will be:
+  - Stored in version control alongside data assets
+  - Validated in CI/CD pipelines
+  - Used to generate documentation automatically
+  - Linked to their physical implementations
+
+consequences: |
+  **Positive:**
+  - Single source of truth for schema definitions
+  - Automated documentation generation
+  - Clear ownership and accountability
+  - Version-controlled contract changes
+  - Support for data governance tooling
+
+  **Negative:**
+  - Additional files to maintain
+  - Learning curve for ODCS format
+  - Sync overhead between contracts and implementations
+
+  **Mitigations:**
+  - Automate contract generation from dbt models
+  - Provide templates and examples
+  - Add pre-commit hooks for validation
+  - Regular audits for contract drift
+
+options:
+  - title: ODCS Data Contracts (Selected)
+    description: Open Data Contract Standard YAML files
+    pros:
+      - Open standard, vendor-neutral
+      - Rich metadata support
+      - Active community
+      - SDK support for validation
+    cons:
+      - Manual sync with implementations
+      - Learning curve
+  - title: dbt Documentation Only
+    description: Use dbt's built-in documentation
+    pros:
+      - Native to dbt workflow
+      - Auto-generated from models
+    cons:
+      - Limited metadata fields
+      - No SLA support
+      - dbt-specific
+  - title: Data Catalog Tool
+    description: Use Atlan, DataHub, or similar
+    pros:
+      - Rich UI for discovery
+      - Automated scanning
+    cons:
+      - Additional infrastructure
+      - Vendor lock-in
+      - Cost
+
+domain_id: js-domain-ecommerce
+workspace_id: js-workspace
+authors:
+  - data-governance@jaffleshop.example
+deciders:
+  - head-of-data@jaffleshop.example
+  - cto@jaffleshop.example
+consulted:
+  - data-engineering@jaffleshop.example
+  - compliance@jaffleshop.example
+informed:
+  - all-data-team@jaffleshop.example
+related_decisions:
+  - js-adr-0001
+  - js-adr-0002
+related_knowledge:
+  - js-kb-0001
+  - js-kb-0002
+tags:
+  - name: data-contracts
+  - name: odcs
+  - name: governance
+  - name: documentation
+created_at: "2024-01-12T10:30:00Z"
+updated_at: "2024-01-12T10:30:00Z"
+decided_at: "2024-01-12T10:30:00Z"

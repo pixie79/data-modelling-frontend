@@ -1,0 +1,169 @@
+id: js-kb-0003
+number: 3
+title: MetricFlow Semantic Layer Implementation Guide
+type: tutorial
+status: published
+summary: >-
+  Step-by-step guide for implementing and using the MetricFlow semantic layer
+  for consistent metric definitions across Jaffleshop analytics.
+
+content: |
+  # MetricFlow Semantic Layer Implementation Guide
+
+  ## Introduction
+
+  MetricFlow provides a semantic layer that ensures consistent metric
+  definitions across all analytics tools and reports. This guide covers
+  the implementation for Jaffleshop.
+
+  ## Time Spine Configuration
+
+  The `metricflow_time_spine` table serves as the foundation for all
+  time-based analysis:
+
+  ```sql
+  SELECT
+    date_day,
+    date_week,
+    date_month,
+    date_quarter,
+    date_year,
+    day_of_week,
+    day_of_month,
+    week_of_year,
+    month_of_year,
+    quarter_of_year
+  FROM metricflow_time_spine
+  ```
+
+  ## Key Metrics Definitions
+
+  ### Revenue Metrics
+
+  **Total Revenue**
+  ```yaml
+  metric:
+    name: total_revenue
+    type: sum
+    expr: order_total
+    entity: orders
+    grain: day
+  ```
+
+  **Average Order Value (AOV)**
+  ```yaml
+  metric:
+    name: average_order_value
+    type: average
+    expr: order_total
+    entity: orders
+    grain: day
+  ```
+
+  ### Customer Metrics
+
+  **Customer Lifetime Value (CLV)**
+  ```yaml
+  metric:
+    name: customer_lifetime_value
+    type: sum
+    expr: lifetime_order_value
+    entity: customers
+  ```
+
+  **Customer Retention Rate**
+  ```yaml
+  metric:
+    name: retention_rate
+    type: ratio
+    numerator: returning_customers
+    denominator: total_customers
+    grain: month
+  ```
+
+  ### Product Metrics
+
+  **Items Per Order**
+  ```yaml
+  metric:
+    name: items_per_order
+    type: average
+    expr: item_count
+    entity: orders
+  ```
+
+  ## Dimensional Hierarchies
+
+  ### Time Hierarchy
+  ```
+  Year → Quarter → Month → Week → Day
+  ```
+
+  ### Location Hierarchy
+  ```
+  Region → City → Store
+  ```
+
+  ### Product Hierarchy
+  ```
+  Category → Subcategory → Product
+  ```
+
+  ## Query Examples
+
+  ### Daily Revenue by Location
+  ```sql
+  SELECT
+    d.date_day,
+    l.location_name,
+    SUM(o.order_total) as daily_revenue
+  FROM orders o
+  JOIN locations l ON o.location_id = l.location_id
+  JOIN metricflow_time_spine d ON o.order_date = d.date_day
+  GROUP BY 1, 2
+  ORDER BY 1, 2
+  ```
+
+  ### Monthly Customer Acquisition
+  ```sql
+  SELECT
+    date_trunc('month', first_order_date) as acquisition_month,
+    COUNT(DISTINCT customer_id) as new_customers
+  FROM customers
+  GROUP BY 1
+  ORDER BY 1
+  ```
+
+  ## Best Practices
+
+  1. **Single Source of Truth** - All metrics defined in MetricFlow
+  2. **Version Control** - Metric definitions in Git
+  3. **Documentation** - Every metric has clear description
+  4. **Testing** - Automated tests for metric calculations
+  5. **Governance** - Metric changes require review
+
+  ## Integration Points
+
+  - **BI Tools:** Looker, Tableau, Power BI
+  - **Notebooks:** Jupyter, Databricks
+  - **APIs:** REST and GraphQL endpoints
+  - **Exports:** Scheduled CSV/Parquet exports
+
+domain_id: js-domain-ecommerce
+workspace_id: js-workspace
+authors:
+  - analytics-engineering@jaffleshop.example
+reviewers:
+  - bi-team@jaffleshop.example
+related_articles:
+  - js-kb-0001
+prerequisites:
+  - js-kb-0001
+tags:
+  - name: metricflow
+  - name: semantic-layer
+  - name: analytics
+  - name: metrics
+created_at: "2024-01-20T09:00:00Z"
+updated_at: "2024-01-20T09:00:00Z"
+published_at: "2024-01-20T09:00:00Z"

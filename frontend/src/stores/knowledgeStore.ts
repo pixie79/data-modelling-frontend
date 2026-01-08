@@ -1,7 +1,12 @@
 /**
  * Knowledge Store
  * Manages Knowledge Base articles state using Zustand
- * SDK 1.13.1+
+ * SDK 1.13.3+
+ *
+ * NOTE: The SDK 1.13.3 WASM methods work with YAML strings, not file paths.
+ * File I/O must be handled by the application layer (e.g., Electron file system).
+ * This store manages in-memory state and delegates to the service for
+ * parsing, validation, and export operations.
  */
 
 import { create } from 'zustand';
@@ -45,33 +50,33 @@ interface KnowledgeState {
   clearError: () => void;
   clearSearch: () => void;
 
-  // Async operations
-  loadKnowledge: (workspacePath: string) => Promise<void>;
-  loadKnowledgeByDomain: (workspacePath: string, domainId: string) => Promise<void>;
-  search: (workspacePath: string, query: string) => Promise<void>;
-  createArticle: (
-    workspacePath: string,
-    data: {
-      title: string;
-      type: ArticleType;
-      summary: string;
-      content: string;
-      domain_id?: string;
-      authors?: string[];
-    }
-  ) => Promise<KnowledgeArticle>;
-  updateArticle: (
-    workspacePath: string,
-    articleId: string,
-    updates: Partial<KnowledgeArticle>
-  ) => Promise<void>;
-  changeArticleStatus: (
-    workspacePath: string,
-    articleId: string,
-    newStatus: ArticleStatus
-  ) => Promise<void>;
-  deleteArticle: (workspacePath: string, articleId: string) => Promise<void>;
-  exportToMarkdown: (workspacePath: string, articleId: string) => Promise<string>;
+  // Data operations (in-memory, synchronous)
+  addArticle: (article: KnowledgeArticle) => void;
+  updateArticleInStore: (articleId: string, updates: Partial<KnowledgeArticle>) => void;
+  removeArticle: (articleId: string) => void;
+
+  // SDK-backed operations (parsing, creation, export)
+  parseKnowledgeYaml: (yaml: string) => Promise<KnowledgeArticle | null>;
+  parseKnowledgeIndexYaml: (yaml: string) => Promise<KnowledgeIndex | null>;
+  exportKnowledgeToYaml: (article: KnowledgeArticle) => Promise<string | null>;
+  exportKnowledgeToMarkdown: (article: KnowledgeArticle) => Promise<string>;
+
+  // Search (uses SDK if available, falls back to client-side)
+  search: (query: string) => Promise<void>;
+
+  // High-level creation/update using service
+  createArticle: (data: {
+    title: string;
+    type: ArticleType;
+    summary: string;
+    content: string;
+    domain_id?: string;
+    authors?: string[];
+  }) => KnowledgeArticle;
+
+  updateArticle: (articleId: string, updates: Partial<KnowledgeArticle>) => KnowledgeArticle | null;
+
+  changeArticleStatus: (articleId: string, newStatus: ArticleStatus) => KnowledgeArticle | null;
 
   // Selectors
   getArticleById: (id: string) => KnowledgeArticle | undefined;
@@ -80,6 +85,7 @@ interface KnowledgeState {
   getArticlesByDomain: (domainId: string) => KnowledgeArticle[];
   getPublishedArticles: () => KnowledgeArticle[];
   getDraftArticles: () => KnowledgeArticle[];
+  getNextArticleNumber: () => number;
 
   // Reset
   reset: () => void;
@@ -139,50 +145,89 @@ export const useKnowledgeStore = create<KnowledgeState>()(
 
       clearSearch: () => set({ searchQuery: '', searchResults: [] }),
 
-      // Async operations
-      loadKnowledge: async (workspacePath) => {
-        set({ isLoading: true, error: null });
-        try {
-          const [articles, index] = await Promise.all([
-            knowledgeService.loadKnowledge(workspacePath),
-            knowledgeService.loadKnowledgeIndex(workspacePath),
-          ]);
+      // Data operations (in-memory)
+      addArticle: (article) => {
+        const articles = [...get().articles, article];
+        const filter = get().filter;
+        set({
+          articles,
+          filteredArticles: applyFilter(articles, filter),
+        });
+      },
 
-          const filter = get().filter;
-          set({
-            articles,
-            knowledgeIndex: index,
-            filteredArticles: applyFilter(articles, filter),
-            isLoading: false,
-          });
+      updateArticleInStore: (articleId, updates) => {
+        const articles = get().articles.map((a) =>
+          a.id === articleId ? { ...a, ...updates, updated_at: new Date().toISOString() } : a
+        );
+        const filter = get().filter;
+        const selectedArticle = get().selectedArticle;
+        const updatedArticle = articles.find((a) => a.id === articleId);
+
+        set({
+          articles,
+          filteredArticles: applyFilter(articles, filter),
+          selectedArticle:
+            selectedArticle?.id === articleId ? (updatedArticle ?? null) : selectedArticle,
+        });
+      },
+
+      removeArticle: (articleId) => {
+        const articles = get().articles.filter((a) => a.id !== articleId);
+        const filter = get().filter;
+        const selectedArticle = get().selectedArticle;
+
+        set({
+          articles,
+          filteredArticles: applyFilter(articles, filter),
+          selectedArticle: selectedArticle?.id === articleId ? null : selectedArticle,
+        });
+      },
+
+      // SDK-backed operations
+      parseKnowledgeYaml: async (yaml) => {
+        try {
+          return await knowledgeService.parseKnowledgeYaml(yaml);
         } catch (error) {
-          set({
-            error: error instanceof Error ? error.message : 'Failed to load knowledge',
-            isLoading: false,
-          });
+          set({ error: error instanceof Error ? error.message : 'Failed to parse knowledge YAML' });
+          return null;
         }
       },
 
-      loadKnowledgeByDomain: async (workspacePath, domainId) => {
-        set({ isLoading: true, error: null });
+      parseKnowledgeIndexYaml: async (yaml) => {
         try {
-          const articles = await knowledgeService.loadKnowledgeByDomain(workspacePath, domainId);
-          const filter = { ...get().filter, domain_id: domainId };
-          set({
-            articles,
-            filter,
-            filteredArticles: articles, // Already filtered by domain
-            isLoading: false,
-          });
+          return await knowledgeService.parseKnowledgeIndexYaml(yaml);
         } catch (error) {
           set({
-            error: error instanceof Error ? error.message : 'Failed to load knowledge',
-            isLoading: false,
+            error: error instanceof Error ? error.message : 'Failed to parse knowledge index',
           });
+          return null;
         }
       },
 
-      search: async (workspacePath, query) => {
+      exportKnowledgeToYaml: async (article) => {
+        try {
+          return await knowledgeService.exportKnowledgeToYaml(article);
+        } catch (error) {
+          set({
+            error: error instanceof Error ? error.message : 'Failed to export article to YAML',
+          });
+          return null;
+        }
+      },
+
+      exportKnowledgeToMarkdown: async (article) => {
+        try {
+          return await knowledgeService.exportKnowledgeToMarkdown(article);
+        } catch (error) {
+          set({
+            error: error instanceof Error ? error.message : 'Failed to export article to Markdown',
+          });
+          throw error;
+        }
+      },
+
+      // Search
+      search: async (query) => {
         if (!query.trim()) {
           set({ searchQuery: '', searchResults: [] });
           return;
@@ -190,7 +235,8 @@ export const useKnowledgeStore = create<KnowledgeState>()(
 
         set({ isSearching: true, searchQuery: query, error: null });
         try {
-          const results = await knowledgeService.searchKnowledge(workspacePath, query);
+          const articles = get().articles;
+          const results = await knowledgeService.searchKnowledgeViaSDK(articles, query);
           set({ searchResults: results, isSearching: false });
         } catch (error) {
           set({
@@ -200,122 +246,84 @@ export const useKnowledgeStore = create<KnowledgeState>()(
         }
       },
 
-      createArticle: async (workspacePath, data) => {
-        set({ isSaving: true, error: null });
-        try {
-          const article = await knowledgeService.createArticle(workspacePath, data);
+      // High-level creation using service
+      createArticle: (data) => {
+        const nextNumber = get().getNextArticleNumber();
+        const article = knowledgeService.createArticle(data, nextNumber);
 
-          // Add to local state
-          const articles = [...get().articles, article];
-          const filter = get().filter;
-          set({
-            articles,
-            filteredArticles: applyFilter(articles, filter),
-            selectedArticle: article,
-            isSaving: false,
-          });
+        // Add to store
+        get().addArticle(article);
+        set({ selectedArticle: article });
 
-          return article;
-        } catch (error) {
-          set({
-            error: error instanceof Error ? error.message : 'Failed to create article',
-            isSaving: false,
-          });
-          throw error;
+        // Update index
+        const index = get().knowledgeIndex;
+        if (index) {
+          const entry = knowledgeService.createIndexEntry(article);
+          const updatedIndex: KnowledgeIndex = {
+            ...index,
+            articles: [...index.articles, entry],
+            next_number: nextNumber + 1,
+            last_updated: new Date().toISOString(),
+          };
+          set({ knowledgeIndex: updatedIndex });
         }
+
+        return article;
       },
 
-      updateArticle: async (workspacePath, articleId, updates) => {
-        set({ isSaving: true, error: null });
-        try {
-          const updatedArticle = await knowledgeService.updateArticle(
-            workspacePath,
-            articleId,
-            updates
-          );
-
-          // Update local state
-          const articles = get().articles.map((a) => (a.id === articleId ? updatedArticle : a));
-          const filter = get().filter;
-          const selectedArticle = get().selectedArticle;
-
-          set({
-            articles,
-            filteredArticles: applyFilter(articles, filter),
-            selectedArticle: selectedArticle?.id === articleId ? updatedArticle : selectedArticle,
-            isSaving: false,
-          });
-        } catch (error) {
-          set({
-            error: error instanceof Error ? error.message : 'Failed to update article',
-            isSaving: false,
-          });
-          throw error;
+      updateArticle: (articleId, updates) => {
+        const article = get().getArticleById(articleId);
+        if (!article) {
+          set({ error: `Article not found: ${articleId}` });
+          return null;
         }
+
+        const updatedArticle = knowledgeService.updateArticle(article, updates);
+        get().updateArticleInStore(articleId, updatedArticle);
+
+        // Update index if title, type, or status changed
+        if (updates.title || updates.type || updates.status) {
+          const index = get().knowledgeIndex;
+          if (index) {
+            const updatedArticles = index.articles.map((e) =>
+              e.id === articleId
+                ? {
+                    ...e,
+                    title: updatedArticle.title,
+                    type: updatedArticle.type,
+                    status: updatedArticle.status,
+                    updated_at: updatedArticle.updated_at,
+                    published_at: updatedArticle.published_at,
+                  }
+                : e
+            );
+            set({
+              knowledgeIndex: {
+                ...index,
+                articles: updatedArticles,
+                last_updated: updatedArticle.updated_at,
+              },
+            });
+          }
+        }
+
+        return updatedArticle;
       },
 
-      changeArticleStatus: async (workspacePath, articleId, newStatus) => {
-        set({ isSaving: true, error: null });
-        try {
-          const updatedArticle = await knowledgeService.changeStatus(
-            workspacePath,
-            articleId,
-            newStatus
-          );
-
-          // Update local state
-          const articles = get().articles.map((a) => (a.id === articleId ? updatedArticle : a));
-          const filter = get().filter;
-          const selectedArticle = get().selectedArticle;
-
-          set({
-            articles,
-            filteredArticles: applyFilter(articles, filter),
-            selectedArticle: selectedArticle?.id === articleId ? updatedArticle : selectedArticle,
-            isSaving: false,
-          });
-        } catch (error) {
-          set({
-            error: error instanceof Error ? error.message : 'Failed to change article status',
-            isSaving: false,
-          });
-          throw error;
+      changeArticleStatus: (articleId, newStatus) => {
+        const article = get().getArticleById(articleId);
+        if (!article) {
+          set({ error: `Article not found: ${articleId}` });
+          return null;
         }
-      },
 
-      deleteArticle: async (workspacePath, articleId) => {
-        set({ isSaving: true, error: null });
         try {
-          await knowledgeService.deleteArticle(workspacePath, articleId);
-
-          // Remove from local state
-          const articles = get().articles.filter((a) => a.id !== articleId);
-          const filter = get().filter;
-          const selectedArticle = get().selectedArticle;
-
-          set({
-            articles,
-            filteredArticles: applyFilter(articles, filter),
-            selectedArticle: selectedArticle?.id === articleId ? null : selectedArticle,
-            isSaving: false,
-          });
+          const updatedArticle = knowledgeService.changeStatus(article, newStatus);
+          get().updateArticleInStore(articleId, updatedArticle);
+          return updatedArticle;
         } catch (error) {
-          set({
-            error: error instanceof Error ? error.message : 'Failed to delete article',
-            isSaving: false,
-          });
-          throw error;
-        }
-      },
-
-      exportToMarkdown: async (workspacePath, articleId) => {
-        try {
-          return await knowledgeService.exportToMarkdown(workspacePath, articleId);
-        } catch (error) {
-          set({
-            error: error instanceof Error ? error.message : 'Failed to export article',
-          });
-          throw error;
+          set({ error: error instanceof Error ? error.message : 'Failed to change status' });
+          return null;
         }
       },
 
@@ -342,6 +350,16 @@ export const useKnowledgeStore = create<KnowledgeState>()(
 
       getDraftArticles: () => {
         return get().articles.filter((a) => a.status === ArticleStatus.Draft);
+      },
+
+      getNextArticleNumber: () => {
+        const index = get().knowledgeIndex;
+        if (index?.next_number) {
+          return index.next_number;
+        }
+        const articles = get().articles;
+        if (articles.length === 0) return 1;
+        return Math.max(...articles.map((a) => a.number)) + 1;
       },
 
       // Reset

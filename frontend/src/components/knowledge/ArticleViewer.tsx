@@ -26,31 +26,30 @@ export interface ArticleViewerProps {
 }
 
 export const ArticleViewer: React.FC<ArticleViewerProps> = ({
-  workspacePath,
+  workspacePath: _workspacePath,
   article,
   onEdit,
   onClose,
   className = '',
 }) => {
-  const { isSaving, changeArticleStatus, exportToMarkdown, getArticleById } = useKnowledgeStore();
+  const { isSaving, changeArticleStatus, exportKnowledgeToMarkdown, getArticleById } =
+    useKnowledgeStore();
   const { getDecisionById } = useDecisionStore();
 
   const [showStatusChange, setShowStatusChange] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
-  const handleStatusChange = async (newStatus: ArticleStatus) => {
-    try {
-      await changeArticleStatus(workspacePath, article.id, newStatus);
+  const handleStatusChange = (newStatus: ArticleStatus) => {
+    const updated = changeArticleStatus(article.id, newStatus);
+    if (updated) {
       setShowStatusChange(false);
-    } catch {
-      // Error handled by store
     }
   };
 
   const handleExportMarkdown = async () => {
     setIsExporting(true);
     try {
-      const markdown = await exportToMarkdown(workspacePath, article.id);
+      const markdown = await exportKnowledgeToMarkdown(article);
 
       // Create a blob and download
       const blob = new Blob([markdown], { type: 'text/markdown' });

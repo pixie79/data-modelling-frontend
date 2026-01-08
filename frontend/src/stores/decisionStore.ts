@@ -1,7 +1,12 @@
 /**
  * Decision Store
  * Manages MADR Architecture Decision Records state using Zustand
- * SDK 1.13.1+
+ * SDK 1.13.3+
+ *
+ * NOTE: The SDK 1.13.3 WASM methods work with YAML strings, not file paths.
+ * File I/O must be handled by the application layer (e.g., Electron file system).
+ * This store manages in-memory state and delegates to the service for
+ * parsing, validation, and export operations.
  */
 
 import { create } from 'zustand';
@@ -33,35 +38,36 @@ interface DecisionState {
   setError: (error: string | null) => void;
   clearError: () => void;
 
-  // Async operations
-  loadDecisions: (workspacePath: string) => Promise<void>;
-  loadDecisionsByDomain: (workspacePath: string, domainId: string) => Promise<void>;
-  createDecision: (
-    workspacePath: string,
-    data: {
-      title: string;
-      category: DecisionCategory;
-      context: string;
-      decision: string;
-      consequences?: string;
-      options?: DecisionOption[];
-      domain_id?: string;
-      authors?: string[];
-    }
-  ) => Promise<Decision>;
-  updateDecision: (
-    workspacePath: string,
-    decisionId: string,
-    updates: Partial<Decision>
-  ) => Promise<void>;
+  // Data operations (in-memory, synchronous)
+  addDecision: (decision: Decision) => void;
+  updateDecisionInStore: (decisionId: string, updates: Partial<Decision>) => void;
+  removeDecision: (decisionId: string) => void;
+
+  // SDK-backed operations (parsing, creation, export)
+  parseDecisionYaml: (yaml: string) => Promise<Decision | null>;
+  parseDecisionIndexYaml: (yaml: string) => Promise<DecisionIndex | null>;
+  exportDecisionToYaml: (decision: Decision) => Promise<string | null>;
+  exportDecisionToMarkdown: (decision: Decision) => Promise<string>;
+
+  // High-level creation/update using service
+  createDecision: (data: {
+    title: string;
+    category: DecisionCategory;
+    context: string;
+    decision: string;
+    consequences?: string;
+    options?: DecisionOption[];
+    domain_id?: string;
+    authors?: string[];
+  }) => Decision;
+
+  updateDecision: (decisionId: string, updates: Partial<Decision>) => Decision | null;
+
   changeDecisionStatus: (
-    workspacePath: string,
     decisionId: string,
     newStatus: DecisionStatus,
     supersededById?: string
-  ) => Promise<void>;
-  deleteDecision: (workspacePath: string, decisionId: string) => Promise<void>;
-  exportToMarkdown: (workspacePath: string, decisionId: string) => Promise<string>;
+  ) => Decision | null;
 
   // Selectors
   getDecisionById: (id: string) => Decision | undefined;
@@ -71,6 +77,7 @@ interface DecisionState {
   getAcceptedDecisions: () => Decision[];
   getDraftDecisions: () => Decision[];
   getProposedDecisions: () => Decision[];
+  getNextDecisionNumber: () => number;
 
   // Reset
   reset: () => void;
@@ -119,168 +126,171 @@ export const useDecisionStore = create<DecisionState>()(
 
       clearError: () => set({ error: null }),
 
-      // Async operations
-      loadDecisions: async (workspacePath) => {
-        set({ isLoading: true, error: null });
-        try {
-          const [decisions, index] = await Promise.all([
-            decisionService.loadDecisions(workspacePath),
-            decisionService.loadDecisionIndex(workspacePath),
-          ]);
+      // Data operations (in-memory)
+      addDecision: (decision) => {
+        const decisions = [...get().decisions, decision];
+        const filter = get().filter;
+        set({
+          decisions,
+          filteredDecisions: applyFilter(decisions, filter),
+        });
+      },
 
-          const filter = get().filter;
-          set({
-            decisions,
-            decisionIndex: index,
-            filteredDecisions: applyFilter(decisions, filter),
-            isLoading: false,
-          });
+      updateDecisionInStore: (decisionId, updates) => {
+        const decisions = get().decisions.map((d) =>
+          d.id === decisionId ? { ...d, ...updates, updated_at: new Date().toISOString() } : d
+        );
+        const filter = get().filter;
+        const selectedDecision = get().selectedDecision;
+        const updatedDecision = decisions.find((d) => d.id === decisionId);
+
+        set({
+          decisions,
+          filteredDecisions: applyFilter(decisions, filter),
+          selectedDecision:
+            selectedDecision?.id === decisionId ? (updatedDecision ?? null) : selectedDecision,
+        });
+      },
+
+      removeDecision: (decisionId) => {
+        const decisions = get().decisions.filter((d) => d.id !== decisionId);
+        const filter = get().filter;
+        const selectedDecision = get().selectedDecision;
+
+        set({
+          decisions,
+          filteredDecisions: applyFilter(decisions, filter),
+          selectedDecision: selectedDecision?.id === decisionId ? null : selectedDecision,
+        });
+      },
+
+      // SDK-backed operations
+      parseDecisionYaml: async (yaml) => {
+        try {
+          return await decisionService.parseDecisionYaml(yaml);
         } catch (error) {
-          set({
-            error: error instanceof Error ? error.message : 'Failed to load decisions',
-            isLoading: false,
-          });
+          set({ error: error instanceof Error ? error.message : 'Failed to parse decision YAML' });
+          return null;
         }
       },
 
-      loadDecisionsByDomain: async (workspacePath, domainId) => {
-        set({ isLoading: true, error: null });
+      parseDecisionIndexYaml: async (yaml) => {
         try {
-          const decisions = await decisionService.loadDecisionsByDomain(workspacePath, domainId);
-          const filter = { ...get().filter, domain_id: domainId };
-          set({
-            decisions,
-            filter,
-            filteredDecisions: decisions, // Already filtered by domain
-            isLoading: false,
-          });
+          return await decisionService.parseDecisionIndexYaml(yaml);
         } catch (error) {
-          set({
-            error: error instanceof Error ? error.message : 'Failed to load decisions',
-            isLoading: false,
-          });
+          set({ error: error instanceof Error ? error.message : 'Failed to parse decision index' });
+          return null;
         }
       },
 
-      createDecision: async (workspacePath, data) => {
-        set({ isSaving: true, error: null });
+      exportDecisionToYaml: async (decision) => {
         try {
-          const decision = await decisionService.createDecision(workspacePath, data);
-
-          // Add to local state
-          const decisions = [...get().decisions, decision];
-          const filter = get().filter;
-          set({
-            decisions,
-            filteredDecisions: applyFilter(decisions, filter),
-            selectedDecision: decision,
-            isSaving: false,
-          });
-
-          return decision;
+          return await decisionService.exportDecisionToYaml(decision);
         } catch (error) {
           set({
-            error: error instanceof Error ? error.message : 'Failed to create decision',
-            isSaving: false,
+            error: error instanceof Error ? error.message : 'Failed to export decision to YAML',
+          });
+          return null;
+        }
+      },
+
+      exportDecisionToMarkdown: async (decision) => {
+        try {
+          return await decisionService.exportDecisionToMarkdown(decision);
+        } catch (error) {
+          set({
+            error: error instanceof Error ? error.message : 'Failed to export decision to Markdown',
           });
           throw error;
         }
       },
 
-      updateDecision: async (workspacePath, decisionId, updates) => {
-        set({ isSaving: true, error: null });
-        try {
-          const updatedDecision = await decisionService.updateDecision(
-            workspacePath,
-            decisionId,
-            updates
-          );
+      // High-level creation using service
+      createDecision: (data) => {
+        const nextNumber = get().getNextDecisionNumber();
+        const decision = decisionService.createDecision(data, nextNumber);
 
-          // Update local state
-          const decisions = get().decisions.map((d) => (d.id === decisionId ? updatedDecision : d));
-          const filter = get().filter;
-          const selectedDecision = get().selectedDecision;
+        // Add to store
+        get().addDecision(decision);
+        set({ selectedDecision: decision });
 
-          set({
-            decisions,
-            filteredDecisions: applyFilter(decisions, filter),
-            selectedDecision:
-              selectedDecision?.id === decisionId ? updatedDecision : selectedDecision,
-            isSaving: false,
-          });
-        } catch (error) {
-          set({
-            error: error instanceof Error ? error.message : 'Failed to update decision',
-            isSaving: false,
-          });
-          throw error;
+        // Update index
+        const index = get().decisionIndex;
+        if (index) {
+          const entry = decisionService.createIndexEntry(decision);
+          const updatedIndex: DecisionIndex = {
+            ...index,
+            decisions: [...index.decisions, entry],
+            next_number: nextNumber + 1,
+            last_updated: new Date().toISOString(),
+          };
+          set({ decisionIndex: updatedIndex });
         }
+
+        return decision;
       },
 
-      changeDecisionStatus: async (workspacePath, decisionId, newStatus, supersededById) => {
-        set({ isSaving: true, error: null });
-        try {
-          const updatedDecision = await decisionService.changeStatus(
-            workspacePath,
-            decisionId,
-            newStatus,
-            supersededById
-          );
-
-          // Update local state
-          const decisions = get().decisions.map((d) => (d.id === decisionId ? updatedDecision : d));
-          const filter = get().filter;
-          const selectedDecision = get().selectedDecision;
-
-          set({
-            decisions,
-            filteredDecisions: applyFilter(decisions, filter),
-            selectedDecision:
-              selectedDecision?.id === decisionId ? updatedDecision : selectedDecision,
-            isSaving: false,
-          });
-        } catch (error) {
-          set({
-            error: error instanceof Error ? error.message : 'Failed to change decision status',
-            isSaving: false,
-          });
-          throw error;
+      updateDecision: (decisionId, updates) => {
+        const decision = get().getDecisionById(decisionId);
+        if (!decision) {
+          set({ error: `Decision not found: ${decisionId}` });
+          return null;
         }
+
+        const updatedDecision = decisionService.updateDecision(decision, updates);
+        get().updateDecisionInStore(decisionId, updatedDecision);
+
+        // Update index if title or status changed
+        if (updates.title || updates.status || updates.category) {
+          const index = get().decisionIndex;
+          if (index) {
+            const updatedDecisions = index.decisions.map((e) =>
+              e.id === decisionId
+                ? {
+                    ...e,
+                    title: updatedDecision.title,
+                    status: updatedDecision.status,
+                    category: updatedDecision.category,
+                    updated_at: updatedDecision.updated_at,
+                  }
+                : e
+            );
+            set({
+              decisionIndex: {
+                ...index,
+                decisions: updatedDecisions,
+                last_updated: updatedDecision.updated_at,
+              },
+            });
+          }
+        }
+
+        return updatedDecision;
       },
 
-      deleteDecision: async (workspacePath, decisionId) => {
-        set({ isSaving: true, error: null });
-        try {
-          await decisionService.deleteDecision(workspacePath, decisionId);
-
-          // Remove from local state
-          const decisions = get().decisions.filter((d) => d.id !== decisionId);
-          const filter = get().filter;
-          const selectedDecision = get().selectedDecision;
-
-          set({
-            decisions,
-            filteredDecisions: applyFilter(decisions, filter),
-            selectedDecision: selectedDecision?.id === decisionId ? null : selectedDecision,
-            isSaving: false,
-          });
-        } catch (error) {
-          set({
-            error: error instanceof Error ? error.message : 'Failed to delete decision',
-            isSaving: false,
-          });
-          throw error;
+      changeDecisionStatus: (decisionId, newStatus, supersededById) => {
+        const decision = get().getDecisionById(decisionId);
+        if (!decision) {
+          set({ error: `Decision not found: ${decisionId}` });
+          return null;
         }
-      },
 
-      exportToMarkdown: async (workspacePath, decisionId) => {
         try {
-          return await decisionService.exportToMarkdown(workspacePath, decisionId);
+          const updatedDecision = decisionService.changeStatus(decision, newStatus, supersededById);
+          get().updateDecisionInStore(decisionId, updatedDecision);
+
+          // If superseding, update the superseding decision too
+          if (newStatus === DecisionStatus.Superseded && supersededById) {
+            const supersedingDecision = get().getDecisionById(supersededById);
+            if (supersedingDecision) {
+              get().updateDecisionInStore(supersededById, { supersedes: decisionId });
+            }
+          }
+
+          return updatedDecision;
         } catch (error) {
-          set({
-            error: error instanceof Error ? error.message : 'Failed to export decision',
-          });
-          throw error;
+          set({ error: error instanceof Error ? error.message : 'Failed to change status' });
+          return null;
         }
       },
 
@@ -311,6 +321,16 @@ export const useDecisionStore = create<DecisionState>()(
 
       getProposedDecisions: () => {
         return get().decisions.filter((d) => d.status === DecisionStatus.Proposed);
+      },
+
+      getNextDecisionNumber: () => {
+        const index = get().decisionIndex;
+        if (index?.next_number) {
+          return index.next_number;
+        }
+        const decisions = get().decisions;
+        if (decisions.length === 0) return 1;
+        return Math.max(...decisions.map((d) => d.number)) + 1;
       },
 
       // Reset

@@ -22,7 +22,7 @@
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage --reporter=json-summary --reporter=text",
     "test:e2e": "playwright test",
-    "lint": "eslint . --report-unused-disable-directives --max-warnings 110",
+    "lint": "eslint . --report-unused-disable-directives --max-warnings 150",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css}\"",

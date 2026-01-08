@@ -28,7 +28,7 @@ type SortField = 'number' | 'title' | 'status' | 'updated_at';
 type SortOrder = 'asc' | 'desc';
 
 export const DecisionList: React.FC<DecisionListProps> = ({
-  workspacePath,
+  workspacePath: _workspacePath,
   domainId,
   onSelectDecision,
   onCreateDecision,
@@ -42,8 +42,6 @@ export const DecisionList: React.FC<DecisionListProps> = ({
     error,
     setFilter,
     setSelectedDecision,
-    loadDecisions,
-    loadDecisionsByDomain,
   } = useDecisionStore();
 
   const [searchInput, setSearchInput] = useState(filter.search || '');
@@ -51,14 +49,12 @@ export const DecisionList: React.FC<DecisionListProps> = ({
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [showFilters, setShowFilters] = useState(false);
 
-  // Load decisions on mount
+  // Set domain filter on mount if provided
   React.useEffect(() => {
     if (domainId) {
-      loadDecisionsByDomain(workspacePath, domainId);
-    } else {
-      loadDecisions(workspacePath);
+      setFilter({ ...filter, domain_id: domainId });
     }
-  }, [workspacePath, domainId, loadDecisions, loadDecisionsByDomain]);
+  }, [domainId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Debounced search
   React.useEffect(() => {
@@ -146,11 +142,7 @@ export const DecisionList: React.FC<DecisionListProps> = ({
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <p className="text-red-800">{error}</p>
           <button
-            onClick={() =>
-              domainId
-                ? loadDecisionsByDomain(workspacePath, domainId)
-                : loadDecisions(workspacePath)
-            }
+            onClick={() => setFilter({ domain_id: domainId })}
             className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
           >
             Retry

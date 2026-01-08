@@ -28,7 +28,7 @@ type SortField = 'number' | 'title' | 'type' | 'updated_at';
 type SortOrder = 'asc' | 'desc';
 
 export const KnowledgeList: React.FC<KnowledgeListProps> = ({
-  workspacePath,
+  workspacePath: _workspacePath,
   domainId,
   onSelectArticle,
   onCreateArticle,
@@ -42,8 +42,6 @@ export const KnowledgeList: React.FC<KnowledgeListProps> = ({
     error,
     setFilter,
     setSelectedArticle,
-    loadKnowledge,
-    loadKnowledgeByDomain,
   } = useKnowledgeStore();
 
   const [searchInput, setSearchInput] = useState(filter.search || '');
@@ -51,14 +49,12 @@ export const KnowledgeList: React.FC<KnowledgeListProps> = ({
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [showFilters, setShowFilters] = useState(false);
 
-  // Load articles on mount
+  // Set domain filter on mount if provided
   React.useEffect(() => {
     if (domainId) {
-      loadKnowledgeByDomain(workspacePath, domainId);
-    } else {
-      loadKnowledge(workspacePath);
+      setFilter({ ...filter, domain_id: domainId });
     }
-  }, [workspacePath, domainId, loadKnowledge, loadKnowledgeByDomain]);
+  }, [domainId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Debounced search
   React.useEffect(() => {
@@ -144,11 +140,7 @@ export const KnowledgeList: React.FC<KnowledgeListProps> = ({
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <p className="text-red-800">{error}</p>
           <button
-            onClick={() =>
-              domainId
-                ? loadKnowledgeByDomain(workspacePath, domainId)
-                : loadKnowledge(workspacePath)
-            }
+            onClick={() => setFilter({ domain_id: domainId })}
             className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
           >
             Retry

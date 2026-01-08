@@ -83,14 +83,14 @@ describe('DecisionList', () => {
 
   const mockStoreState = {
     filteredDecisions: mockDecisions,
+    decisions: mockDecisions,
     selectedDecision: null,
     filter: {},
     isLoading: false,
     error: null,
     setFilter: vi.fn(),
     setSelectedDecision: vi.fn(),
-    loadDecisions: vi.fn(),
-    loadDecisionsByDomain: vi.fn(),
+    clearError: vi.fn(),
   };
 
   beforeEach(() => {
@@ -178,12 +178,12 @@ describe('DecisionList', () => {
       expect(screen.getByText('Retry')).toBeInTheDocument();
     });
 
-    it('should call loadDecisions on retry click', async () => {
-      const mockLoadDecisions = vi.fn();
+    it('should call setFilter on retry click', async () => {
+      const mockSetFilter = vi.fn();
       vi.mocked(useDecisionStore).mockReturnValue({
         ...mockStoreState,
         error: 'Network error',
-        loadDecisions: mockLoadDecisions,
+        setFilter: mockSetFilter,
       });
 
       render(<DecisionList workspacePath={mockWorkspacePath} />);
@@ -191,7 +191,7 @@ describe('DecisionList', () => {
       const retryButton = screen.getByText('Retry');
       await userEvent.click(retryButton);
 
-      expect(mockLoadDecisions).toHaveBeenCalledWith(mockWorkspacePath);
+      expect(mockSetFilter).toHaveBeenCalledWith({ domain_id: undefined });
     });
   });
 
@@ -412,30 +412,36 @@ describe('DecisionList', () => {
   });
 
   describe('domain filtering', () => {
-    it('should load decisions by domain when domainId is provided', () => {
-      const mockLoadByDomain = vi.fn();
+    it('should set domain filter when domainId is provided', () => {
+      const mockSetFilter = vi.fn();
 
       vi.mocked(useDecisionStore).mockReturnValue({
         ...mockStoreState,
-        loadDecisionsByDomain: mockLoadByDomain,
+        setFilter: mockSetFilter,
       });
 
       render(<DecisionList workspacePath={mockWorkspacePath} domainId="domain-1" />);
 
-      expect(mockLoadByDomain).toHaveBeenCalledWith(mockWorkspacePath, 'domain-1');
+      expect(mockSetFilter).toHaveBeenCalledWith(
+        expect.objectContaining({ domain_id: 'domain-1' })
+      );
     });
 
-    it('should load all decisions when no domainId', () => {
-      const mockLoadDecisions = vi.fn();
+    it('should not set domain filter when no domainId', () => {
+      const mockSetFilter = vi.fn();
 
       vi.mocked(useDecisionStore).mockReturnValue({
         ...mockStoreState,
-        loadDecisions: mockLoadDecisions,
+        setFilter: mockSetFilter,
       });
 
       render(<DecisionList workspacePath={mockWorkspacePath} />);
 
-      expect(mockLoadDecisions).toHaveBeenCalledWith(mockWorkspacePath);
+      // setFilter should not be called with domain_id (or not called at all for domain filtering)
+      const domainCalls = mockSetFilter.mock.calls.filter(
+        (call) => call[0]?.domain_id !== undefined
+      );
+      expect(domainCalls.length).toBe(0);
     });
   });
 

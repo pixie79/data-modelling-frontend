@@ -78,14 +78,14 @@ describe('KnowledgeList', () => {
 
   const mockStoreState = {
     filteredArticles: mockArticles,
+    articles: mockArticles,
     selectedArticle: null,
     filter: {},
     isLoading: false,
     error: null,
     setFilter: vi.fn(),
     setSelectedArticle: vi.fn(),
-    loadKnowledge: vi.fn(),
-    loadKnowledgeByDomain: vi.fn(),
+    clearError: vi.fn(),
   };
 
   beforeEach(() => {
@@ -187,12 +187,12 @@ describe('KnowledgeList', () => {
       expect(screen.getByText('Retry')).toBeInTheDocument();
     });
 
-    it('should call loadKnowledge on retry click', async () => {
-      const mockLoadKnowledge = vi.fn();
+    it('should call setFilter on retry click', async () => {
+      const mockSetFilter = vi.fn();
       vi.mocked(useKnowledgeStore).mockReturnValue({
         ...mockStoreState,
         error: 'Network error',
-        loadKnowledge: mockLoadKnowledge,
+        setFilter: mockSetFilter,
       });
 
       render(<KnowledgeList workspacePath={mockWorkspacePath} />);
@@ -200,7 +200,7 @@ describe('KnowledgeList', () => {
       const retryButton = screen.getByText('Retry');
       await userEvent.click(retryButton);
 
-      expect(mockLoadKnowledge).toHaveBeenCalledWith(mockWorkspacePath);
+      expect(mockSetFilter).toHaveBeenCalledWith({ domain_id: undefined });
     });
   });
 
@@ -436,30 +436,36 @@ describe('KnowledgeList', () => {
   });
 
   describe('domain filtering', () => {
-    it('should load articles by domain when domainId is provided', () => {
-      const mockLoadByDomain = vi.fn();
+    it('should set domain filter when domainId is provided', () => {
+      const mockSetFilter = vi.fn();
 
       vi.mocked(useKnowledgeStore).mockReturnValue({
         ...mockStoreState,
-        loadKnowledgeByDomain: mockLoadByDomain,
+        setFilter: mockSetFilter,
       });
 
       render(<KnowledgeList workspacePath={mockWorkspacePath} domainId="domain-1" />);
 
-      expect(mockLoadByDomain).toHaveBeenCalledWith(mockWorkspacePath, 'domain-1');
+      expect(mockSetFilter).toHaveBeenCalledWith(
+        expect.objectContaining({ domain_id: 'domain-1' })
+      );
     });
 
-    it('should load all articles when no domainId', () => {
-      const mockLoadKnowledge = vi.fn();
+    it('should not set domain filter when no domainId', () => {
+      const mockSetFilter = vi.fn();
 
       vi.mocked(useKnowledgeStore).mockReturnValue({
         ...mockStoreState,
-        loadKnowledge: mockLoadKnowledge,
+        setFilter: mockSetFilter,
       });
 
       render(<KnowledgeList workspacePath={mockWorkspacePath} />);
 
-      expect(mockLoadKnowledge).toHaveBeenCalledWith(mockWorkspacePath);
+      // setFilter should not be called with domain_id
+      const domainCalls = mockSetFilter.mock.calls.filter(
+        (call) => call[0]?.domain_id !== undefined
+      );
+      expect(domainCalls.length).toBe(0);
     });
   });
 

@@ -54,7 +54,7 @@ const emptyFormData: FormData = {
 };
 
 export const DecisionEditor: React.FC<DecisionEditorProps> = ({
-  workspacePath,
+  workspacePath: _workspacePath,
   decision,
   domainId,
   onSave,
@@ -62,13 +62,15 @@ export const DecisionEditor: React.FC<DecisionEditorProps> = ({
   onDelete,
   className = '',
 }) => {
+  // Note: _workspacePath is kept in the interface for API compatibility but not used
+  // since the store now works with in-memory data
   const {
     isSaving,
     error,
     createDecision,
     updateDecision,
     changeDecisionStatus,
-    deleteDecision,
+    removeDecision,
     clearError,
   } = useDecisionStore();
 
@@ -127,14 +129,14 @@ export const DecisionEditor: React.FC<DecisionEditorProps> = ({
     handleInputChange('authors', newAuthors);
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!formData.title.trim()) {
       return;
     }
 
     try {
       if (isNew) {
-        const newDecision = await createDecision(workspacePath, {
+        const newDecision = createDecision({
           title: formData.title,
           category: formData.category,
           context: formData.context,
@@ -146,7 +148,7 @@ export const DecisionEditor: React.FC<DecisionEditorProps> = ({
         });
         onSave?.(newDecision);
       } else {
-        await updateDecision(workspacePath, decision.id, {
+        const updatedDecision = updateDecision(decision.id, {
           title: formData.title,
           category: formData.category,
           context: formData.context,
@@ -158,7 +160,9 @@ export const DecisionEditor: React.FC<DecisionEditorProps> = ({
           consulted: formData.consulted,
           informed: formData.informed,
         });
-        onSave?.(decision);
+        if (updatedDecision) {
+          onSave?.(updatedDecision);
+        }
       }
       setIsDirty(false);
     } catch {
@@ -166,26 +170,20 @@ export const DecisionEditor: React.FC<DecisionEditorProps> = ({
     }
   };
 
-  const handleStatusChange = async (newStatus: DecisionStatus) => {
+  const handleStatusChange = (newStatus: DecisionStatus) => {
     if (!decision) return;
 
-    try {
-      await changeDecisionStatus(workspacePath, decision.id, newStatus);
+    const updated = changeDecisionStatus(decision.id, newStatus);
+    if (updated) {
       setShowStatusChange(false);
-    } catch {
-      // Error is handled by store
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!decision) return;
 
-    try {
-      await deleteDecision(workspacePath, decision.id);
-      onDelete?.(decision.id);
-    } catch {
-      // Error is handled by store
-    }
+    removeDecision(decision.id);
+    onDelete?.(decision.id);
   };
 
   const availableTransitions = decision ? VALID_STATUS_TRANSITIONS[decision.status] : [];

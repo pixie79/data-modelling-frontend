@@ -106,7 +106,7 @@ class IndexedDBService {
         const result = request.result;
         if (result) {
           // Remove the id key that was added during storage
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
           const { id: _id, ...value } = result;
           resolve(value as T);
         } else {
@@ -146,7 +146,6 @@ class IndexedDBService {
       const request = store.getAll();
       request.onsuccess = () => {
         const results = request.result.map((item: { id: string }) => {
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { id: _id, ...value } = item;
           return value;
         });

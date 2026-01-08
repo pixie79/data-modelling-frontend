@@ -45,7 +45,7 @@ const emptyFormData: FormData = {
 };
 
 export const ArticleEditor: React.FC<ArticleEditorProps> = ({
-  workspacePath,
+  workspacePath: _workspacePath,
   article,
   domainId,
   onSave,
@@ -59,7 +59,7 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
     createArticle,
     updateArticle,
     changeArticleStatus,
-    deleteArticle,
+    removeArticle,
     clearError,
   } = useKnowledgeStore();
 
@@ -121,14 +121,14 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
     handleInputChange('reviewers', newReviewers);
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!formData.title.trim()) {
       return;
     }
 
     try {
       if (isNew) {
-        const newArticle = await createArticle(workspacePath, {
+        const newArticle = createArticle({
           title: formData.title,
           type: formData.type,
           summary: formData.summary,
@@ -138,7 +138,7 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
         });
         onSave?.(newArticle);
       } else {
-        await updateArticle(workspacePath, article.id, {
+        const updatedArticle = updateArticle(article.id, {
           title: formData.title,
           type: formData.type,
           summary: formData.summary,
@@ -146,7 +146,9 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
           authors: formData.authors,
           reviewers: formData.reviewers,
         });
-        onSave?.(article);
+        if (updatedArticle) {
+          onSave?.(updatedArticle);
+        }
       }
       setIsDirty(false);
     } catch {
@@ -154,26 +156,20 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
     }
   };
 
-  const handleStatusChange = async (newStatus: ArticleStatus) => {
+  const handleStatusChange = (newStatus: ArticleStatus) => {
     if (!article) return;
 
-    try {
-      await changeArticleStatus(workspacePath, article.id, newStatus);
+    const updated = changeArticleStatus(article.id, newStatus);
+    if (updated) {
       setShowStatusChange(false);
-    } catch {
-      // Error is handled by store
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!article) return;
 
-    try {
-      await deleteArticle(workspacePath, article.id);
-      onDelete?.(article.id);
-    } catch {
-      // Error is handled by store
-    }
+    removeArticle(article.id);
+    onDelete?.(article.id);
   };
 
   const availableTransitions = article ? VALID_ARTICLE_STATUS_TRANSITIONS[article.status] : [];

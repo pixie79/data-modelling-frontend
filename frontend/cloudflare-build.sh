@@ -20,8 +20,8 @@ npm ci
 # =============================================================================
 # Version Configuration
 # =============================================================================
-# WASM SDK version (defaults to 1.13.2, or set via WASM_SDK_VERSION env var)
-WASM_SDK_VERSION="${WASM_SDK_VERSION:-1.13.2}"
+# WASM SDK version (defaults to 1.13.3, or set via WASM_SDK_VERSION env var)
+WASM_SDK_VERSION="${WASM_SDK_VERSION:-1.13.3}"
 SDK_REPO="${WASM_SDK_REPO:-pixie79/data-modelling-sdk}"
 WASM_OUT_DIR="public/wasm"
 

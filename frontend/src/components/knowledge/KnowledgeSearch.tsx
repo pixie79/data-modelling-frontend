@@ -11,13 +11,11 @@ import type { KnowledgeArticle, KnowledgeSearchResult } from '@/types/knowledge'
 import { formatArticleNumber } from '@/types/knowledge';
 
 export interface KnowledgeSearchProps {
-  workspacePath: string;
   onSelectArticle?: (article: KnowledgeArticle) => void;
   className?: string;
 }
 
 export const KnowledgeSearch: React.FC<KnowledgeSearchProps> = ({
-  workspacePath,
   onSelectArticle,
   className = '',
 }) => {
@@ -33,7 +31,7 @@ export const KnowledgeSearch: React.FC<KnowledgeSearchProps> = ({
       // Debounce the actual search
       const timer = setTimeout(() => {
         if (value.trim()) {
-          search(workspacePath, value);
+          search(value);
         } else {
           clearSearch();
         }
@@ -41,7 +39,7 @@ export const KnowledgeSearch: React.FC<KnowledgeSearchProps> = ({
 
       return () => clearTimeout(timer);
     },
-    [workspacePath, search, clearSearch]
+    [search, clearSearch]
   );
 
   const handleClear = () => {

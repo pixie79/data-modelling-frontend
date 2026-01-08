@@ -8,7 +8,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import type { DatabaseConfig } from '@/types/database';
 import { DatabaseBackend, getDatabaseBackendLabel, validateDatabaseConfig } from '@/types/database';
 import { databaseConfigService } from '@/services/storage/databaseConfigService';
-import { sdkLoader } from '@/services/sdk/sdkLoader';
+import { databaseService } from '@/services/sdk/databaseService';
 import { useDuckDBContextSafe } from '@/contexts/DuckDBContext';
 import { StorageMode } from '@/types/duckdb';
 
@@ -68,7 +68,8 @@ export const DatabaseSettings: React.FC<DatabaseSettingsProps> = ({
         setError(null);
         const loadedConfig = await databaseConfigService.loadConfig(workspacePath);
         setConfig(loadedConfig);
-        setSdkSupported(sdkLoader.hasDatabaseSupport());
+        // Note: Database features (db_init, db_sync, etc.) are CLI-only, not available in WASM SDK
+        setSdkSupported(databaseService.isSupported());
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load configuration');
       } finally {

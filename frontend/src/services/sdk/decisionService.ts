@@ -1,6 +1,18 @@
 /**
  * Decision Service
- * Handles MADR Architecture Decision Records via SDK 1.13.1+
+ * Handles MADR Architecture Decision Records via SDK 1.13.3+
+ *
+ * SDK 1.13.3 WASM Methods:
+ * - parse_decision_yaml(yaml: string) -> JSON string
+ * - parse_decision_index_yaml(yaml: string) -> JSON string
+ * - export_decision_to_yaml(decision_json: string) -> YAML string
+ * - export_decision_to_markdown(decision_json: string) -> Markdown string
+ * - create_decision(number, title, context, decision) -> JSON string
+ * - create_decision_index() -> JSON string
+ * - add_decision_to_index(index_json, decision_json, filename) -> JSON string
+ *
+ * NOTE: WASM SDK works with YAML strings, not file paths.
+ * File I/O must be handled by the application layer.
  */
 
 import { sdkLoader } from './sdkLoader';
@@ -19,7 +31,10 @@ import {
 } from '@/types/decision';
 
 /**
- * Decision Service for SDK 1.13.1+ decision management
+ * Decision Service for SDK 1.13.3+ decision management
+ *
+ * This service provides methods to work with decisions using the SDK.
+ * In WASM mode, it works with YAML/JSON strings rather than file paths.
  */
 class DecisionService {
   /**
@@ -30,58 +45,50 @@ class DecisionService {
   }
 
   /**
-   * Load all decisions for a workspace
+   * Parse a decision from YAML string
    */
-  async loadDecisions(workspacePath: string): Promise<Decision[]> {
+  async parseDecisionYaml(yaml: string): Promise<Decision | null> {
     if (!this.isSupported()) {
-      console.warn('[DecisionService] Decision features require SDK 1.13.1+');
-      return [];
+      console.warn('[DecisionService] Decision features require SDK 1.13.3+');
+      return null;
     }
 
     const sdk = await sdkLoader.load();
-    if (!sdk.load_decisions) {
-      console.warn('[DecisionService] load_decisions method not available');
-      return [];
+    if (!sdk.parse_decision_yaml) {
+      console.warn('[DecisionService] parse_decision_yaml method not available');
+      return null;
     }
 
     try {
-      const resultJson = sdk.load_decisions(workspacePath);
+      const resultJson = sdk.parse_decision_yaml(yaml);
       const result = JSON.parse(resultJson);
 
       if (result.error) {
         throw new Error(result.error);
       }
 
-      return (result.decisions ?? result) as Decision[];
+      return result as Decision;
     } catch (error) {
-      console.error('[DecisionService] Failed to load decisions:', error);
-      return [];
+      console.error('[DecisionService] Failed to parse decision YAML:', error);
+      return null;
     }
   }
 
   /**
-   * Load a single decision by ID
+   * Parse a decision index from YAML string
    */
-  async loadDecision(workspacePath: string, decisionId: string): Promise<Decision | null> {
-    const decisions = await this.loadDecisions(workspacePath);
-    return decisions.find((d) => d.id === decisionId) ?? null;
-  }
-
-  /**
-   * Load the decision index
-   */
-  async loadDecisionIndex(workspacePath: string): Promise<DecisionIndex | null> {
+  async parseDecisionIndexYaml(yaml: string): Promise<DecisionIndex | null> {
     if (!this.isSupported()) {
       return null;
     }
 
     const sdk = await sdkLoader.load();
-    if (!sdk.load_decision_index) {
+    if (!sdk.parse_decision_index_yaml) {
       return null;
     }
 
     try {
-      const resultJson = sdk.load_decision_index(workspacePath);
+      const resultJson = sdk.parse_decision_index_yaml(yaml);
       const result = JSON.parse(resultJson);
 
       if (result.error) {
@@ -90,58 +97,184 @@ class DecisionService {
 
       return result as DecisionIndex;
     } catch (error) {
-      console.error('[DecisionService] Failed to load decision index:', error);
+      console.error('[DecisionService] Failed to parse decision index YAML:', error);
       return null;
     }
   }
 
   /**
-   * Load decisions filtered by domain
+   * Export a decision to YAML string
    */
-  async loadDecisionsByDomain(workspacePath: string, domainId: string): Promise<Decision[]> {
+  async exportDecisionToYaml(decision: Decision): Promise<string | null> {
     if (!this.isSupported()) {
-      return [];
+      throw new Error('Decision features require SDK 1.13.3+');
     }
 
     const sdk = await sdkLoader.load();
+    if (!sdk.export_decision_to_yaml) {
+      throw new Error('export_decision_to_yaml method not available in SDK');
+    }
 
-    // Try SDK method first
-    if (sdk.load_decisions_by_domain) {
-      try {
-        const resultJson = sdk.load_decisions_by_domain(workspacePath, domainId);
-        const result = JSON.parse(resultJson);
-        return (result.decisions ?? result) as Decision[];
-      } catch (error) {
-        console.error('[DecisionService] SDK domain filter failed:', error);
+    try {
+      const decisionJson = JSON.stringify(decision);
+      const yaml = sdk.export_decision_to_yaml(decisionJson);
+      return yaml;
+    } catch (error) {
+      console.error('[DecisionService] Failed to export decision to YAML:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Export a decision to Markdown string
+   */
+  async exportDecisionToMarkdown(decision: Decision): Promise<string> {
+    // Try SDK export first
+    if (this.isSupported()) {
+      const sdk = await sdkLoader.load();
+      if (sdk.export_decision_to_markdown) {
+        try {
+          const decisionJson = JSON.stringify(decision);
+          const markdown = sdk.export_decision_to_markdown(decisionJson);
+          return markdown;
+        } catch {
+          console.warn('[DecisionService] SDK markdown export failed, using fallback');
+        }
       }
     }
 
-    // Fallback to client-side filtering
-    const allDecisions = await this.loadDecisions(workspacePath);
-    return allDecisions.filter((d) => d.domain_id === domainId);
+    // Fallback to client-side markdown generation
+    return this.generateMarkdown(decision);
+  }
+
+  /**
+   * Create a new decision using SDK
+   */
+  async createDecisionViaSDK(
+    number: number,
+    title: string,
+    context: string,
+    decisionText: string
+  ): Promise<Decision | null> {
+    if (!this.isSupported()) {
+      return null;
+    }
+
+    const sdk = await sdkLoader.load();
+    if (!sdk.create_decision) {
+      return null;
+    }
+
+    try {
+      const resultJson = sdk.create_decision(number, title, context, decisionText);
+      const result = JSON.parse(resultJson);
+
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      return result as Decision;
+    } catch (error) {
+      console.error('[DecisionService] Failed to create decision via SDK:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Create a new empty decision index using SDK
+   */
+  async createDecisionIndexViaSDK(): Promise<DecisionIndex | null> {
+    if (!this.isSupported()) {
+      return null;
+    }
+
+    const sdk = await sdkLoader.load();
+    if (!sdk.create_decision_index) {
+      return null;
+    }
+
+    try {
+      const resultJson = sdk.create_decision_index();
+      const result = JSON.parse(resultJson);
+
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      return result as DecisionIndex;
+    } catch (error) {
+      console.error('[DecisionService] Failed to create decision index via SDK:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Add a decision to the index using SDK
+   */
+  async addDecisionToIndex(
+    index: DecisionIndex,
+    decision: Decision,
+    filename: string
+  ): Promise<DecisionIndex | null> {
+    if (!this.isSupported()) {
+      return null;
+    }
+
+    const sdk = await sdkLoader.load();
+    if (!sdk.add_decision_to_index) {
+      return null;
+    }
+
+    try {
+      const indexJson = JSON.stringify(index);
+      const decisionJson = JSON.stringify(decision);
+      const resultJson = sdk.add_decision_to_index(indexJson, decisionJson, filename);
+      const result = JSON.parse(resultJson);
+
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      return result as DecisionIndex;
+    } catch (error) {
+      console.error('[DecisionService] Failed to add decision to index:', error);
+      return null;
+    }
+  }
+
+  // ============================================================
+  // Higher-level methods that work with in-memory data
+  // These don't require file I/O and work with decision arrays
+  // ============================================================
+
+  /**
+   * Load a single decision by ID from an array of decisions
+   */
+  findDecisionById(decisions: Decision[], decisionId: string): Decision | null {
+    return decisions.find((d) => d.id === decisionId) ?? null;
   }
 
   /**
    * Filter decisions by criteria
    */
-  async filterDecisions(workspacePath: string, filter: DecisionFilter): Promise<Decision[]> {
-    let decisions = await this.loadDecisions(workspacePath);
+  filterDecisions(decisions: Decision[], filter: DecisionFilter): Decision[] {
+    let filtered = [...decisions];
 
     if (filter.domain_id) {
-      decisions = decisions.filter((d) => d.domain_id === filter.domain_id);
+      filtered = filtered.filter((d) => d.domain_id === filter.domain_id);
     }
 
     if (filter.status && filter.status.length > 0) {
-      decisions = decisions.filter((d) => filter.status!.includes(d.status));
+      filtered = filtered.filter((d) => filter.status!.includes(d.status));
     }
 
     if (filter.category && filter.category.length > 0) {
-      decisions = decisions.filter((d) => filter.category!.includes(d.category));
+      filtered = filtered.filter((d) => filter.category!.includes(d.category));
     }
 
     if (filter.search) {
       const searchLower = filter.search.toLowerCase();
-      decisions = decisions.filter(
+      filtered = filtered.filter(
         (d) =>
           d.title.toLowerCase().includes(searchLower) ||
           d.context.toLowerCase().includes(searchLower) ||
@@ -150,7 +283,7 @@ class DecisionService {
     }
 
     if (filter.tags && filter.tags.length > 0) {
-      decisions = decisions.filter((d) => {
+      filtered = filtered.filter((d) => {
         if (!d.tags) return false;
         return filter.tags!.some((filterTag) =>
           d.tags!.some((t) => {
@@ -162,43 +295,13 @@ class DecisionService {
       });
     }
 
-    return decisions;
+    return filtered;
   }
 
   /**
-   * Save a decision
+   * Create a new decision object (client-side)
    */
-  async saveDecision(workspacePath: string, decision: Decision): Promise<void> {
-    if (!this.isSupported()) {
-      throw new Error('Decision features require SDK 1.13.1+');
-    }
-
-    const sdk = await sdkLoader.load();
-    if (!sdk.save_decision) {
-      throw new Error('save_decision method not available in SDK');
-    }
-
-    try {
-      const decisionJson = JSON.stringify(decision);
-      const resultJson = sdk.save_decision(decisionJson, workspacePath);
-      const result = JSON.parse(resultJson);
-
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to save decision');
-      }
-
-      console.log('[DecisionService] Decision saved:', decision.id);
-    } catch (error) {
-      console.error('[DecisionService] Failed to save decision:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Create a new decision
-   */
-  async createDecision(
-    workspacePath: string,
+  createDecision(
     data: {
       title: string;
       category: DecisionCategory;
@@ -208,14 +311,11 @@ class DecisionService {
       options?: DecisionOption[];
       domain_id?: string;
       authors?: string[];
-    }
-  ): Promise<Decision> {
-    // Load index to get next number
-    let index = await this.loadDecisionIndex(workspacePath);
-    const nextNumber = index?.next_number ?? 1;
-
+    },
+    nextNumber: number = 1
+  ): Decision {
     const now = new Date().toISOString();
-    const decision: Decision = {
+    return {
       id: crypto.randomUUID(),
       number: nextNumber,
       title: data.title,
@@ -230,47 +330,13 @@ class DecisionService {
       created_at: now,
       updated_at: now,
     };
-
-    // Save the decision
-    await this.saveDecision(workspacePath, decision);
-
-    // Update the index
-    if (index) {
-      const newEntry: DecisionIndexEntry = {
-        id: decision.id,
-        number: decision.number,
-        title: decision.title,
-        status: decision.status,
-        category: decision.category,
-        domain_id: decision.domain_id,
-        created_at: decision.created_at,
-        updated_at: decision.updated_at,
-      };
-
-      index.decisions.push(newEntry);
-      index.next_number = nextNumber + 1;
-      index.last_updated = now;
-
-      await this.saveDecisionIndex(workspacePath, index);
-    }
-
-    return decision;
   }
 
   /**
-   * Update a decision
+   * Update a decision object
    */
-  async updateDecision(
-    workspacePath: string,
-    decisionId: string,
-    updates: Partial<Decision>
-  ): Promise<Decision> {
-    const decision = await this.loadDecision(workspacePath, decisionId);
-    if (!decision) {
-      throw new Error(`Decision not found: ${decisionId}`);
-    }
-
-    const updatedDecision: Decision = {
+  updateDecision(decision: Decision, updates: Partial<Decision>): Decision {
+    return {
       ...decision,
       ...updates,
       id: decision.id, // Preserve ID
@@ -278,46 +344,12 @@ class DecisionService {
       created_at: decision.created_at, // Preserve created_at
       updated_at: new Date().toISOString(),
     };
-
-    await this.saveDecision(workspacePath, updatedDecision);
-
-    // Update index if title or status changed
-    if (updates.title || updates.status || updates.category) {
-      const index = await this.loadDecisionIndex(workspacePath);
-      if (index) {
-        const entryIndex = index.decisions.findIndex((e) => e.id === decisionId);
-        const existingEntry = index.decisions[entryIndex];
-        if (entryIndex >= 0 && existingEntry) {
-          index.decisions[entryIndex] = {
-            ...existingEntry,
-            title: updatedDecision.title,
-            status: updatedDecision.status,
-            category: updatedDecision.category,
-            updated_at: updatedDecision.updated_at,
-          };
-          index.last_updated = updatedDecision.updated_at;
-          await this.saveDecisionIndex(workspacePath, index);
-        }
-      }
-    }
-
-    return updatedDecision;
   }
 
   /**
    * Change decision status with validation
    */
-  async changeStatus(
-    workspacePath: string,
-    decisionId: string,
-    newStatus: DecisionStatus,
-    supersededById?: string
-  ): Promise<Decision> {
-    const decision = await this.loadDecision(workspacePath, decisionId);
-    if (!decision) {
-      throw new Error(`Decision not found: ${decisionId}`);
-    }
-
+  changeStatus(decision: Decision, newStatus: DecisionStatus, supersededById?: string): Decision {
     if (!isValidStatusTransition(decision.status, newStatus)) {
       throw new Error(`Invalid status transition from ${decision.status} to ${newStatus}`);
     }
@@ -337,80 +369,25 @@ class DecisionService {
         throw new Error('supersededById is required when superseding a decision');
       }
       updates.superseded_by = supersededById;
-
-      // Update the superseding decision
-      const supersedingDecision = await this.loadDecision(workspacePath, supersededById);
-      if (supersedingDecision) {
-        await this.updateDecision(workspacePath, supersededById, {
-          supersedes: decisionId,
-        });
-      }
     }
 
-    return this.updateDecision(workspacePath, decisionId, updates);
+    return this.updateDecision(decision, updates);
   }
 
   /**
-   * Delete a decision
+   * Create a decision index entry from a decision
    */
-  async deleteDecision(_workspacePath: string, _decisionId: string): Promise<void> {
-    // For now, we don't have a delete method in SDK
-    // This would need to be implemented when SDK supports it
-    throw new Error('Delete operation not yet supported');
-  }
-
-  /**
-   * Save the decision index
-   */
-  async saveDecisionIndex(workspacePath: string, index: DecisionIndex): Promise<void> {
-    if (!this.isSupported()) {
-      throw new Error('Decision features require SDK 1.13.1+');
-    }
-
-    const sdk = await sdkLoader.load();
-    if (!sdk.save_decision_index) {
-      throw new Error('save_decision_index method not available in SDK');
-    }
-
-    try {
-      const indexJson = JSON.stringify(index);
-      const resultJson = sdk.save_decision_index(indexJson, workspacePath);
-      const result = JSON.parse(resultJson);
-
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to save decision index');
-      }
-    } catch (error) {
-      console.error('[DecisionService] Failed to save decision index:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Export a decision to markdown
-   */
-  async exportToMarkdown(workspacePath: string, decisionId: string): Promise<string> {
-    const decision = await this.loadDecision(workspacePath, decisionId);
-    if (!decision) {
-      throw new Error(`Decision not found: ${decisionId}`);
-    }
-
-    // Try SDK export first
-    if (this.isSupported()) {
-      const sdk = await sdkLoader.load();
-      if (sdk.export_decision_markdown) {
-        try {
-          const decisionJson = JSON.stringify(decision);
-          const markdown = sdk.export_decision_markdown(decisionJson);
-          return markdown;
-        } catch {
-          console.warn('[DecisionService] SDK markdown export failed, using fallback');
-        }
-      }
-    }
-
-    // Fallback to client-side markdown generation
-    return this.generateMarkdown(decision);
+  createIndexEntry(decision: Decision): DecisionIndexEntry {
+    return {
+      id: decision.id,
+      number: decision.number,
+      title: decision.title,
+      status: decision.status,
+      category: decision.category,
+      domain_id: decision.domain_id,
+      created_at: decision.created_at,
+      updated_at: decision.updated_at,
+    };
   }
 
   /**
@@ -485,29 +462,29 @@ class DecisionService {
   /**
    * Get decisions by status
    */
-  async getDecisionsByStatus(workspacePath: string, status: DecisionStatus): Promise<Decision[]> {
-    return this.filterDecisions(workspacePath, { status: [status] });
+  getDecisionsByStatus(decisions: Decision[], status: DecisionStatus): Decision[] {
+    return this.filterDecisions(decisions, { status: [status] });
   }
 
   /**
    * Get accepted decisions
    */
-  async getAcceptedDecisions(workspacePath: string): Promise<Decision[]> {
-    return this.getDecisionsByStatus(workspacePath, DecisionStatus.Accepted);
+  getAcceptedDecisions(decisions: Decision[]): Decision[] {
+    return this.getDecisionsByStatus(decisions, DecisionStatus.Accepted);
   }
 
   /**
    * Get draft decisions
    */
-  async getDraftDecisions(workspacePath: string): Promise<Decision[]> {
-    return this.getDecisionsByStatus(workspacePath, DecisionStatus.Draft);
+  getDraftDecisions(decisions: Decision[]): Decision[] {
+    return this.getDecisionsByStatus(decisions, DecisionStatus.Draft);
   }
 
   /**
    * Get proposed decisions
    */
-  async getProposedDecisions(workspacePath: string): Promise<Decision[]> {
-    return this.getDecisionsByStatus(workspacePath, DecisionStatus.Proposed);
+  getProposedDecisions(decisions: Decision[]): Decision[] {
+    return this.getDecisionsByStatus(decisions, DecisionStatus.Proposed);
   }
 }
 

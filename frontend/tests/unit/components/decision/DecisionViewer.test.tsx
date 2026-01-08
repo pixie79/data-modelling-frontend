@@ -52,8 +52,8 @@ describe('DecisionViewer', () => {
     vi.clearAllMocks();
     vi.mocked(useDecisionStore).mockReturnValue({
       isSaving: false,
-      changeDecisionStatus: vi.fn().mockResolvedValue(undefined),
-      exportToMarkdown: vi.fn().mockResolvedValue('# ADR-0001'),
+      changeDecisionStatus: vi.fn().mockReturnValue(mockDecision),
+      exportDecisionToMarkdown: vi.fn().mockResolvedValue('# ADR-0001'),
       getDecisionById: vi.fn().mockReturnValue(mockDecision),
     } as any);
     vi.mocked(useKnowledgeStore).mockReturnValue({
@@ -195,8 +195,8 @@ describe('DecisionViewer', () => {
     const exportMock = vi.fn().mockResolvedValue('# ADR-0001');
     vi.mocked(useDecisionStore).mockReturnValue({
       isSaving: false,
-      changeDecisionStatus: vi.fn(),
-      exportToMarkdown: exportMock,
+      changeDecisionStatus: vi.fn().mockReturnValue(mockDecision),
+      exportDecisionToMarkdown: exportMock,
       getDecisionById: vi.fn().mockReturnValue(mockDecision),
     } as any);
 
@@ -213,7 +213,7 @@ describe('DecisionViewer', () => {
     fireEvent.click(exportButton);
 
     await waitFor(() => {
-      expect(exportMock).toHaveBeenCalledWith('/test', 'decision-1');
+      expect(exportMock).toHaveBeenCalledWith(mockDecision);
     });
   });
 
@@ -226,8 +226,8 @@ describe('DecisionViewer', () => {
 
     vi.mocked(useDecisionStore).mockReturnValue({
       isSaving: false,
-      changeDecisionStatus: vi.fn(),
-      exportToMarkdown: vi.fn(),
+      changeDecisionStatus: vi.fn().mockReturnValue(supersededDecision),
+      exportDecisionToMarkdown: vi.fn().mockResolvedValue('# ADR'),
       getDecisionById: vi
         .fn()
         .mockReturnValue({ id: 'decision-2', number: 2, title: 'New Decision' }),

@@ -1,6 +1,7 @@
 /**
  * Unit tests for Knowledge Store
  * Tests Zustand store for Knowledge Base articles
+ * Updated for SDK 1.13.3+ in-memory API
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -12,21 +13,19 @@ import type { KnowledgeArticle, KnowledgeIndex, KnowledgeSearchResult } from '@/
 // Mock knowledgeService
 vi.mock('@/services/sdk/knowledgeService', () => ({
   knowledgeService: {
-    loadKnowledge: vi.fn(),
-    loadKnowledgeIndex: vi.fn(),
-    loadKnowledgeByDomain: vi.fn(),
-    searchKnowledge: vi.fn(),
+    parseKnowledgeYaml: vi.fn(),
+    parseKnowledgeIndexYaml: vi.fn(),
+    exportKnowledgeToYaml: vi.fn(),
+    exportKnowledgeToMarkdown: vi.fn(),
+    searchKnowledgeViaSDK: vi.fn(),
     createArticle: vi.fn(),
+    createIndexEntry: vi.fn(),
     updateArticle: vi.fn(),
     changeStatus: vi.fn(),
-    deleteArticle: vi.fn(),
-    exportToMarkdown: vi.fn(),
   },
 }));
 
 describe('useKnowledgeStore', () => {
-  const mockWorkspacePath = '/test/workspace';
-
   const mockArticle: KnowledgeArticle = {
     id: 'article-1',
     number: 1,
@@ -191,59 +190,57 @@ describe('useKnowledgeStore', () => {
     });
   });
 
-  describe('loadKnowledge', () => {
-    it('should load articles successfully', async () => {
-      vi.mocked(knowledgeService.loadKnowledge).mockResolvedValue([mockArticle, mockArticle2]);
-      vi.mocked(knowledgeService.loadKnowledgeIndex).mockResolvedValue(mockKnowledgeIndex);
-
+  describe('in-memory data operations', () => {
+    it('should add article to state', () => {
       const store = useKnowledgeStore.getState();
-      await store.loadKnowledge(mockWorkspacePath);
 
-      const state = useKnowledgeStore.getState();
-      expect(state.articles).toHaveLength(2);
-      expect(state.knowledgeIndex).toEqual(mockKnowledgeIndex);
-      expect(state.isLoading).toBe(false);
-      expect(state.error).toBeNull();
-    });
-
-    it('should handle load errors', async () => {
-      vi.mocked(knowledgeService.loadKnowledge).mockRejectedValue(new Error('Load failed'));
-
-      const store = useKnowledgeStore.getState();
-      await store.loadKnowledge(mockWorkspacePath);
-
-      const state = useKnowledgeStore.getState();
-      expect(state.error).toBe('Load failed');
-      expect(state.isLoading).toBe(false);
-    });
-
-    it('should set loading state during load', async () => {
-      vi.mocked(knowledgeService.loadKnowledge).mockImplementation(
-        () => new Promise((resolve) => setTimeout(() => resolve([]), 100))
-      );
-      vi.mocked(knowledgeService.loadKnowledgeIndex).mockResolvedValue(null);
-
-      const loadPromise = useKnowledgeStore.getState().loadKnowledge(mockWorkspacePath);
-
-      expect(useKnowledgeStore.getState().isLoading).toBe(true);
-
-      await loadPromise;
-
-      expect(useKnowledgeStore.getState().isLoading).toBe(false);
-    });
-  });
-
-  describe('loadKnowledgeByDomain', () => {
-    it('should load articles for specific domain', async () => {
-      vi.mocked(knowledgeService.loadKnowledgeByDomain).mockResolvedValue([mockArticle]);
-
-      const store = useKnowledgeStore.getState();
-      await store.loadKnowledgeByDomain(mockWorkspacePath, 'domain-1');
+      store.addArticle(mockArticle);
 
       const state = useKnowledgeStore.getState();
       expect(state.articles).toHaveLength(1);
-      expect(state.filter.domain_id).toBe('domain-1');
-      expect(state.isLoading).toBe(false);
+      expect(state.articles[0]).toEqual(mockArticle);
+    });
+
+    it('should update article in state', () => {
+      const store = useKnowledgeStore.getState();
+      store.setArticles([mockArticle]);
+
+      store.updateArticleInStore('article-1', { title: 'Updated Title' });
+
+      const state = useKnowledgeStore.getState();
+      expect(state.articles[0]?.title).toBe('Updated Title');
+    });
+
+    it('should update selected article when updating matching article', () => {
+      const store = useKnowledgeStore.getState();
+      store.setArticles([mockArticle]);
+      store.setSelectedArticle(mockArticle);
+
+      store.updateArticleInStore('article-1', { title: 'Updated Title' });
+
+      const state = useKnowledgeStore.getState();
+      expect(state.selectedArticle?.title).toBe('Updated Title');
+    });
+
+    it('should remove article from state', () => {
+      const store = useKnowledgeStore.getState();
+      store.setArticles([mockArticle, mockArticle2]);
+
+      store.removeArticle('article-1');
+
+      const state = useKnowledgeStore.getState();
+      expect(state.articles).toHaveLength(1);
+      expect(state.articles[0]?.id).toBe('article-2');
+    });
+
+    it('should clear selected article when removing it', () => {
+      const store = useKnowledgeStore.getState();
+      store.setArticles([mockArticle, mockArticle2]);
+      store.setSelectedArticle(mockArticle);
+
+      store.removeArticle('article-1');
+
+      expect(useKnowledgeStore.getState().selectedArticle).toBeNull();
     });
   });
 
@@ -253,7 +250,7 @@ describe('useKnowledgeStore', () => {
       store.setSearchQuery('previous');
       store.setSearchResults([{ article: mockArticle, score: 0.9 }]);
 
-      await store.search(mockWorkspacePath, '   ');
+      await store.search('   ');
 
       const state = useKnowledgeStore.getState();
       expect(state.searchQuery).toBe('');
@@ -262,10 +259,12 @@ describe('useKnowledgeStore', () => {
 
     it('should search articles successfully', async () => {
       const mockResults: KnowledgeSearchResult[] = [{ article: mockArticle, score: 0.9 }];
-      vi.mocked(knowledgeService.searchKnowledge).mockResolvedValue(mockResults);
+      vi.mocked(knowledgeService.searchKnowledgeViaSDK).mockResolvedValue(mockResults);
 
       const store = useKnowledgeStore.getState();
-      await store.search(mockWorkspacePath, 'Getting Started');
+      store.setArticles([mockArticle, mockArticle2]);
+
+      await store.search('Getting Started');
 
       const state = useKnowledgeStore.getState();
       expect(state.searchQuery).toBe('Getting Started');
@@ -274,10 +273,12 @@ describe('useKnowledgeStore', () => {
     });
 
     it('should handle search errors', async () => {
-      vi.mocked(knowledgeService.searchKnowledge).mockRejectedValue(new Error('Search failed'));
+      vi.mocked(knowledgeService.searchKnowledgeViaSDK).mockRejectedValue(
+        new Error('Search failed')
+      );
 
       const store = useKnowledgeStore.getState();
-      await store.search(mockWorkspacePath, 'test');
+      await store.search('test');
 
       const state = useKnowledgeStore.getState();
       expect(state.error).toBe('Search failed');
@@ -286,12 +287,23 @@ describe('useKnowledgeStore', () => {
   });
 
   describe('createArticle', () => {
-    it('should create article and add to state', async () => {
+    it('should create article and add to state', () => {
       const newArticle = { ...mockArticle, id: 'new-article' };
-      vi.mocked(knowledgeService.createArticle).mockResolvedValue(newArticle);
+      vi.mocked(knowledgeService.createArticle).mockReturnValue(newArticle);
+      vi.mocked(knowledgeService.createIndexEntry).mockReturnValue({
+        id: 'new-article',
+        number: 1,
+        title: 'New Article',
+        type: ArticleType.Tutorial,
+        status: ArticleStatus.Draft,
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+      });
 
       const store = useKnowledgeStore.getState();
-      const result = await store.createArticle(mockWorkspacePath, {
+      store.setKnowledgeIndex(mockKnowledgeIndex);
+
+      const result = store.createArticle({
         title: 'New Article',
         type: ArticleType.Tutorial,
         summary: 'Summary',
@@ -302,93 +314,120 @@ describe('useKnowledgeStore', () => {
       const state = useKnowledgeStore.getState();
       expect(state.articles).toContainEqual(newArticle);
       expect(state.selectedArticle).toEqual(newArticle);
-      expect(state.isSaving).toBe(false);
     });
 
-    it('should handle create errors', async () => {
-      vi.mocked(knowledgeService.createArticle).mockRejectedValue(new Error('Create failed'));
+    it('should update knowledge index when creating', () => {
+      const newArticle = { ...mockArticle, id: 'new-article', number: 3 };
+      vi.mocked(knowledgeService.createArticle).mockReturnValue(newArticle);
+      vi.mocked(knowledgeService.createIndexEntry).mockReturnValue({
+        id: 'new-article',
+        number: 3,
+        title: 'New Article',
+        type: ArticleType.Tutorial,
+        status: ArticleStatus.Draft,
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+      });
 
       const store = useKnowledgeStore.getState();
+      store.setKnowledgeIndex(mockKnowledgeIndex);
 
-      await expect(
-        store.createArticle(mockWorkspacePath, {
-          title: 'New',
-          type: ArticleType.Guide,
-          summary: 'Summary',
-          content: 'Content',
-        })
-      ).rejects.toThrow('Create failed');
+      store.createArticle({
+        title: 'New Article',
+        type: ArticleType.Tutorial,
+        summary: 'Summary',
+        content: 'Content',
+      });
 
-      expect(useKnowledgeStore.getState().error).toBe('Create failed');
+      const state = useKnowledgeStore.getState();
+      expect(state.knowledgeIndex?.next_number).toBe(4);
+      expect(state.knowledgeIndex?.articles).toHaveLength(1);
     });
   });
 
   describe('updateArticle', () => {
-    it('should update article in state', async () => {
+    it('should update article in state', () => {
       const updatedArticle = { ...mockArticle, title: 'Updated Title' };
-      vi.mocked(knowledgeService.updateArticle).mockResolvedValue(updatedArticle);
+      vi.mocked(knowledgeService.updateArticle).mockReturnValue(updatedArticle);
 
       const store = useKnowledgeStore.getState();
       store.setArticles([mockArticle]);
       store.setSelectedArticle(mockArticle);
 
-      await store.updateArticle(mockWorkspacePath, 'article-1', { title: 'Updated Title' });
+      const result = store.updateArticle('article-1', { title: 'Updated Title' });
 
+      expect(result?.title).toBe('Updated Title');
       const state = useKnowledgeStore.getState();
       expect(state.articles[0]?.title).toBe('Updated Title');
       expect(state.selectedArticle?.title).toBe('Updated Title');
-      expect(state.isSaving).toBe(false);
+    });
+
+    it('should return null for non-existent article', () => {
+      const store = useKnowledgeStore.getState();
+
+      const result = store.updateArticle('non-existent', { title: 'Updated' });
+
+      expect(result).toBeNull();
+      expect(useKnowledgeStore.getState().error).toContain('not found');
     });
   });
 
   describe('changeArticleStatus', () => {
-    it('should change status and update state', async () => {
+    it('should change status and update state', () => {
       const updatedArticle = { ...mockArticle, status: ArticleStatus.Archived };
-      vi.mocked(knowledgeService.changeStatus).mockResolvedValue(updatedArticle);
+      vi.mocked(knowledgeService.changeStatus).mockReturnValue(updatedArticle);
 
       const store = useKnowledgeStore.getState();
       store.setArticles([mockArticle]);
 
-      await store.changeArticleStatus(mockWorkspacePath, 'article-1', ArticleStatus.Archived);
+      const result = store.changeArticleStatus('article-1', ArticleStatus.Archived);
 
+      expect(result?.status).toBe(ArticleStatus.Archived);
       const state = useKnowledgeStore.getState();
       expect(state.articles[0]?.status).toBe(ArticleStatus.Archived);
     });
-  });
 
-  describe('deleteArticle', () => {
-    it('should remove article from state', async () => {
-      vi.mocked(knowledgeService.deleteArticle).mockResolvedValue();
+    it('should return null for non-existent article', () => {
+      const store = useKnowledgeStore.getState();
+
+      const result = store.changeArticleStatus('non-existent', ArticleStatus.Archived);
+
+      expect(result).toBeNull();
+    });
+
+    it('should set error when status change throws', () => {
+      vi.mocked(knowledgeService.changeStatus).mockImplementation(() => {
+        throw new Error('Invalid status transition');
+      });
 
       const store = useKnowledgeStore.getState();
-      store.setArticles([mockArticle, mockArticle2]);
-      store.setSelectedArticle(mockArticle);
+      store.setArticles([mockArticle]);
 
-      await store.deleteArticle(mockWorkspacePath, 'article-1');
+      const result = store.changeArticleStatus('article-1', ArticleStatus.Draft);
 
-      const state = useKnowledgeStore.getState();
-      expect(state.articles).toHaveLength(1);
-      expect(state.articles[0]?.id).toBe('article-2');
-      expect(state.selectedArticle).toBeNull();
+      expect(result).toBeNull();
+      expect(useKnowledgeStore.getState().error).toBe('Invalid status transition');
     });
   });
 
-  describe('exportToMarkdown', () => {
+  describe('exportKnowledgeToMarkdown', () => {
     it('should export article to markdown', async () => {
-      vi.mocked(knowledgeService.exportToMarkdown).mockResolvedValue('# Article');
+      vi.mocked(knowledgeService.exportKnowledgeToMarkdown).mockResolvedValue('# Article');
 
       const store = useKnowledgeStore.getState();
-      const result = await store.exportToMarkdown(mockWorkspacePath, 'article-1');
+      const result = await store.exportKnowledgeToMarkdown(mockArticle);
 
       expect(result).toBe('# Article');
     });
 
     it('should set error on export failure', async () => {
-      vi.mocked(knowledgeService.exportToMarkdown).mockRejectedValue(new Error('Export failed'));
+      vi.mocked(knowledgeService.exportKnowledgeToMarkdown).mockRejectedValue(
+        new Error('Export failed')
+      );
 
       const store = useKnowledgeStore.getState();
 
-      await expect(store.exportToMarkdown(mockWorkspacePath, 'article-1')).rejects.toThrow();
+      await expect(store.exportKnowledgeToMarkdown(mockArticle)).rejects.toThrow();
 
       expect(useKnowledgeStore.getState().error).toBe('Export failed');
     });

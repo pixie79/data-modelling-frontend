@@ -26,13 +26,14 @@ export interface DecisionViewerProps {
 }
 
 export const DecisionViewer: React.FC<DecisionViewerProps> = ({
-  workspacePath,
+  workspacePath: _workspacePath,
   decision,
   onEdit,
   onClose,
   className = '',
 }) => {
-  const { isSaving, changeDecisionStatus, exportToMarkdown, getDecisionById } = useDecisionStore();
+  const { isSaving, changeDecisionStatus, exportDecisionToMarkdown, getDecisionById } =
+    useDecisionStore();
   const { articles } = useKnowledgeStore();
 
   const [showStatusChange, setShowStatusChange] = useState(false);
@@ -44,19 +45,17 @@ export const DecisionViewer: React.FC<DecisionViewerProps> = ({
       article.domain_id === decision.domain_id && article.related_decisions?.includes(decision.id)
   );
 
-  const handleStatusChange = async (newStatus: DecisionStatus) => {
-    try {
-      await changeDecisionStatus(workspacePath, decision.id, newStatus);
+  const handleStatusChange = (newStatus: DecisionStatus) => {
+    const updated = changeDecisionStatus(decision.id, newStatus);
+    if (updated) {
       setShowStatusChange(false);
-    } catch {
-      // Error handled by store
     }
   };
 
   const handleExportMarkdown = async () => {
     setIsExporting(true);
     try {
-      const markdown = await exportToMarkdown(workspacePath, decision.id);
+      const markdown = await exportDecisionToMarkdown(decision);
 
       // Create a blob and download
       const blob = new Blob([markdown], { type: 'text/markdown' });

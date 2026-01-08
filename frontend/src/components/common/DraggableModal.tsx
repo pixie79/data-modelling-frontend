@@ -138,7 +138,6 @@ export const DraggableModal: React.FC<DraggableModalProps> = ({
     };
   }, [isResizing, resizeStart]);
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_hasFocused, _setHasFocused] = useState(false);
 
   useEffect(() => {

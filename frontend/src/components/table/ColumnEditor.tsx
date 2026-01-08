@@ -38,11 +38,11 @@ export const ColumnEditor: React.FC<ColumnEditorProps> = ({
 }) => {
   const [name, setName] = useState(column.name);
   const [dataType, setDataType] = useState(column.data_type);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   const [_nullable, setNullable] = useState(column.nullable);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   const [_isPrimaryKey, setIsPrimaryKey] = useState(column.is_primary_key);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   const [_isForeignKey, setIsForeignKey] = useState(column.is_foreign_key);
   const [nameError, setNameError] = useState<string | null>(null);
 

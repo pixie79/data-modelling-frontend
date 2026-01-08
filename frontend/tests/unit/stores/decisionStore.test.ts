@@ -1,6 +1,7 @@
 /**
  * Unit tests for Decision Store
  * Tests Zustand store for MADR Architecture Decision Records
+ * Updated for SDK 1.13.3+ in-memory API
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -12,20 +13,18 @@ import type { Decision, DecisionIndex } from '@/types/decision';
 // Mock decisionService
 vi.mock('@/services/sdk/decisionService', () => ({
   decisionService: {
-    loadDecisions: vi.fn(),
-    loadDecisionIndex: vi.fn(),
-    loadDecisionsByDomain: vi.fn(),
+    parseDecisionYaml: vi.fn(),
+    parseDecisionIndexYaml: vi.fn(),
+    exportDecisionToYaml: vi.fn(),
+    exportDecisionToMarkdown: vi.fn(),
     createDecision: vi.fn(),
+    createIndexEntry: vi.fn(),
     updateDecision: vi.fn(),
     changeStatus: vi.fn(),
-    deleteDecision: vi.fn(),
-    exportToMarkdown: vi.fn(),
   },
 }));
 
 describe('useDecisionStore', () => {
-  const mockWorkspacePath = '/test/workspace';
-
   const mockDecision: Decision = {
     id: 'decision-1',
     number: 1,
@@ -150,70 +149,78 @@ describe('useDecisionStore', () => {
     });
   });
 
-  describe('loadDecisions', () => {
-    it('should load decisions successfully', async () => {
-      vi.mocked(decisionService.loadDecisions).mockResolvedValue([mockDecision, mockDecision2]);
-      vi.mocked(decisionService.loadDecisionIndex).mockResolvedValue(mockDecisionIndex);
-
+  describe('in-memory data operations', () => {
+    it('should add decision to state', () => {
       const store = useDecisionStore.getState();
-      await store.loadDecisions(mockWorkspacePath);
 
-      const state = useDecisionStore.getState();
-      expect(state.decisions).toHaveLength(2);
-      expect(state.decisionIndex).toEqual(mockDecisionIndex);
-      expect(state.isLoading).toBe(false);
-      expect(state.error).toBeNull();
-    });
-
-    it('should handle load errors', async () => {
-      vi.mocked(decisionService.loadDecisions).mockRejectedValue(new Error('Load failed'));
-
-      const store = useDecisionStore.getState();
-      await store.loadDecisions(mockWorkspacePath);
-
-      const state = useDecisionStore.getState();
-      expect(state.error).toBe('Load failed');
-      expect(state.isLoading).toBe(false);
-    });
-
-    it('should set loading state during load', async () => {
-      vi.mocked(decisionService.loadDecisions).mockImplementation(
-        () => new Promise((resolve) => setTimeout(() => resolve([]), 100))
-      );
-      vi.mocked(decisionService.loadDecisionIndex).mockResolvedValue(null);
-
-      const loadPromise = useDecisionStore.getState().loadDecisions(mockWorkspacePath);
-
-      // Check loading state is set
-      expect(useDecisionStore.getState().isLoading).toBe(true);
-
-      await loadPromise;
-
-      expect(useDecisionStore.getState().isLoading).toBe(false);
-    });
-  });
-
-  describe('loadDecisionsByDomain', () => {
-    it('should load decisions for specific domain', async () => {
-      vi.mocked(decisionService.loadDecisionsByDomain).mockResolvedValue([mockDecision]);
-
-      const store = useDecisionStore.getState();
-      await store.loadDecisionsByDomain(mockWorkspacePath, 'domain-1');
+      store.addDecision(mockDecision);
 
       const state = useDecisionStore.getState();
       expect(state.decisions).toHaveLength(1);
-      expect(state.filter.domain_id).toBe('domain-1');
-      expect(state.isLoading).toBe(false);
+      expect(state.decisions[0]).toEqual(mockDecision);
+    });
+
+    it('should update decision in state', () => {
+      const store = useDecisionStore.getState();
+      store.setDecisions([mockDecision]);
+
+      store.updateDecisionInStore('decision-1', { title: 'Updated Title' });
+
+      const state = useDecisionStore.getState();
+      expect(state.decisions[0]?.title).toBe('Updated Title');
+    });
+
+    it('should update selected decision when updating matching decision', () => {
+      const store = useDecisionStore.getState();
+      store.setDecisions([mockDecision]);
+      store.setSelectedDecision(mockDecision);
+
+      store.updateDecisionInStore('decision-1', { title: 'Updated Title' });
+
+      const state = useDecisionStore.getState();
+      expect(state.selectedDecision?.title).toBe('Updated Title');
+    });
+
+    it('should remove decision from state', () => {
+      const store = useDecisionStore.getState();
+      store.setDecisions([mockDecision, mockDecision2]);
+
+      store.removeDecision('decision-1');
+
+      const state = useDecisionStore.getState();
+      expect(state.decisions).toHaveLength(1);
+      expect(state.decisions[0]?.id).toBe('decision-2');
+    });
+
+    it('should clear selected decision when removing it', () => {
+      const store = useDecisionStore.getState();
+      store.setDecisions([mockDecision, mockDecision2]);
+      store.setSelectedDecision(mockDecision);
+
+      store.removeDecision('decision-1');
+
+      expect(useDecisionStore.getState().selectedDecision).toBeNull();
     });
   });
 
   describe('createDecision', () => {
-    it('should create decision and add to state', async () => {
+    it('should create decision and add to state', () => {
       const newDecision = { ...mockDecision, id: 'new-decision' };
-      vi.mocked(decisionService.createDecision).mockResolvedValue(newDecision);
+      vi.mocked(decisionService.createDecision).mockReturnValue(newDecision);
+      vi.mocked(decisionService.createIndexEntry).mockReturnValue({
+        id: 'new-decision',
+        number: 1,
+        title: 'New Decision',
+        status: DecisionStatus.Draft,
+        category: DecisionCategory.Architecture,
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+      });
 
       const store = useDecisionStore.getState();
-      const result = await store.createDecision(mockWorkspacePath, {
+      store.setDecisionIndex(mockDecisionIndex);
+
+      const result = store.createDecision({
         title: 'New Decision',
         category: DecisionCategory.Architecture,
         context: 'Context',
@@ -224,93 +231,120 @@ describe('useDecisionStore', () => {
       const state = useDecisionStore.getState();
       expect(state.decisions).toContainEqual(newDecision);
       expect(state.selectedDecision).toEqual(newDecision);
-      expect(state.isSaving).toBe(false);
     });
 
-    it('should handle create errors', async () => {
-      vi.mocked(decisionService.createDecision).mockRejectedValue(new Error('Create failed'));
+    it('should update decision index when creating', () => {
+      const newDecision = { ...mockDecision, id: 'new-decision', number: 3 };
+      vi.mocked(decisionService.createDecision).mockReturnValue(newDecision);
+      vi.mocked(decisionService.createIndexEntry).mockReturnValue({
+        id: 'new-decision',
+        number: 3,
+        title: 'New Decision',
+        status: DecisionStatus.Draft,
+        category: DecisionCategory.Architecture,
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+      });
 
       const store = useDecisionStore.getState();
+      store.setDecisionIndex(mockDecisionIndex);
 
-      await expect(
-        store.createDecision(mockWorkspacePath, {
-          title: 'New',
-          category: DecisionCategory.Architecture,
-          context: 'Context',
-          decision: 'Decision',
-        })
-      ).rejects.toThrow('Create failed');
+      store.createDecision({
+        title: 'New Decision',
+        category: DecisionCategory.Architecture,
+        context: 'Context',
+        decision: 'Decision',
+      });
 
-      expect(useDecisionStore.getState().error).toBe('Create failed');
+      const state = useDecisionStore.getState();
+      expect(state.decisionIndex?.next_number).toBe(4);
+      expect(state.decisionIndex?.decisions).toHaveLength(1);
     });
   });
 
   describe('updateDecision', () => {
-    it('should update decision in state', async () => {
+    it('should update decision in state', () => {
       const updatedDecision = { ...mockDecision, title: 'Updated Title' };
-      vi.mocked(decisionService.updateDecision).mockResolvedValue(updatedDecision);
+      vi.mocked(decisionService.updateDecision).mockReturnValue(updatedDecision);
 
       const store = useDecisionStore.getState();
       store.setDecisions([mockDecision]);
       store.setSelectedDecision(mockDecision);
 
-      await store.updateDecision(mockWorkspacePath, 'decision-1', { title: 'Updated Title' });
+      const result = store.updateDecision('decision-1', { title: 'Updated Title' });
 
+      expect(result?.title).toBe('Updated Title');
       const state = useDecisionStore.getState();
       expect(state.decisions[0]?.title).toBe('Updated Title');
       expect(state.selectedDecision?.title).toBe('Updated Title');
-      expect(state.isSaving).toBe(false);
+    });
+
+    it('should return null for non-existent decision', () => {
+      const store = useDecisionStore.getState();
+
+      const result = store.updateDecision('non-existent', { title: 'Updated' });
+
+      expect(result).toBeNull();
+      expect(useDecisionStore.getState().error).toContain('not found');
     });
   });
 
   describe('changeDecisionStatus', () => {
-    it('should change status and update state', async () => {
+    it('should change status and update state', () => {
       const updatedDecision = { ...mockDecision, status: DecisionStatus.Deprecated };
-      vi.mocked(decisionService.changeStatus).mockResolvedValue(updatedDecision);
+      vi.mocked(decisionService.changeStatus).mockReturnValue(updatedDecision);
 
       const store = useDecisionStore.getState();
       store.setDecisions([mockDecision]);
 
-      await store.changeDecisionStatus(mockWorkspacePath, 'decision-1', DecisionStatus.Deprecated);
+      const result = store.changeDecisionStatus('decision-1', DecisionStatus.Deprecated);
 
+      expect(result?.status).toBe(DecisionStatus.Deprecated);
       const state = useDecisionStore.getState();
       expect(state.decisions[0]?.status).toBe(DecisionStatus.Deprecated);
     });
-  });
 
-  describe('deleteDecision', () => {
-    it('should remove decision from state', async () => {
-      vi.mocked(decisionService.deleteDecision).mockResolvedValue();
+    it('should return null for non-existent decision', () => {
+      const store = useDecisionStore.getState();
+
+      const result = store.changeDecisionStatus('non-existent', DecisionStatus.Deprecated);
+
+      expect(result).toBeNull();
+    });
+
+    it('should set error when status change throws', () => {
+      vi.mocked(decisionService.changeStatus).mockImplementation(() => {
+        throw new Error('Invalid status transition');
+      });
 
       const store = useDecisionStore.getState();
-      store.setDecisions([mockDecision, mockDecision2]);
-      store.setSelectedDecision(mockDecision);
+      store.setDecisions([mockDecision]);
 
-      await store.deleteDecision(mockWorkspacePath, 'decision-1');
+      const result = store.changeDecisionStatus('decision-1', DecisionStatus.Draft);
 
-      const state = useDecisionStore.getState();
-      expect(state.decisions).toHaveLength(1);
-      expect(state.decisions[0]?.id).toBe('decision-2');
-      expect(state.selectedDecision).toBeNull();
+      expect(result).toBeNull();
+      expect(useDecisionStore.getState().error).toBe('Invalid status transition');
     });
   });
 
-  describe('exportToMarkdown', () => {
+  describe('exportDecisionToMarkdown', () => {
     it('should export decision to markdown', async () => {
-      vi.mocked(decisionService.exportToMarkdown).mockResolvedValue('# ADR-0001');
+      vi.mocked(decisionService.exportDecisionToMarkdown).mockResolvedValue('# ADR-0001');
 
       const store = useDecisionStore.getState();
-      const result = await store.exportToMarkdown(mockWorkspacePath, 'decision-1');
+      const result = await store.exportDecisionToMarkdown(mockDecision);
 
       expect(result).toBe('# ADR-0001');
     });
 
     it('should set error on export failure', async () => {
-      vi.mocked(decisionService.exportToMarkdown).mockRejectedValue(new Error('Export failed'));
+      vi.mocked(decisionService.exportDecisionToMarkdown).mockRejectedValue(
+        new Error('Export failed')
+      );
 
       const store = useDecisionStore.getState();
 
-      await expect(store.exportToMarkdown(mockWorkspacePath, 'decision-1')).rejects.toThrow();
+      await expect(store.exportDecisionToMarkdown(mockDecision)).rejects.toThrow();
 
       expect(useDecisionStore.getState().error).toBe('Export failed');
     });

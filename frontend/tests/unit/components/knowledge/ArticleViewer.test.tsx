@@ -41,8 +41,8 @@ describe('ArticleViewer', () => {
     vi.clearAllMocks();
     vi.mocked(useKnowledgeStore).mockReturnValue({
       isSaving: false,
-      changeArticleStatus: vi.fn().mockResolvedValue(undefined),
-      exportToMarkdown: vi.fn().mockResolvedValue('# KB-0001'),
+      changeArticleStatus: vi.fn().mockReturnValue(mockArticle),
+      exportKnowledgeToMarkdown: vi.fn().mockResolvedValue('# KB-0001'),
       getArticleById: vi.fn().mockReturnValue(mockArticle),
     } as any);
     vi.mocked(useDecisionStore).mockReturnValue({
@@ -212,8 +212,8 @@ describe('ArticleViewer', () => {
     const exportMock = vi.fn().mockResolvedValue('# KB-0001');
     vi.mocked(useKnowledgeStore).mockReturnValue({
       isSaving: false,
-      changeArticleStatus: vi.fn(),
-      exportToMarkdown: exportMock,
+      changeArticleStatus: vi.fn().mockReturnValue(mockArticle),
+      exportKnowledgeToMarkdown: exportMock,
       getArticleById: vi.fn().mockReturnValue(mockArticle),
     } as any);
 
@@ -230,7 +230,7 @@ describe('ArticleViewer', () => {
     fireEvent.click(exportButton);
 
     await waitFor(() => {
-      expect(exportMock).toHaveBeenCalledWith('/test', 'article-1');
+      expect(exportMock).toHaveBeenCalledWith(mockArticle);
     });
   });
 

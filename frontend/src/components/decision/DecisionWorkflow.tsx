@@ -32,7 +32,7 @@ const WORKFLOW_ORDER: DecisionStatus[] = [
 const TERMINAL_STATES: DecisionStatus[] = [DecisionStatus.Rejected, DecisionStatus.Superseded];
 
 export const DecisionWorkflow: React.FC<DecisionWorkflowProps> = ({
-  workspacePath,
+  workspacePath: _workspacePath,
   decision,
   onStatusChange,
   compact = false,
@@ -45,15 +45,13 @@ export const DecisionWorkflow: React.FC<DecisionWorkflowProps> = ({
   const currentIndex = WORKFLOW_ORDER.indexOf(decision.status);
   const isTerminal = TERMINAL_STATES.includes(decision.status);
 
-  const handleStatusClick = async (targetStatus: DecisionStatus) => {
+  const handleStatusClick = (targetStatus: DecisionStatus) => {
     if (isSaving) return;
     if (!isValidStatusTransition(decision.status, targetStatus)) return;
 
-    try {
-      await changeDecisionStatus(workspacePath, decision.id, targetStatus);
+    const updated = changeDecisionStatus(decision.id, targetStatus);
+    if (updated) {
       onStatusChange?.(targetStatus);
-    } catch {
-      // Error handled by store
     }
   };
 

@@ -3,7 +3,7 @@
  * Loads and initializes the data-modelling-sdk WASM module
  */
 
-// SDK module type definition (SDK 1.13.1+)
+// SDK module type definition (SDK 1.13.3+)
 interface SDKModule {
   init(): Promise<void>;
 
@@ -62,41 +62,51 @@ interface SDKModule {
     infrastructureType: string
   ): string;
 
-  // === Decision methods (SDK 1.13.1+) ===
-  load_decisions?(workspace_path: string): string;
-  load_decision?(decision_path: string): string;
-  load_decision_index?(workspace_path: string): string;
-  load_decisions_by_domain?(workspace_path: string, domain_id: string): string;
-  save_decision?(decision_json: string, workspace_path: string): string;
-  save_decision_index?(index_json: string, workspace_path: string): string;
-  export_decision_markdown?(decision_json: string): string;
+  // === Decision methods (SDK 1.13.3+) ===
+  // Note: These are WASM-compatible methods that work with YAML strings, not file paths
+  parse_decision_yaml?(yaml: string): string;
+  parse_decision_index_yaml?(yaml: string): string;
+  export_decision_to_yaml?(decision_json: string): string;
+  export_decision_index_to_yaml?(index_json: string): string;
+  export_decision_to_markdown?(decision_json: string): string;
+  create_decision?(number: number, title: string, context: string, decision: string): string;
+  create_decision_index?(): string;
+  add_decision_to_index?(index_json: string, decision_json: string, filename: string): string;
 
-  // === Knowledge methods (SDK 1.13.1+) ===
-  load_knowledge?(workspace_path: string): string;
-  load_knowledge_article?(article_path: string): string;
-  load_knowledge_index?(workspace_path: string): string;
-  load_knowledge_by_domain?(workspace_path: string, domain_id: string): string;
-  save_knowledge?(article_json: string, workspace_path: string): string;
-  save_knowledge_index?(index_json: string, workspace_path: string): string;
-  export_knowledge_markdown?(article_json: string): string;
-  search_knowledge?(workspace_path: string, query: string): string;
+  // === Knowledge methods (SDK 1.13.3+) ===
+  // Note: These are WASM-compatible methods that work with YAML strings, not file paths
+  parse_knowledge_yaml?(yaml: string): string;
+  parse_knowledge_index_yaml?(yaml: string): string;
+  export_knowledge_to_yaml?(article_json: string): string;
+  export_knowledge_index_to_yaml?(index_json: string): string;
+  export_knowledge_to_markdown?(article_json: string): string;
+  search_knowledge_articles?(articles_json: string, query: string): string;
+  create_knowledge_article?(
+    number: number,
+    title: string,
+    summary: string,
+    content: string,
+    author: string
+  ): string;
+  create_knowledge_index?(): string;
+  add_article_to_knowledge_index?(
+    index_json: string,
+    article_json: string,
+    filename: string
+  ): string;
 
-  // === Database methods (SDK 1.13.1+) ===
-  db_init?(workspace_path: string, config_json: string): string;
-  db_sync?(workspace_path: string): string;
-  db_status?(workspace_path: string): string;
-  db_export?(workspace_path: string): string;
-  db_query?(workspace_path: string, sql: string): string;
-
-  // === Workspace methods (SDK 1.13.1+) ===
+  // === Workspace methods (SDK 1.13.3+) ===
   parse_workspace_yaml?(yaml: string): string;
-  export_workspace_yaml?(json: string): string;
-  scan_workspace_files?(workspace_path: string): string;
+  export_workspace_to_yaml?(workspace_json: string): string;
+  create_workspace?(name: string, owner_id: string): string;
 
-  // === Domain methods (SDK 1.13.1+) ===
-  load_domains?(workspace_path: string): string;
-  load_domain?(workspace_path: string, domain_id: string): string;
-  save_domain?(domain_json: string, workspace_path: string): string;
+  // === Domain methods (SDK 1.13.3+) ===
+  parse_domain_config_yaml?(yaml: string): string;
+  export_domain_config_to_yaml?(config_json: string): string;
+  create_domain?(name: string): string;
+  create_domain_config?(name: string, workspace_id: string): string;
+
+  // Note: Database methods (db_init, db_sync, etc.) are CLI/Rust only, not available in WASM
 }
 
 class SDKLoader {
@@ -297,29 +307,32 @@ class SDKLoader {
       'parse_odcl_yaml', // ODCL import (separate from ODCS)
     ];
 
-    // SDK 1.13.1+ specific methods (Decision logs, Knowledge base, DuckDB)
-    const v1131Methods = [
-      // Decision methods
-      'load_decisions',
-      'load_decision_index',
-      'save_decision',
-      'export_decision_markdown',
-      // Knowledge methods
-      'load_knowledge',
-      'load_knowledge_index',
-      'save_knowledge',
-      'search_knowledge',
-      'export_knowledge_markdown',
-      // Database methods
-      'db_init',
-      'db_sync',
-      'db_status',
-      'db_export',
-      'db_query',
+    // SDK 1.13.3+ specific methods (Decision logs, Knowledge base, Workspace)
+    // Note: These are WASM-compatible methods that work with YAML strings
+    // Database methods (db_*) are CLI/Rust only, not available in WASM
+    const v1133Methods = [
+      // Decision methods (WASM-compatible)
+      'parse_decision_yaml',
+      'parse_decision_index_yaml',
+      'export_decision_to_yaml',
+      'export_decision_to_markdown',
+      'create_decision',
+      'create_decision_index',
+      // Knowledge methods (WASM-compatible)
+      'parse_knowledge_yaml',
+      'parse_knowledge_index_yaml',
+      'export_knowledge_to_yaml',
+      'export_knowledge_to_markdown',
+      'search_knowledge_articles',
+      'create_knowledge_article',
+      'create_knowledge_index',
       // Workspace/Domain methods
       'parse_workspace_yaml',
-      'export_workspace_yaml',
-      'load_domains',
+      'export_workspace_to_yaml',
+      'create_workspace',
+      'parse_domain_config_yaml',
+      'export_domain_config_to_yaml',
+      'create_domain',
     ];
 
     const checkMethods = (methods: string[]): string[] => {
@@ -330,7 +343,7 @@ class SDKLoader {
     const missingV161Methods = checkMethods(v161Methods);
     const missingV181Methods = checkMethods(v181Methods);
     const missingV184Methods = checkMethods(v184Methods);
-    const missingV1131Methods = checkMethods(v1131Methods);
+    const missingV1133Methods = checkMethods(v1133Methods);
 
     // Log warnings for missing methods
     if (missingCoreMethods.length > 0) {
@@ -353,10 +366,10 @@ class SDKLoader {
       console.warn('[SDKLoader] ODCL import with separate parser requires SDK version >= 1.8.4');
     }
 
-    if (missingV1131Methods.length > 0) {
-      console.warn('[SDKLoader] SDK 1.13.1+ methods not available:', missingV1131Methods);
+    if (missingV1133Methods.length > 0) {
+      console.warn('[SDKLoader] SDK 1.13.3+ methods not available:', missingV1133Methods);
       console.warn(
-        '[SDKLoader] Decision logs, Knowledge base, and DuckDB features require SDK version >= 1.13.1'
+        '[SDKLoader] Decision logs and Knowledge base features require SDK version >= 1.13.3'
       );
     }
 
@@ -366,7 +379,7 @@ class SDKLoader {
       missingV161Methods,
       missingV181Methods,
       missingV184Methods,
-      missingV1131Methods
+      missingV1133Methods
     );
 
     console.log(`[SDKLoader] Detected SDK version: ${detectedVersion}`);
@@ -384,43 +397,45 @@ class SDKLoader {
     missing161: string[],
     missing181: string[],
     missing184: string[],
-    missing1131: string[]
+    missing1133: string[]
   ): string {
-    if (missing1131.length === 0) {
-      return '1.13.1+';
+    if (missing1133.length === 0) {
+      return '1.13.3+';
     } else if (missing184.length === 0) {
-      return '1.8.4+ (Decision/Knowledge/DuckDB features unavailable)';
+      return '1.8.4+ (Decision/Knowledge features unavailable)';
     } else if (missing181.length === 0) {
-      return '1.8.1+ (ODCL/Decision/Knowledge/DuckDB features unavailable)';
+      return '1.8.1+ (ODCL/Decision/Knowledge features unavailable)';
     } else if (missing161.length === 0) {
-      return '1.6.1+ (Schema/ODCL/Decision/Knowledge/DuckDB features unavailable)';
+      return '1.6.1+ (Schema/ODCL/Decision/Knowledge features unavailable)';
     } else if (missingCore.length === 0) {
-      return '1.5.0+ (SQL/Schema/ODCL/Decision/Knowledge/DuckDB features unavailable)';
+      return '1.5.0+ (SQL/Schema/ODCL/Decision/Knowledge features unavailable)';
     } else {
       return '<1.5.0 (Many features unavailable)';
     }
   }
 
   /**
-   * Check if SDK 1.13.1+ features are available
+   * Check if SDK 1.13.3+ decision features are available
    */
   hasDecisionSupport(): boolean {
-    return this.module !== null && typeof (this.module as any).load_decisions === 'function';
+    return this.module !== null && typeof (this.module as any).parse_decision_yaml === 'function';
   }
 
   /**
-   * Check if SDK 1.13.1+ knowledge features are available
+   * Check if SDK 1.13.3+ knowledge features are available
    */
   hasKnowledgeSupport(): boolean {
-    return this.module !== null && typeof (this.module as any).load_knowledge === 'function';
+    return this.module !== null && typeof (this.module as any).parse_knowledge_yaml === 'function';
   }
 
   /**
-   * Check if SDK 1.13.1+ database features are available
+   * Check if SDK 1.13.3+ workspace features are available
    */
-  hasDatabaseSupport(): boolean {
-    return this.module !== null && typeof (this.module as any).db_init === 'function';
+  hasWorkspaceSupport(): boolean {
+    return this.module !== null && typeof (this.module as any).parse_workspace_yaml === 'function';
   }
+
+  // Note: Database features (db_init, db_sync, etc.) are CLI/Rust only, not available in WASM
 
   /**
    * Reset the loader (for testing)

@@ -1,122 +1,78 @@
 /**
  * Database Service
- * Handles DuckDB/PostgreSQL database operations via SDK 1.13.1+
+ * Handles DuckDB/PostgreSQL database operations via SDK CLI
+ *
+ * IMPORTANT: Database methods (db_init, db_sync, db_status, db_export, db_query)
+ * require native file system and database drivers (DuckDB/PostgreSQL).
+ * These are only available via CLI or Rust API, NOT in WASM.
+ *
+ * For browser-based database functionality, use DuckDB-WASM directly
+ * via the DuckDBContext and duckdbService.
  */
 
-import { sdkLoader } from './sdkLoader';
 import { databaseConfigService } from '@/services/storage/databaseConfigService';
-import type {
-  DatabaseStatus,
-  SyncResult,
-  ExportResult,
-  QueryResult,
-  DatabaseMetrics,
-} from '@/types/database';
+import type { DatabaseStatus, SyncResult, ExportResult, QueryResult } from '@/types/database';
 import { DatabaseBackend, ConnectionStatus, SyncStatus, isDatabaseEnabled } from '@/types/database';
 
 /**
- * Database Service for SDK 1.13.1+ database operations
+ * Database Service for SDK CLI database operations
+ *
+ * NOTE: This service is a stub for WASM environments.
+ * Database operations require the native CLI/Rust SDK.
+ * In the browser, use DuckDB-WASM via DuckDBContext instead.
  */
 class DatabaseService {
   private initialized: Map<string, boolean> = new Map();
 
   /**
    * Check if database features are supported by the current SDK
+   *
+   * NOTE: Database methods are CLI-only (not available in WASM SDK)
+   * This always returns false in browser environments.
    */
   isSupported(): boolean {
-    return sdkLoader.hasDatabaseSupport();
+    // Database methods (db_init, db_sync, etc.) are only available in CLI/Rust SDK
+    // They are NOT available in the WASM SDK
+    return false;
   }
 
   /**
    * Initialize database for a workspace
+   *
+   * NOTE: This is a CLI-only feature. In browser, use DuckDB-WASM instead.
    */
-  async initializeDatabase(workspacePath: string): Promise<void> {
-    if (!this.isSupported()) {
-      throw new Error('Database features require SDK 1.13.1+');
-    }
-
-    const config = await databaseConfigService.loadConfig(workspacePath);
-    if (!isDatabaseEnabled(config)) {
-      throw new Error('Database backend is not enabled in configuration');
-    }
-
-    const sdk = await sdkLoader.load();
-    if (!sdk.db_init) {
-      throw new Error('db_init method not available in SDK');
-    }
-
-    try {
-      const configJson = JSON.stringify(config);
-      const resultJson = sdk.db_init(workspacePath, configJson);
-      const result = JSON.parse(resultJson);
-
-      if (!result.success) {
-        throw new Error(result.error || 'Database initialization failed');
-      }
-
-      this.initialized.set(workspacePath, true);
-      console.log('[DatabaseService] Database initialized for:', workspacePath);
-    } catch (error) {
-      console.error('[DatabaseService] Initialization error:', error);
-      throw error;
-    }
+  async initializeDatabase(_workspacePath: string): Promise<void> {
+    throw new Error(
+      'Database initialization requires the CLI SDK. ' +
+        'In browser environments, use DuckDB-WASM via DuckDBContext.'
+    );
   }
 
   /**
    * Sync YAML files to database
+   *
+   * NOTE: This is a CLI-only feature. In browser, use DuckDB-WASM instead.
    */
-  async syncToDatabase(workspacePath: string): Promise<SyncResult> {
-    if (!this.isSupported()) {
-      throw new Error('Database features require SDK 1.13.1+');
-    }
-
-    const sdk = await sdkLoader.load();
-    if (!sdk.db_sync) {
-      throw new Error('db_sync method not available in SDK');
-    }
-
-    const startTime = new Date().toISOString();
-
-    try {
-      const resultJson = sdk.db_sync(workspacePath);
-      const result = JSON.parse(resultJson);
-
-      const syncResult: SyncResult = {
-        success: result.success ?? true,
-        started_at: startTime,
-        completed_at: new Date().toISOString(),
-        duration_ms: result.duration_ms ?? 0,
-        files_processed: result.files_processed ?? 0,
-        files_added: result.files_added ?? 0,
-        files_updated: result.files_updated ?? 0,
-        files_deleted: result.files_deleted ?? 0,
-        errors: result.errors ?? [],
-        warnings: result.warnings ?? [],
-      };
-
-      console.log('[DatabaseService] Sync completed:', syncResult);
-      return syncResult;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      return {
-        success: false,
-        started_at: startTime,
-        completed_at: new Date().toISOString(),
-        duration_ms: 0,
-        files_processed: 0,
-        files_added: 0,
-        files_updated: 0,
-        files_deleted: 0,
-        errors: [
-          {
-            file_path: workspacePath,
-            error_type: 'io',
-            message: errorMessage,
-          },
-        ],
-        warnings: [],
-      };
-    }
+  async syncToDatabase(_workspacePath: string): Promise<SyncResult> {
+    const now = new Date().toISOString();
+    return {
+      success: false,
+      started_at: now,
+      completed_at: now,
+      duration_ms: 0,
+      files_processed: 0,
+      files_added: 0,
+      files_updated: 0,
+      files_deleted: 0,
+      errors: [
+        {
+          file_path: '',
+          error_type: 'io',
+          message: 'Database sync requires the CLI SDK. In browser environments, use DuckDB-WASM.',
+        },
+      ],
+      warnings: [],
+    };
   }
 
   /**
@@ -134,138 +90,55 @@ class DatabaseService {
       };
     }
 
-    // If SDK doesn't support database, return error status
-    if (!this.isSupported()) {
-      return {
-        backend: config.database.backend,
-        connection_status: ConnectionStatus.Error,
-        sync_status: SyncStatus.Unknown,
-        error: 'Database features require SDK 1.13.1+',
-      };
-    }
-
-    const sdk = await sdkLoader.load();
-    if (!sdk.db_status) {
-      return {
-        backend: config.database.backend,
-        connection_status: ConnectionStatus.Error,
-        sync_status: SyncStatus.Unknown,
-        error: 'db_status method not available in SDK',
-      };
-    }
-
-    try {
-      const resultJson = sdk.db_status(workspacePath);
-      const result = JSON.parse(resultJson);
-
-      return {
-        backend: config.database.backend,
-        connection_status: result.connected
-          ? ConnectionStatus.Connected
-          : ConnectionStatus.Disconnected,
-        database_path: result.database_path,
-        database_size: result.database_size,
-        last_sync: result.last_sync,
-        sync_status: this.mapSyncStatus(result.sync_status),
-        error: result.error,
-        metrics: result.metrics as DatabaseMetrics,
-      };
-    } catch (error) {
-      return {
-        backend: config.database.backend,
-        connection_status: ConnectionStatus.Error,
-        sync_status: SyncStatus.Error,
-        error: error instanceof Error ? error.message : String(error),
-      };
-    }
+    // SDK database features are CLI-only
+    return {
+      backend: config.database.backend,
+      connection_status: ConnectionStatus.Disconnected,
+      sync_status: SyncStatus.Unknown,
+      error: 'Database operations require CLI SDK. Use DuckDB-WASM in browser.',
+    };
   }
 
   /**
    * Export database to YAML files
+   *
+   * NOTE: This is a CLI-only feature.
    */
-  async exportToYaml(workspacePath: string): Promise<ExportResult> {
-    if (!this.isSupported()) {
-      throw new Error('Database features require SDK 1.13.1+');
-    }
-
-    const sdk = await sdkLoader.load();
-    if (!sdk.db_export) {
-      throw new Error('db_export method not available in SDK');
-    }
-
-    const startTime = new Date().toISOString();
-
-    try {
-      const resultJson = sdk.db_export(workspacePath);
-      const result = JSON.parse(resultJson);
-
-      return {
-        success: result.success ?? true,
-        started_at: startTime,
-        completed_at: new Date().toISOString(),
-        duration_ms: result.duration_ms ?? 0,
-        files_exported: result.files_exported ?? 0,
-        errors: result.errors ?? [],
-      };
-    } catch (error) {
-      return {
-        success: false,
-        started_at: startTime,
-        completed_at: new Date().toISOString(),
-        duration_ms: 0,
-        files_exported: 0,
-        errors: [
-          {
-            entity_type: 'table',
-            entity_id: '',
-            message: error instanceof Error ? error.message : String(error),
-          },
-        ],
-      };
-    }
+  async exportToYaml(_workspacePath: string): Promise<ExportResult> {
+    const now = new Date().toISOString();
+    return {
+      success: false,
+      started_at: now,
+      completed_at: now,
+      duration_ms: 0,
+      files_exported: 0,
+      errors: [
+        {
+          entity_type: 'table',
+          entity_id: '',
+          message: 'Database export requires the CLI SDK.',
+        },
+      ],
+    };
   }
 
   /**
    * Execute a SQL query against the database
+   *
+   * NOTE: This is a CLI-only feature. In browser, use DuckDB-WASM directly.
    */
   async executeQuery<T = Record<string, unknown>>(
-    workspacePath: string,
-    sql: string
+    _workspacePath: string,
+    _sql: string
   ): Promise<QueryResult<T>> {
-    if (!this.isSupported()) {
-      throw new Error('Database features require SDK 1.13.1+');
-    }
-
-    const sdk = await sdkLoader.load();
-    if (!sdk.db_query) {
-      throw new Error('db_query method not available in SDK');
-    }
-
-    const startTime = performance.now();
-
-    try {
-      const resultJson = sdk.db_query(workspacePath, sql);
-      const result = JSON.parse(resultJson);
-      const endTime = performance.now();
-
-      return {
-        success: result.success ?? true,
-        data: (result.data ?? []) as T[],
-        row_count: result.row_count ?? result.data?.length ?? 0,
-        column_names: result.column_names ?? [],
-        execution_time_ms: endTime - startTime,
-        error: result.error,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        data: [],
-        row_count: 0,
-        column_names: [],
-        execution_time_ms: performance.now() - startTime,
-        error: error instanceof Error ? error.message : String(error),
-      };
-    }
+    return {
+      success: false,
+      data: [],
+      row_count: 0,
+      column_names: [],
+      execution_time_ms: 0,
+      error: 'Database queries require the CLI SDK. In browser, use DuckDB-WASM directly.',
+    };
   }
 
   /**
@@ -277,58 +150,13 @@ class DatabaseService {
 
   /**
    * Auto-initialize database if configured
+   *
+   * NOTE: This is a CLI-only feature. Returns false in browser.
    */
-  async autoInitialize(workspacePath: string): Promise<boolean> {
-    try {
-      const config = await databaseConfigService.loadConfig(workspacePath);
-
-      if (!isDatabaseEnabled(config)) {
-        return false;
-      }
-
-      if (!config.sync.auto_sync) {
-        return false;
-      }
-
-      if (!this.isSupported()) {
-        console.warn('[DatabaseService] Auto-init skipped: SDK 1.13.1+ required');
-        return false;
-      }
-
-      // Initialize if not already done
-      if (!this.isInitialized(workspacePath)) {
-        await this.initializeDatabase(workspacePath);
-      }
-
-      // Sync files to database
-      const syncResult = await this.syncToDatabase(workspacePath);
-      return syncResult.success;
-    } catch (error) {
-      console.error('[DatabaseService] Auto-initialize failed:', error);
-      return false;
-    }
-  }
-
-  /**
-   * Map SDK sync status to our enum
-   */
-  private mapSyncStatus(status: string | undefined): SyncStatus {
-    switch (status?.toLowerCase()) {
-      case 'in-sync':
-      case 'insync':
-      case 'synced':
-        return SyncStatus.InSync;
-      case 'out-of-sync':
-      case 'outofsync':
-      case 'dirty':
-        return SyncStatus.OutOfSync;
-      case 'syncing':
-        return SyncStatus.Syncing;
-      case 'error':
-        return SyncStatus.Error;
-      default:
-        return SyncStatus.Unknown;
-    }
+  async autoInitialize(_workspacePath: string): Promise<boolean> {
+    // SDK database features are CLI-only, not available in WASM
+    console.warn('[DatabaseService] Database features require CLI SDK, not available in WASM');
+    return false;
   }
 
   /**

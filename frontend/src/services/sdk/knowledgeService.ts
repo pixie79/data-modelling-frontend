@@ -1,6 +1,19 @@
 /**
  * Knowledge Service
- * Handles Knowledge Base articles via SDK 1.13.1+
+ * Handles Knowledge Base articles via SDK 1.13.3+
+ *
+ * SDK 1.13.3 WASM Methods:
+ * - parse_knowledge_yaml(yaml: string) -> JSON string
+ * - parse_knowledge_index_yaml(yaml: string) -> JSON string
+ * - export_knowledge_to_yaml(article_json: string) -> YAML string
+ * - export_knowledge_to_markdown(article_json: string) -> Markdown string
+ * - search_knowledge_articles(articles_json: string, query: string) -> JSON string
+ * - create_knowledge_article(number, title, article_type, summary, content) -> JSON string
+ * - create_knowledge_index() -> JSON string
+ * - add_article_to_knowledge_index(index_json, article_json, filename) -> JSON string
+ *
+ * NOTE: WASM SDK works with YAML strings, not file paths.
+ * File I/O must be handled by the application layer.
  */
 
 import { sdkLoader } from './sdkLoader';
@@ -19,7 +32,10 @@ import {
 } from '@/types/knowledge';
 
 /**
- * Knowledge Service for SDK 1.13.1+ knowledge base management
+ * Knowledge Service for SDK 1.13.3+ knowledge base management
+ *
+ * This service provides methods to work with knowledge articles using the SDK.
+ * In WASM mode, it works with YAML/JSON strings rather than file paths.
  */
 class KnowledgeService {
   /**
@@ -30,58 +46,50 @@ class KnowledgeService {
   }
 
   /**
-   * Load all knowledge articles for a workspace
+   * Parse a knowledge article from YAML string
    */
-  async loadKnowledge(workspacePath: string): Promise<KnowledgeArticle[]> {
+  async parseKnowledgeYaml(yaml: string): Promise<KnowledgeArticle | null> {
     if (!this.isSupported()) {
-      console.warn('[KnowledgeService] Knowledge features require SDK 1.13.1+');
-      return [];
+      console.warn('[KnowledgeService] Knowledge features require SDK 1.13.3+');
+      return null;
     }
 
     const sdk = await sdkLoader.load();
-    if (!sdk.load_knowledge) {
-      console.warn('[KnowledgeService] load_knowledge method not available');
-      return [];
+    if (!sdk.parse_knowledge_yaml) {
+      console.warn('[KnowledgeService] parse_knowledge_yaml method not available');
+      return null;
     }
 
     try {
-      const resultJson = sdk.load_knowledge(workspacePath);
+      const resultJson = sdk.parse_knowledge_yaml(yaml);
       const result = JSON.parse(resultJson);
 
       if (result.error) {
         throw new Error(result.error);
       }
 
-      return (result.articles ?? result) as KnowledgeArticle[];
+      return result as KnowledgeArticle;
     } catch (error) {
-      console.error('[KnowledgeService] Failed to load knowledge:', error);
-      return [];
+      console.error('[KnowledgeService] Failed to parse knowledge YAML:', error);
+      return null;
     }
   }
 
   /**
-   * Load a single article by ID
+   * Parse a knowledge index from YAML string
    */
-  async loadArticle(workspacePath: string, articleId: string): Promise<KnowledgeArticle | null> {
-    const articles = await this.loadKnowledge(workspacePath);
-    return articles.find((a) => a.id === articleId) ?? null;
-  }
-
-  /**
-   * Load the knowledge index
-   */
-  async loadKnowledgeIndex(workspacePath: string): Promise<KnowledgeIndex | null> {
+  async parseKnowledgeIndexYaml(yaml: string): Promise<KnowledgeIndex | null> {
     if (!this.isSupported()) {
       return null;
     }
 
     const sdk = await sdkLoader.load();
-    if (!sdk.load_knowledge_index) {
+    if (!sdk.parse_knowledge_index_yaml) {
       return null;
     }
 
     try {
-      const resultJson = sdk.load_knowledge_index(workspacePath);
+      const resultJson = sdk.parse_knowledge_index_yaml(yaml);
       const result = JSON.parse(resultJson);
 
       if (result.error) {
@@ -90,64 +98,244 @@ class KnowledgeService {
 
       return result as KnowledgeIndex;
     } catch (error) {
-      console.error('[KnowledgeService] Failed to load knowledge index:', error);
+      console.error('[KnowledgeService] Failed to parse knowledge index YAML:', error);
       return null;
     }
   }
 
   /**
-   * Load articles filtered by domain
+   * Export an article to YAML string
    */
-  async loadKnowledgeByDomain(
-    workspacePath: string,
-    domainId: string
-  ): Promise<KnowledgeArticle[]> {
+  async exportKnowledgeToYaml(article: KnowledgeArticle): Promise<string | null> {
     if (!this.isSupported()) {
-      return [];
+      throw new Error('Knowledge features require SDK 1.13.3+');
     }
 
     const sdk = await sdkLoader.load();
-
-    // Try SDK method first
-    if (sdk.load_knowledge_by_domain) {
-      try {
-        const resultJson = sdk.load_knowledge_by_domain(workspacePath, domainId);
-        const result = JSON.parse(resultJson);
-        return (result.articles ?? result) as KnowledgeArticle[];
-      } catch (error) {
-        console.error('[KnowledgeService] SDK domain filter failed:', error);
-      }
+    if (!sdk.export_knowledge_to_yaml) {
+      throw new Error('export_knowledge_to_yaml method not available in SDK');
     }
 
-    // Fallback to client-side filtering
-    const allArticles = await this.loadKnowledge(workspacePath);
-    return allArticles.filter((a) => a.domain_id === domainId);
+    try {
+      const articleJson = JSON.stringify(article);
+      const yaml = sdk.export_knowledge_to_yaml(articleJson);
+      return yaml;
+    } catch (error) {
+      console.error('[KnowledgeService] Failed to export knowledge to YAML:', error);
+      throw error;
+    }
   }
 
   /**
-   * Search knowledge articles
+   * Export an article to Markdown string
    */
-  async searchKnowledge(workspacePath: string, query: string): Promise<KnowledgeSearchResult[]> {
-    if (!this.isSupported()) {
-      return [];
-    }
-
-    const sdk = await sdkLoader.load();
-
-    // Try SDK search first
-    if (sdk.search_knowledge) {
-      try {
-        const resultJson = sdk.search_knowledge(workspacePath, query);
-        const result = JSON.parse(resultJson);
-        return (result.results ?? result) as KnowledgeSearchResult[];
-      } catch (error) {
-        console.error('[KnowledgeService] SDK search failed:', error);
+  async exportKnowledgeToMarkdown(article: KnowledgeArticle): Promise<string> {
+    // Try SDK export first
+    if (this.isSupported()) {
+      const sdk = await sdkLoader.load();
+      if (sdk.export_knowledge_to_markdown) {
+        try {
+          const articleJson = JSON.stringify(article);
+          const markdown = sdk.export_knowledge_to_markdown(articleJson);
+          return markdown;
+        } catch {
+          console.warn('[KnowledgeService] SDK markdown export failed, using fallback');
+        }
       }
     }
 
-    // Fallback to client-side search
-    const articles = await this.loadKnowledge(workspacePath);
-    return this.clientSideSearch(articles, query);
+    // Fallback to client-side markdown generation
+    return this.generateMarkdown(article);
+  }
+
+  /**
+   * Search knowledge articles using SDK
+   */
+  async searchKnowledgeViaSDK(
+    articles: KnowledgeArticle[],
+    query: string
+  ): Promise<KnowledgeSearchResult[]> {
+    if (!this.isSupported()) {
+      return this.clientSideSearch(articles, query);
+    }
+
+    const sdk = await sdkLoader.load();
+    if (!sdk.search_knowledge_articles) {
+      return this.clientSideSearch(articles, query);
+    }
+
+    try {
+      const articlesJson = JSON.stringify(articles);
+      const resultJson = sdk.search_knowledge_articles(articlesJson, query);
+      const result = JSON.parse(resultJson);
+
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      return (result.results ?? result) as KnowledgeSearchResult[];
+    } catch (error) {
+      console.error('[KnowledgeService] SDK search failed:', error);
+      return this.clientSideSearch(articles, query);
+    }
+  }
+
+  /**
+   * Create a new knowledge article using SDK
+   */
+  async createArticleViaSDK(
+    number: number,
+    title: string,
+    articleType: string,
+    summary: string,
+    content: string
+  ): Promise<KnowledgeArticle | null> {
+    if (!this.isSupported()) {
+      return null;
+    }
+
+    const sdk = await sdkLoader.load();
+    if (!sdk.create_knowledge_article) {
+      return null;
+    }
+
+    try {
+      const resultJson = sdk.create_knowledge_article(number, title, articleType, summary, content);
+      const result = JSON.parse(resultJson);
+
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      return result as KnowledgeArticle;
+    } catch (error) {
+      console.error('[KnowledgeService] Failed to create article via SDK:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Create a new empty knowledge index using SDK
+   */
+  async createKnowledgeIndexViaSDK(): Promise<KnowledgeIndex | null> {
+    if (!this.isSupported()) {
+      return null;
+    }
+
+    const sdk = await sdkLoader.load();
+    if (!sdk.create_knowledge_index) {
+      return null;
+    }
+
+    try {
+      const resultJson = sdk.create_knowledge_index();
+      const result = JSON.parse(resultJson);
+
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      return result as KnowledgeIndex;
+    } catch (error) {
+      console.error('[KnowledgeService] Failed to create knowledge index via SDK:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Add an article to the index using SDK
+   */
+  async addArticleToIndex(
+    index: KnowledgeIndex,
+    article: KnowledgeArticle,
+    filename: string
+  ): Promise<KnowledgeIndex | null> {
+    if (!this.isSupported()) {
+      return null;
+    }
+
+    const sdk = await sdkLoader.load();
+    if (!sdk.add_article_to_knowledge_index) {
+      return null;
+    }
+
+    try {
+      const indexJson = JSON.stringify(index);
+      const articleJson = JSON.stringify(article);
+      const resultJson = sdk.add_article_to_knowledge_index(indexJson, articleJson, filename);
+      const result = JSON.parse(resultJson);
+
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      return result as KnowledgeIndex;
+    } catch (error) {
+      console.error('[KnowledgeService] Failed to add article to index:', error);
+      return null;
+    }
+  }
+
+  // ============================================================
+  // Higher-level methods that work with in-memory data
+  // These don't require file I/O and work with article arrays
+  // ============================================================
+
+  /**
+   * Find an article by ID from an array of articles
+   */
+  findArticleById(articles: KnowledgeArticle[], articleId: string): KnowledgeArticle | null {
+    return articles.find((a) => a.id === articleId) ?? null;
+  }
+
+  /**
+   * Filter articles by criteria
+   */
+  filterKnowledge(articles: KnowledgeArticle[], filter: KnowledgeFilter): KnowledgeArticle[] {
+    let filtered = [...articles];
+
+    if (filter.domain_id) {
+      filtered = filtered.filter((a) => a.domain_id === filter.domain_id);
+    }
+
+    if (filter.type && filter.type.length > 0) {
+      filtered = filtered.filter((a) => filter.type!.includes(a.type));
+    }
+
+    if (filter.status && filter.status.length > 0) {
+      filtered = filtered.filter((a) => filter.status!.includes(a.status));
+    }
+
+    if (filter.author) {
+      filtered = filtered.filter((a) =>
+        a.authors.some((author) => author.toLowerCase().includes(filter.author!.toLowerCase()))
+      );
+    }
+
+    if (filter.search) {
+      const searchLower = filter.search.toLowerCase();
+      filtered = filtered.filter(
+        (a) =>
+          a.title.toLowerCase().includes(searchLower) ||
+          a.summary.toLowerCase().includes(searchLower) ||
+          a.content.toLowerCase().includes(searchLower)
+      );
+    }
+
+    if (filter.tags && filter.tags.length > 0) {
+      filtered = filtered.filter((a) => {
+        if (!a.tags) return false;
+        return filter.tags!.some((filterTag) =>
+          a.tags!.some((t) => {
+            if (typeof t === 'string') return t === filterTag;
+            if ('value' in t) return t.value === filterTag;
+            return false;
+          })
+        );
+      });
+    }
+
+    return filtered;
   }
 
   /**
@@ -202,92 +390,9 @@ class KnowledgeService {
   }
 
   /**
-   * Filter articles by criteria
+   * Create a new article object (client-side)
    */
-  async filterKnowledge(
-    workspacePath: string,
-    filter: KnowledgeFilter
-  ): Promise<KnowledgeArticle[]> {
-    let articles = await this.loadKnowledge(workspacePath);
-
-    if (filter.domain_id) {
-      articles = articles.filter((a) => a.domain_id === filter.domain_id);
-    }
-
-    if (filter.type && filter.type.length > 0) {
-      articles = articles.filter((a) => filter.type!.includes(a.type));
-    }
-
-    if (filter.status && filter.status.length > 0) {
-      articles = articles.filter((a) => filter.status!.includes(a.status));
-    }
-
-    if (filter.author) {
-      articles = articles.filter((a) =>
-        a.authors.some((author) => author.toLowerCase().includes(filter.author!.toLowerCase()))
-      );
-    }
-
-    if (filter.search) {
-      const searchLower = filter.search.toLowerCase();
-      articles = articles.filter(
-        (a) =>
-          a.title.toLowerCase().includes(searchLower) ||
-          a.summary.toLowerCase().includes(searchLower) ||
-          a.content.toLowerCase().includes(searchLower)
-      );
-    }
-
-    if (filter.tags && filter.tags.length > 0) {
-      articles = articles.filter((a) => {
-        if (!a.tags) return false;
-        return filter.tags!.some((filterTag) =>
-          a.tags!.some((t) => {
-            if (typeof t === 'string') return t === filterTag;
-            if ('value' in t) return t.value === filterTag;
-            return false;
-          })
-        );
-      });
-    }
-
-    return articles;
-  }
-
-  /**
-   * Save an article
-   */
-  async saveArticle(workspacePath: string, article: KnowledgeArticle): Promise<void> {
-    if (!this.isSupported()) {
-      throw new Error('Knowledge features require SDK 1.13.1+');
-    }
-
-    const sdk = await sdkLoader.load();
-    if (!sdk.save_knowledge) {
-      throw new Error('save_knowledge method not available in SDK');
-    }
-
-    try {
-      const articleJson = JSON.stringify(article);
-      const resultJson = sdk.save_knowledge(articleJson, workspacePath);
-      const result = JSON.parse(resultJson);
-
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to save article');
-      }
-
-      console.log('[KnowledgeService] Article saved:', article.id);
-    } catch (error) {
-      console.error('[KnowledgeService] Failed to save article:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Create a new article
-   */
-  async createArticle(
-    workspacePath: string,
+  createArticle(
     data: {
       title: string;
       type: ArticleType;
@@ -295,14 +400,11 @@ class KnowledgeService {
       content: string;
       domain_id?: string;
       authors?: string[];
-    }
-  ): Promise<KnowledgeArticle> {
-    // Load index to get next number
-    let index = await this.loadKnowledgeIndex(workspacePath);
-    const nextNumber = index?.next_number ?? 1;
-
+    },
+    nextNumber: number = 1
+  ): KnowledgeArticle {
     const now = new Date().toISOString();
-    const article: KnowledgeArticle = {
+    return {
       id: crypto.randomUUID(),
       number: nextNumber,
       title: data.title,
@@ -316,47 +418,13 @@ class KnowledgeService {
       created_at: now,
       updated_at: now,
     };
-
-    // Save the article
-    await this.saveArticle(workspacePath, article);
-
-    // Update the index
-    if (index) {
-      const newEntry: KnowledgeIndexEntry = {
-        id: article.id,
-        number: article.number,
-        title: article.title,
-        type: article.type,
-        status: article.status,
-        domain_id: article.domain_id,
-        created_at: article.created_at,
-        updated_at: article.updated_at,
-      };
-
-      index.articles.push(newEntry);
-      index.next_number = nextNumber + 1;
-      index.last_updated = now;
-
-      await this.saveKnowledgeIndex(workspacePath, index);
-    }
-
-    return article;
   }
 
   /**
-   * Update an article
+   * Update an article object
    */
-  async updateArticle(
-    workspacePath: string,
-    articleId: string,
-    updates: Partial<KnowledgeArticle>
-  ): Promise<KnowledgeArticle> {
-    const article = await this.loadArticle(workspacePath, articleId);
-    if (!article) {
-      throw new Error(`Article not found: ${articleId}`);
-    }
-
-    const updatedArticle: KnowledgeArticle = {
+  updateArticle(article: KnowledgeArticle, updates: Partial<KnowledgeArticle>): KnowledgeArticle {
+    return {
       ...article,
       ...updates,
       id: article.id, // Preserve ID
@@ -364,46 +432,12 @@ class KnowledgeService {
       created_at: article.created_at, // Preserve created_at
       updated_at: new Date().toISOString(),
     };
-
-    await this.saveArticle(workspacePath, updatedArticle);
-
-    // Update index if title, type, or status changed
-    if (updates.title || updates.type || updates.status) {
-      const index = await this.loadKnowledgeIndex(workspacePath);
-      if (index) {
-        const entryIndex = index.articles.findIndex((e) => e.id === articleId);
-        const existingEntry = index.articles[entryIndex];
-        if (entryIndex >= 0 && existingEntry) {
-          index.articles[entryIndex] = {
-            ...existingEntry,
-            title: updatedArticle.title,
-            type: updatedArticle.type,
-            status: updatedArticle.status,
-            updated_at: updatedArticle.updated_at,
-            published_at: updatedArticle.published_at,
-          };
-          index.last_updated = updatedArticle.updated_at;
-          await this.saveKnowledgeIndex(workspacePath, index);
-        }
-      }
-    }
-
-    return updatedArticle;
   }
 
   /**
    * Change article status with validation
    */
-  async changeStatus(
-    workspacePath: string,
-    articleId: string,
-    newStatus: ArticleStatus
-  ): Promise<KnowledgeArticle> {
-    const article = await this.loadArticle(workspacePath, articleId);
-    if (!article) {
-      throw new Error(`Article not found: ${articleId}`);
-    }
-
+  changeStatus(article: KnowledgeArticle, newStatus: ArticleStatus): KnowledgeArticle {
     if (!isValidArticleStatusTransition(article.status, newStatus)) {
       throw new Error(`Invalid status transition from ${article.status} to ${newStatus}`);
     }
@@ -425,69 +459,24 @@ class KnowledgeService {
       updates.archived_at = new Date().toISOString();
     }
 
-    return this.updateArticle(workspacePath, articleId, updates);
+    return this.updateArticle(article, updates);
   }
 
   /**
-   * Delete an article
+   * Create a knowledge index entry from an article
    */
-  async deleteArticle(_workspacePath: string, _articleId: string): Promise<void> {
-    // For now, we don't have a delete method in SDK
-    throw new Error('Delete operation not yet supported');
-  }
-
-  /**
-   * Save the knowledge index
-   */
-  async saveKnowledgeIndex(workspacePath: string, index: KnowledgeIndex): Promise<void> {
-    if (!this.isSupported()) {
-      throw new Error('Knowledge features require SDK 1.13.1+');
-    }
-
-    const sdk = await sdkLoader.load();
-    if (!sdk.save_knowledge_index) {
-      throw new Error('save_knowledge_index method not available in SDK');
-    }
-
-    try {
-      const indexJson = JSON.stringify(index);
-      const resultJson = sdk.save_knowledge_index(indexJson, workspacePath);
-      const result = JSON.parse(resultJson);
-
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to save knowledge index');
-      }
-    } catch (error) {
-      console.error('[KnowledgeService] Failed to save knowledge index:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Export an article to markdown
-   */
-  async exportToMarkdown(workspacePath: string, articleId: string): Promise<string> {
-    const article = await this.loadArticle(workspacePath, articleId);
-    if (!article) {
-      throw new Error(`Article not found: ${articleId}`);
-    }
-
-    // Try SDK export first
-    if (this.isSupported()) {
-      const sdk = await sdkLoader.load();
-      if (sdk.export_knowledge_markdown) {
-        try {
-          const articleJson = JSON.stringify(article);
-          const markdown = sdk.export_knowledge_markdown(articleJson);
-          return markdown;
-        } catch {
-          console.warn('[KnowledgeService] SDK markdown export failed, using fallback');
-        }
-      }
-    }
-
-    // Fallback to client-side markdown generation
-    return this.generateMarkdown(article);
+  createIndexEntry(article: KnowledgeArticle): KnowledgeIndexEntry {
+    return {
+      id: article.id,
+      number: article.number,
+      title: article.title,
+      type: article.type,
+      status: article.status,
+      domain_id: article.domain_id,
+      created_at: article.created_at,
+      updated_at: article.updated_at,
+      published_at: article.published_at,
+    };
   }
 
   /**
@@ -537,32 +526,29 @@ class KnowledgeService {
   /**
    * Get articles by type
    */
-  async getArticlesByType(workspacePath: string, type: ArticleType): Promise<KnowledgeArticle[]> {
-    return this.filterKnowledge(workspacePath, { type: [type] });
+  getArticlesByType(articles: KnowledgeArticle[], type: ArticleType): KnowledgeArticle[] {
+    return this.filterKnowledge(articles, { type: [type] });
   }
 
   /**
    * Get articles by status
    */
-  async getArticlesByStatus(
-    workspacePath: string,
-    status: ArticleStatus
-  ): Promise<KnowledgeArticle[]> {
-    return this.filterKnowledge(workspacePath, { status: [status] });
+  getArticlesByStatus(articles: KnowledgeArticle[], status: ArticleStatus): KnowledgeArticle[] {
+    return this.filterKnowledge(articles, { status: [status] });
   }
 
   /**
    * Get published articles
    */
-  async getPublishedArticles(workspacePath: string): Promise<KnowledgeArticle[]> {
-    return this.getArticlesByStatus(workspacePath, ArticleStatus.Published);
+  getPublishedArticles(articles: KnowledgeArticle[]): KnowledgeArticle[] {
+    return this.getArticlesByStatus(articles, ArticleStatus.Published);
   }
 
   /**
    * Get draft articles
    */
-  async getDraftArticles(workspacePath: string): Promise<KnowledgeArticle[]> {
-    return this.getArticlesByStatus(workspacePath, ArticleStatus.Draft);
+  getDraftArticles(articles: KnowledgeArticle[]): KnowledgeArticle[] {
+    return this.getArticlesByStatus(articles, ArticleStatus.Draft);
   }
 }
 

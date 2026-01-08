@@ -95,10 +95,7 @@ export const KnowledgePanel: React.FC<KnowledgePanelProps> = ({
         <div className="flex-1 overflow-hidden">
           {mode === 'search' ? (
             <div className="p-4 h-full overflow-y-auto">
-              <KnowledgeSearch
-                workspacePath={workspacePath}
-                onSelectArticle={handleSelectArticle}
-              />
+              <KnowledgeSearch onSelectArticle={handleSelectArticle} />
             </div>
           ) : (
             <KnowledgeList

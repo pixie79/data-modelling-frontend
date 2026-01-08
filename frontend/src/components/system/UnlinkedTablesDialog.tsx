@@ -22,7 +22,7 @@ export const UnlinkedTablesDialog: React.FC<UnlinkedTablesDialogProps> = ({
 }) => {
   const { tables, systems, updateSystem } = useModelStore();
   const { addToast } = useUIStore();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   const [_selectedTableId, _setSelectedTableId] = useState<string | null>(null);
   const [showCreateSystemDialog, setShowCreateSystemDialog] = useState(false);
   const [creatingSystemForTable, setCreatingSystemForTable] = useState<string | null>(null);

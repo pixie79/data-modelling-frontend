@@ -15,15 +15,32 @@ import type {
   Workspace,
   WorkspaceV2,
   DomainV2,
+  SystemV2,
+  RelationshipV2,
   CategorizedFiles,
   DomainFiles,
 } from '@/types/workspace';
 import type { Domain } from '@/types/domain';
+import type { System } from '@/types/system';
 import type { Table } from '@/types/table';
+import type { Relationship } from '@/types/relationship';
 import type { DataProduct } from '@/types/odps';
 import type { ComputeAsset } from '@/types/cads';
 import type { BPMNProcess } from '@/types/bpmn';
 import type { DMNDecision } from '@/types/dmn';
+
+/**
+ * Result of loading a domain with all its resources
+ */
+interface DomainLoadResult {
+  domain: Domain;
+  tables: Table[];
+  products: DataProduct[];
+  assets: ComputeAsset[];
+  processes: BPMNProcess[];
+  decisions: DMNDecision[];
+  systems: System[];
+}
 
 export class WorkspaceV2Loader {
   /**
@@ -45,6 +62,7 @@ export class WorkspaceV2Loader {
 
     // SDK schema uses flat structure with 'name' at root level
     const workspaceName = workspaceV2.name;
+    const workspaceId = workspaceV2.id;
     console.log('[WorkspaceV2Loader] Loaded workspace.yaml:', workspaceName);
 
     // 2. Categorize remaining files by pattern
@@ -59,18 +77,106 @@ export class WorkspaceV2Loader {
       dmn: categorized.dmn.length,
     });
 
-    // 3. Load each domain's resources
+    // 3. Load each domain's resources - collect all resources
     const domainsSpec = workspaceV2.domains || [];
-    const domains: Domain[] = await Promise.all(
+    const domainResults: DomainLoadResult[] = await Promise.all(
       domainsSpec.map(async (domainSpec) => {
-        return await this.loadDomain(domainSpec, workspaceName, fileArray, categorized);
+        return await this.loadDomain(
+          domainSpec,
+          workspaceName,
+          workspaceId,
+          fileArray,
+          categorized
+        );
       })
     );
 
-    // 4. Convert WorkspaceV2 to internal Workspace format
-    const workspace = FileMigration.convertToInternalFormat(workspaceV2, domains);
+    // 4. Aggregate all resources from all domains
+    const domains: Domain[] = [];
+    const allTables: Table[] = [];
+    const allProducts: DataProduct[] = [];
+    const allAssets: ComputeAsset[] = [];
+    const allProcesses: BPMNProcess[] = [];
+    const allDecisions: DMNDecision[] = [];
+    const allSystems: System[] = [];
+
+    for (const result of domainResults) {
+      domains.push(result.domain);
+      allTables.push(...result.tables);
+      allProducts.push(...result.products);
+      allAssets.push(...result.assets);
+      allProcesses.push(...result.processes);
+      allDecisions.push(...result.decisions);
+      allSystems.push(...result.systems);
+    }
+
+    // 5. Load relationships from workspace.yaml (SDK schema stores them at workspace level)
+    const allRelationships: Relationship[] = this.loadRelationships(
+      workspaceV2.relationships || [],
+      workspaceId
+    );
+
+    // 6. Build workspace object with all resources attached (like V1 loader does)
+    const workspace: Workspace & {
+      tables?: Table[];
+      relationships?: Relationship[];
+      systems?: System[];
+      products?: DataProduct[];
+      assets?: ComputeAsset[];
+      bpmnProcesses?: BPMNProcess[];
+      dmnDecisions?: DMNDecision[];
+    } = {
+      id: workspaceId,
+      name: workspaceName,
+      owner_id: workspaceV2.owner_id || 'offline-user',
+      created_at: workspaceV2.created_at || new Date().toISOString(),
+      last_modified_at: workspaceV2.last_modified_at || new Date().toISOString(),
+      domains,
+    };
+
+    // Attach all loaded resources to workspace
+    if (allTables.length > 0) {
+      workspace.tables = allTables;
+      console.log(`[WorkspaceV2Loader] Added ${allTables.length} table(s) to workspace`);
+    }
+    if (allRelationships.length > 0) {
+      workspace.relationships = allRelationships;
+      console.log(
+        `[WorkspaceV2Loader] Added ${allRelationships.length} relationship(s) to workspace`
+      );
+    }
+    if (allSystems.length > 0) {
+      workspace.systems = allSystems;
+      console.log(`[WorkspaceV2Loader] Added ${allSystems.length} system(s) to workspace`);
+    }
+    if (allProducts.length > 0) {
+      workspace.products = allProducts;
+      console.log(`[WorkspaceV2Loader] Added ${allProducts.length} product(s) to workspace`);
+    }
+    if (allAssets.length > 0) {
+      workspace.assets = allAssets;
+      console.log(`[WorkspaceV2Loader] Added ${allAssets.length} asset(s) to workspace`);
+    }
+    if (allProcesses.length > 0) {
+      workspace.bpmnProcesses = allProcesses;
+      console.log(`[WorkspaceV2Loader] Added ${allProcesses.length} BPMN process(es) to workspace`);
+    }
+    if (allDecisions.length > 0) {
+      workspace.dmnDecisions = allDecisions;
+      console.log(`[WorkspaceV2Loader] Added ${allDecisions.length} DMN decision(s) to workspace`);
+    }
 
     console.log('[WorkspaceV2Loader] Loaded workspace with', domains.length, 'domains');
+    console.log('[WorkspaceV2Loader] Workspace summary:', {
+      domains: domains.length,
+      tables: allTables.length,
+      relationships: allRelationships.length,
+      systems: allSystems.length,
+      products: allProducts.length,
+      assets: allAssets.length,
+      bpmnProcesses: allProcesses.length,
+      dmnDecisions: allDecisions.length,
+    });
 
     return workspace;
   }
@@ -81,9 +187,10 @@ export class WorkspaceV2Loader {
   private static async loadDomain(
     domainSpec: DomainV2,
     workspaceName: string,
+    workspaceId: string,
     fileArray: File[],
     categorized: CategorizedFiles
-  ): Promise<Domain> {
+  ): Promise<DomainLoadResult> {
     // Filter files for this domain
     const domainFiles = this.filterFilesByDomain(
       fileArray,
@@ -101,7 +208,7 @@ export class WorkspaceV2Loader {
     });
 
     // Load tables
-    const tables = await this.loadTables(domainFiles.odcs, domainSpec);
+    const tables = await this.loadTables(domainFiles.odcs, domainSpec, workspaceId);
 
     // Load products
     const products = await this.loadProducts(domainFiles.odps, domainSpec);
@@ -115,15 +222,18 @@ export class WorkspaceV2Loader {
     // Load decisions
     const decisions = await this.loadDecisions(domainFiles.dmn, domainSpec);
 
+    // Convert systems from DomainV2 format to System format
+    const systems = this.loadSystems(domainSpec.systems || [], domainSpec.id, workspaceId, tables);
+
     // Construct Domain object (SDK schema has simpler DomainV2 structure)
     const domain: Domain = {
       id: domainSpec.id,
-      workspace_id: '', // Will be set by parent
+      workspace_id: workspaceId,
       name: domainSpec.name,
       description: domainSpec.description,
       created_at: new Date().toISOString(),
       last_modified_at: new Date().toISOString(),
-      systems: domainSpec.systems?.map((s) => s.id),
+      systems: systems.map((s) => s.id),
       tables: tables.map((t) => t.id),
       products: products.map((p) => p.id),
       assets: assets.map((a) => a.id),
@@ -131,7 +241,115 @@ export class WorkspaceV2Loader {
       decisions: decisions.map((d) => d.id),
     };
 
-    return domain;
+    return {
+      domain,
+      tables,
+      products,
+      assets,
+      processes,
+      decisions,
+      systems,
+    };
+  }
+
+  /**
+   * Load systems from workspace.yaml domain spec
+   */
+  private static loadSystems(
+    systemSpecs: SystemV2[],
+    domainId: string,
+    _workspaceId: string,
+    tables: Table[]
+  ): System[] {
+    const systems: System[] = [];
+
+    for (const spec of systemSpecs) {
+      // Find tables that belong to this system (by metadata.system_id or naming convention)
+      const systemTables = tables.filter((t) => {
+        // Check if table has system_id in metadata
+        const tableSystemId = (t as any).metadata?.system_id;
+        if (tableSystemId === spec.id) {
+          return true;
+        }
+        // Fallback: check if table name contains system name
+        const tableName = t.name?.toLowerCase() || '';
+        const systemName = spec.name?.toLowerCase() || '';
+        return tableName.includes(systemName) || systemName.includes(tableName);
+      });
+
+      const system: System = {
+        id: spec.id,
+        name: spec.name,
+        description: spec.description,
+        domain_id: domainId,
+        system_type: 'database', // Default system type
+        table_ids: systemTables.map((t) => t.id),
+        created_at: new Date().toISOString(),
+        last_modified_at: new Date().toISOString(),
+      };
+
+      // Update tables with system linkage
+      for (const table of systemTables) {
+        (table as any).primary_system_id = spec.id;
+      }
+
+      systems.push(system);
+      console.log(
+        `[WorkspaceV2Loader] Loaded system "${spec.name}" with ${systemTables.length} table(s)`
+      );
+    }
+
+    return systems;
+  }
+
+  /**
+   * Load relationships from workspace.yaml
+   */
+  private static loadRelationships(
+    relationshipSpecs: RelationshipV2[],
+    workspaceId: string
+  ): Relationship[] {
+    return relationshipSpecs.map((spec) => {
+      // Map cardinality to source/target cardinality
+      let sourceCardinality: '0' | '1' | 'N' = '1';
+      let targetCardinality: '0' | '1' | 'N' = '1';
+
+      if (spec.cardinality === 'one_to_many') {
+        targetCardinality = 'N';
+      } else if (spec.cardinality === 'many_to_many') {
+        sourceCardinality = 'N';
+        targetCardinality = 'N';
+      }
+
+      // Map relationship_type to RelationshipType
+      let relType: 'one-to-one' | 'one-to-many' | 'many-to-many' = 'one-to-many';
+      if (spec.cardinality === 'one_to_one') {
+        relType = 'one-to-one';
+      } else if (spec.cardinality === 'many_to_many') {
+        relType = 'many-to-many';
+      }
+
+      return {
+        id: spec.id,
+        workspace_id: workspaceId,
+        domain_id: '', // Will be determined by the tables' domain
+        source_id: spec.source_table_id,
+        target_id: spec.target_table_id,
+        source_type: 'table' as const,
+        target_type: 'table' as const,
+        source_table_id: spec.source_table_id,
+        target_table_id: spec.target_table_id,
+        type: relType,
+        source_cardinality: sourceCardinality,
+        target_cardinality: targetCardinality,
+        description: spec.notes,
+        color: spec.color,
+        model_type: 'physical' as const,
+        is_circular: false,
+        created_at: new Date().toISOString(),
+        last_modified_at: new Date().toISOString(),
+      };
+    });
   }
 
   /**
@@ -163,7 +381,11 @@ export class WorkspaceV2Loader {
   /**
    * Load ODCS tables from files
    */
-  private static async loadTables(files: File[], domainSpec: DomainV2): Promise<Table[]> {
+  private static async loadTables(
+    files: File[],
+    domainSpec: DomainV2,
+    workspaceId: string
+  ): Promise<Table[]> {
     const tables: Table[] = [];
 
     for (const file of files) {
@@ -177,6 +399,8 @@ export class WorkspaceV2Loader {
           if (workspace.tables && Array.isArray(workspace.tables) && workspace.tables.length > 0) {
             const table = workspace.tables[0];
             table.primary_domain_id = domainSpec.id;
+            table.workspace_id = workspaceId;
+            table.visible_domains = [domainSpec.id];
             tables.push(table);
           }
         }

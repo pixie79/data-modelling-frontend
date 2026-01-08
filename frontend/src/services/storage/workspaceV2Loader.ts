@@ -268,6 +268,11 @@ export class WorkspaceV2Loader {
       const systemTables = tables.filter((t) => {
         // Check if table has system_id in metadata
         const tableSystemId = (t as any).metadata?.system_id;
+        if (tableSystemId) {
+          console.log(
+            `[WorkspaceV2Loader] Table "${t.name}" has metadata.system_id="${tableSystemId}", comparing with spec.id="${spec.id}"`
+          );
+        }
         if (tableSystemId === spec.id) {
           return true;
         }

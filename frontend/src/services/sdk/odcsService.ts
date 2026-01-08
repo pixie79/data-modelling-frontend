@@ -1282,6 +1282,16 @@ class ODCSService {
     if (item.quality_tier) metadata.quality_tier = item.quality_tier;
     if (item.data_modeling_method) metadata.data_modeling_method = item.data_modeling_method;
 
+    // Convert customProperties array to metadata object (ODCS v3.1.0 format)
+    // customProperties: [{ property: "system_id", value: "js-system-duckdb" }]
+    if (item.customProperties && Array.isArray(item.customProperties)) {
+      for (const prop of item.customProperties) {
+        if (prop.property && prop.value !== undefined) {
+          metadata[prop.property] = prop.value;
+        }
+      }
+    }
+
     // Apply ODCL table-level metadata if provided
     let finalDescription = item.description || item.info?.description;
     if (odclTableMetadata) {

@@ -8,6 +8,8 @@ import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { workspaceService } from '@/services/api/workspaceService';
 import { useUIStore } from '@/stores/uiStore';
 import type { Workspace } from '@/types/workspace';
+import { AutoSaveSettings } from '@/components/settings/AutoSaveSettings';
+import { DatabaseSettings } from '@/components/settings/DatabaseSettings';
 
 export interface WorkspaceSettingsProps {
   workspaceId: string;
@@ -19,7 +21,10 @@ export interface Collaborator {
   access_level: 'read' | 'edit';
 }
 
-export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({ workspaceId, className = '' }) => {
+export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({
+  workspaceId,
+  className = '',
+}) => {
   const { workspaces, updateWorkspaceRemote } = useWorkspaceStore();
   const { addToast } = useUIStore();
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
@@ -37,9 +42,8 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({ workspaceI
     }
 
     // Load collaborators (if needed in future)
-    if (false) { // Disabled - offline mode only
-      loadCollaborators();
-    }
+    // Disabled - offline mode only
+    // loadCollaborators();
   }, [workspaceId, workspaces]);
 
   const loadCollaborators = async () => {
@@ -63,7 +67,7 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({ workspaceI
         type: 'success',
         message: 'Workspace name updated',
       });
-    } catch (error) {
+    } catch {
       addToast({
         type: 'error',
         message: 'Failed to update workspace name',
@@ -74,7 +78,6 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({ workspaceI
     }
   };
 
-
   const handleAddCollaborator = async () => {
     if (!newCollaboratorEmail.trim()) {
       return;
@@ -82,14 +85,18 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({ workspaceI
 
     setIsLoading(true);
     try {
-      await workspaceService.addCollaborator(workspaceId, newCollaboratorEmail, newCollaboratorAccess);
+      await workspaceService.addCollaborator(
+        workspaceId,
+        newCollaboratorEmail,
+        newCollaboratorAccess
+      );
       addToast({
         type: 'success',
         message: 'Collaborator added',
       });
       setNewCollaboratorEmail('');
       await loadCollaborators();
-    } catch (error) {
+    } catch {
       addToast({
         type: 'error',
         message: 'Failed to add collaborator',
@@ -108,7 +115,7 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({ workspaceI
         message: 'Collaborator removed',
       });
       await loadCollaborators();
-    } catch (error) {
+    } catch {
       addToast({
         type: 'error',
         message: 'Failed to remove collaborator',
@@ -127,7 +134,7 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({ workspaceI
         message: 'Collaborator access updated',
       });
       await loadCollaborators();
-    } catch (error) {
+    } catch {
       addToast({
         type: 'error',
         message: 'Failed to update collaborator access',
@@ -183,7 +190,20 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({ workspaceI
           </div>
         )}
 
+        {/* Auto-Save Settings */}
+        <div className="mb-6 border-t pt-6">
+          <AutoSaveSettings />
+        </div>
+
+        {/* Database Settings (SDK 1.13.1+) */}
+        {workspace.domains && workspace.domains[0]?.workspace_path && (
+          <div className="mb-6 border-t pt-6">
+            <DatabaseSettings workspacePath={workspace.domains[0].workspace_path} />
+          </div>
+        )}
+
         {/* Collaborators Section (disabled - offline mode only) */}
+        {/* eslint-disable-next-line no-constant-binary-expression */}
         {false && (
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Collaborators</h3>
@@ -226,7 +246,10 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({ workspaceI
                     <select
                       value={collaborator.access_level}
                       onChange={(e) =>
-                        handleUpdateCollaboratorAccess(collaborator.email, e.target.value as 'read' | 'edit')
+                        handleUpdateCollaboratorAccess(
+                          collaborator.email,
+                          e.target.value as 'read' | 'edit'
+                        )
                       }
                       disabled={isLoading}
                       className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -240,7 +263,12 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({ workspaceI
                       className="text-red-600 hover:text-red-800"
                       aria-label={`Remove ${collaborator.email}`}
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
                         <path
                           strokeLinecap="round"
                           strokeLinejoin="round"
@@ -259,4 +287,3 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({ workspaceI
     </div>
   );
 };
-

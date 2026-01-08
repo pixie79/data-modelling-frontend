@@ -18,7 +18,13 @@ export interface ColumnDetailsModalProps {
 }
 
 export interface QualityRule {
-  type: 'duplicate_count' | 'valid_values' | 'string_constraints' | 'numeric_constraints' | 'pattern' | 'format';
+  type:
+    | 'duplicate_count'
+    | 'valid_values'
+    | 'string_constraints'
+    | 'numeric_constraints'
+    | 'pattern'
+    | 'format';
   enabled: boolean;
   value?: string | number | string[];
   minLength?: number;
@@ -43,37 +49,67 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
   const [metadata, setMetadata] = useState<Record<string, unknown>>({});
   const [isSaving, setIsSaving] = useState(false);
 
-  // Initialize from column constraints, quality_rules, and metadata
+  // Initialize from column constraints, quality_rules, quality, and metadata
   useEffect(() => {
     console.log('[ColumnDetailsModal] Initializing with column:', {
       name: column.name,
       description: column.description,
       constraints: column.constraints,
       quality_rules: column.quality_rules,
+      quality: (column as any).quality, // Raw SDK quality array
     });
-    
+
     // Combine constraints and quality_rules
-    const allConstraints = {
+    const allConstraints: Record<string, unknown> = {
       ...(column.constraints || {}),
     };
-    
-    // Handle quality array format (ODCL) - extract rules from array
-    if (Array.isArray(column.quality_rules)) {
-      console.log('[ColumnDetailsModal] Processing quality_rules array:', column.quality_rules);
-      column.quality_rules.forEach((qualityRule: any) => {
+
+    // Helper to extract quality rules from great-expectations format
+    const extractFromQualityArray = (qualityArray: unknown[]) => {
+      qualityArray.forEach((qualityRule: any) => {
         if (qualityRule.implementation && qualityRule.implementation.kwargs) {
           // Extract value_set from great-expectations format
-          if (qualityRule.implementation.kwargs.value_set && Array.isArray(qualityRule.implementation.kwargs.value_set)) {
+          if (
+            qualityRule.implementation.kwargs.value_set &&
+            Array.isArray(qualityRule.implementation.kwargs.value_set)
+          ) {
             allConstraints.validValues = qualityRule.implementation.kwargs.value_set;
-            console.log('[ColumnDetailsModal] Extracted validValues:', allConstraints.validValues);
+            console.log(
+              '[ColumnDetailsModal] Extracted validValues from quality:',
+              allConstraints.validValues
+            );
+          }
+          // Extract min/max values
+          if (qualityRule.implementation.kwargs.min_value !== undefined) {
+            allConstraints.minimum = qualityRule.implementation.kwargs.min_value;
+          }
+          if (qualityRule.implementation.kwargs.max_value !== undefined) {
+            allConstraints.maximum = qualityRule.implementation.kwargs.max_value;
+          }
+          // Extract regex pattern
+          if (qualityRule.implementation.kwargs.regex) {
+            allConstraints.pattern = qualityRule.implementation.kwargs.regex;
           }
         }
       });
+    };
+
+    // Handle quality array format (ODCL) - extract rules from array
+    if (Array.isArray(column.quality_rules)) {
+      console.log('[ColumnDetailsModal] Processing quality_rules array:', column.quality_rules);
+      extractFromQualityArray(column.quality_rules);
     } else if (column.quality_rules && typeof column.quality_rules === 'object') {
       // Handle quality_rules as an object
       Object.assign(allConstraints, column.quality_rules);
     }
-    
+
+    // Also check raw 'quality' array from SDK (ODCL format)
+    const rawQuality = (column as any).quality;
+    if (Array.isArray(rawQuality)) {
+      console.log('[ColumnDetailsModal] Processing raw quality array:', rawQuality);
+      extractFromQualityArray(rawQuality);
+    }
+
     // Also check constraints for validValues
     if (column.constraints) {
       if (column.constraints.validValues) {
@@ -83,13 +119,13 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
         allConstraints.validValues = column.constraints.valid_values;
       }
     }
-    
+
     console.log('[ColumnDetailsModal] All constraints after processing:', allConstraints);
-    
+
     if (Object.keys(allConstraints).length > 0) {
       // Parse quality rules from constraints
       const rules: QualityRule[] = [];
-      
+
       if (allConstraints.minLength !== undefined || allConstraints.maxLength !== undefined) {
         rules.push({
           type: 'string_constraints',
@@ -98,7 +134,7 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
           maxLength: allConstraints.maxLength as number,
         });
       }
-      
+
       if (allConstraints.pattern) {
         rules.push({
           type: 'pattern',
@@ -106,7 +142,7 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
           pattern: allConstraints.pattern as string,
         });
       }
-      
+
       if (allConstraints.format) {
         rules.push({
           type: 'format',
@@ -114,7 +150,7 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
           format: allConstraints.format as QualityRule['format'],
         });
       }
-      
+
       if (allConstraints.minimum !== undefined || allConstraints.maximum !== undefined) {
         rules.push({
           type: 'numeric_constraints',
@@ -123,11 +159,13 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
           maximum: allConstraints.maximum as number,
         });
       }
-      
+
       if (allConstraints.validValues || allConstraints.valid_values) {
-        const validValuesArray = Array.isArray(allConstraints.validValues) 
-          ? allConstraints.validValues 
-          : (Array.isArray(allConstraints.valid_values) ? allConstraints.valid_values : []);
+        const validValuesArray = Array.isArray(allConstraints.validValues)
+          ? allConstraints.validValues
+          : Array.isArray(allConstraints.valid_values)
+            ? allConstraints.valid_values
+            : [];
         if (validValuesArray.length > 0) {
           rules.push({
             type: 'valid_values',
@@ -136,26 +174,44 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
           });
         }
       }
-      
+
       setQualityRules(rules);
     }
-    
+
     // Extract description from column or constraints
     if (column.description) {
       setDescription(column.description);
-      console.log('[ColumnDetailsModal] Set description from column.description:', column.description);
+      console.log(
+        '[ColumnDetailsModal] Set description from column.description:',
+        column.description
+      );
     } else if (allConstraints.description) {
       setDescription(allConstraints.description as string);
-      console.log('[ColumnDetailsModal] Set description from constraints:', allConstraints.description);
+      console.log(
+        '[ColumnDetailsModal] Set description from constraints:',
+        allConstraints.description
+      );
     } else {
       console.warn('[ColumnDetailsModal] No description found for column:', column.name);
     }
-    
+
     // Store other metadata
     const otherMetadata: Record<string, unknown> = {};
     if (Object.keys(allConstraints).length > 0) {
       Object.keys(allConstraints).forEach((key) => {
-        if (!['minLength', 'maxLength', 'pattern', 'format', 'minimum', 'maximum', 'validValues', 'valid_values', 'description'].includes(key)) {
+        if (
+          ![
+            'minLength',
+            'maxLength',
+            'pattern',
+            'format',
+            'minimum',
+            'maximum',
+            'validValues',
+            'valid_values',
+            'description',
+          ].includes(key)
+        ) {
           otherMetadata[key] = allConstraints[key];
         }
       });
@@ -186,14 +242,14 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
     try {
       // Build constraints object from quality rules
       const constraints: Record<string, unknown> = {};
-      
+
       if (description) {
         constraints.description = description;
       }
-      
+
       qualityRules.forEach((rule) => {
         if (!rule.enabled) return;
-        
+
         switch (rule.type) {
           case 'string_constraints':
             if (rule.minLength !== undefined) constraints.minLength = rule.minLength;
@@ -216,17 +272,17 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
             break;
         }
       });
-      
+
       // Merge with existing metadata
       const updatedConstraints = { ...constraints, ...metadata };
-      
+
       await onSave(column.id, {
         default_value: defaultValue || undefined,
         description: description || undefined,
         constraints: Object.keys(updatedConstraints).length > 0 ? updatedConstraints : undefined,
         quality_rules: Object.keys(updatedConstraints).length > 0 ? updatedConstraints : undefined,
       });
-      
+
       addToast({
         type: 'success',
         message: 'Column details saved successfully',
@@ -256,9 +312,7 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
           <h3 className="text-sm font-semibold text-gray-700 mb-3">Basic Properties</h3>
           <div className="space-y-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Description
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -268,9 +322,7 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Default Value
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Default Value</label>
               <input
                 type="text"
                 value={defaultValue}
@@ -305,7 +357,7 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
               </select>
             </div>
           </div>
-          
+
           {qualityRules.length === 0 ? (
             <p className="text-sm text-gray-500 italic">No quality rules defined</p>
           ) : (
@@ -317,7 +369,9 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
                       <input
                         type="checkbox"
                         checked={rule.enabled}
-                        onChange={(e) => handleUpdateQualityRule(index, { enabled: e.target.checked })}
+                        onChange={(e) =>
+                          handleUpdateQualityRule(index, { enabled: e.target.checked })
+                        }
                         className="rounded"
                       />
                       <span className="text-sm font-medium text-gray-700 capitalize">
@@ -331,7 +385,7 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
                       Remove
                     </button>
                   </div>
-                  
+
                   {rule.type === 'string_constraints' && (
                     <div className="grid grid-cols-2 gap-2 mt-2">
                       <div>
@@ -364,7 +418,7 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
                       </div>
                     </div>
                   )}
-                  
+
                   {rule.type === 'numeric_constraints' && (
                     <div className="grid grid-cols-2 gap-2 mt-2">
                       <div>
@@ -397,20 +451,22 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
                       </div>
                     </div>
                   )}
-                  
+
                   {rule.type === 'pattern' && (
                     <div className="mt-2">
                       <label className="block text-xs text-gray-600 mb-1">Regex Pattern</label>
                       <input
                         type="text"
                         value={rule.pattern || ''}
-                        onChange={(e) => handleUpdateQualityRule(index, { pattern: e.target.value })}
+                        onChange={(e) =>
+                          handleUpdateQualityRule(index, { pattern: e.target.value })
+                        }
                         className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
                         placeholder="^[A-Z]+$"
                       />
                     </div>
                   )}
-                  
+
                   {rule.type === 'format' && (
                     <div className="mt-2">
                       <label className="block text-xs text-gray-600 mb-1">Format</label>
@@ -433,10 +489,12 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
                       </select>
                     </div>
                   )}
-                  
+
                   {rule.type === 'valid_values' && (
                     <div className="mt-2">
-                      <label className="block text-xs text-gray-600 mb-1">Valid Values (comma-separated)</label>
+                      <label className="block text-xs text-gray-600 mb-1">
+                        Valid Values (comma-separated)
+                      </label>
                       <input
                         type="text"
                         value={rule.validValues?.join(', ') || ''}
@@ -480,4 +538,3 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
     </DraggableModal>
   );
 };
-

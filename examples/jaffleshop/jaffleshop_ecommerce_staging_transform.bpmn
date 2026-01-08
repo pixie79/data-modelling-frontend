@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  id="Definitions_StagingTransform"
+                  targetNamespace="http://jaffleshop.example/bpmn">
+
+  <bpmn:process id="js-process-staging-transform" name="Staging Transformation" isExecutable="true">
+    <bpmn:documentation>
+      Silver Layer ETL Process - Transforms raw data into cleaned, standardized staging tables.
+      Applies data quality rules, standardizes formats, and creates surrogate keys.
+      Triggered after Raw Data Ingestion completes.
+    </bpmn:documentation>
+
+    <!-- Start Event -->
+    <bpmn:startEvent id="StartEvent_1" name="Raw Ingestion Complete">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <!-- Stage Customers -->
+    <bpmn:serviceTask id="Task_StageCustomers" name="Stage Customers">
+      <bpmn:documentation>
+        Transform raw_customers to stg_customers:
+        - Rename id to customer_id
+        - Rename name to customer_name
+        - Apply data quality validations
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Stage Locations -->
+    <bpmn:serviceTask id="Task_StageLocations" name="Stage Locations">
+      <bpmn:documentation>
+        Transform raw_stores to stg_locations:
+        - Rename id to location_id
+        - Rename name to location_name
+        - Convert opened_at to opened_date
+        - Standardize tax_rate format
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Stage Products -->
+    <bpmn:serviceTask id="Task_StageProducts" name="Stage Products">
+      <bpmn:documentation>
+        Transform raw_products to stg_products:
+        - Derive product_id from sku
+        - Rename fields with product_ prefix
+        - Calculate is_food_item and is_drink_item flags
+        - Convert price from cents to dollars
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Stage Supplies -->
+    <bpmn:serviceTask id="Task_StageSupplies" name="Stage Supplies">
+      <bpmn:documentation>
+        Transform raw_supplies to stg_supplies:
+        - Rename id to supply_id
+        - Join with stg_products to get product_id
+        - Convert cost from cents to dollars
+        - Rename perishable to is_perishable
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Stage Orders -->
+    <bpmn:serviceTask id="Task_StageOrders" name="Stage Orders">
+      <bpmn:documentation>
+        Transform raw_orders to stg_orders:
+        - Rename id to order_id
+        - Rename customer to customer_id
+        - Rename store_id to location_id
+        - Convert amounts from cents to dollars
+        - Standardize timezone for ordered_at
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:outgoing>Flow_6</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Stage Order Items -->
+    <bpmn:serviceTask id="Task_StageOrderItems" name="Stage Order Items">
+      <bpmn:documentation>
+        Transform raw_items to stg_order_items:
+        - Rename id to order_item_id
+        - Join with stg_products to get product_id from sku
+        - Validate order_id exists in stg_orders
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_6</bpmn:incoming>
+      <bpmn:outgoing>Flow_7</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Data Quality Check -->
+    <bpmn:serviceTask id="Task_DataQuality" name="Run Data Quality Checks">
+      <bpmn:documentation>
+        Execute data quality validations:
+        - Referential integrity checks
+        - Null value validations
+        - Value range validations
+        - Uniqueness constraints
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_7</bpmn:incoming>
+      <bpmn:outgoing>Flow_8</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- End Event -->
+    <bpmn:endEvent id="EndEvent_1" name="Staging Complete">
+      <bpmn:incoming>Flow_8</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- Sequence Flows -->
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="Task_StageCustomers"/>
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_StageCustomers" targetRef="Task_StageLocations"/>
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="Task_StageLocations" targetRef="Task_StageProducts"/>
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="Task_StageProducts" targetRef="Task_StageSupplies"/>
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="Task_StageSupplies" targetRef="Task_StageOrders"/>
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="Task_StageOrders" targetRef="Task_StageOrderItems"/>
+    <bpmn:sequenceFlow id="Flow_7" sourceRef="Task_StageOrderItems" targetRef="Task_DataQuality"/>
+    <bpmn:sequenceFlow id="Flow_8" sourceRef="Task_DataQuality" targetRef="EndEvent_1"/>
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="js-process-staging-transform">
+      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
+        <dc:Bounds x="152" y="102" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_StageCustomers_di" bpmnElement="Task_StageCustomers">
+        <dc:Bounds x="240" y="80" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_StageLocations_di" bpmnElement="Task_StageLocations">
+        <dc:Bounds x="390" y="80" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_StageProducts_di" bpmnElement="Task_StageProducts">
+        <dc:Bounds x="540" y="80" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_StageSupplies_di" bpmnElement="Task_StageSupplies">
+        <dc:Bounds x="690" y="80" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_StageOrders_di" bpmnElement="Task_StageOrders">
+        <dc:Bounds x="840" y="80" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_StageOrderItems_di" bpmnElement="Task_StageOrderItems">
+        <dc:Bounds x="990" y="80" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_DataQuality_di" bpmnElement="Task_DataQuality">
+        <dc:Bounds x="1140" y="80" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_1_di" bpmnElement="EndEvent_1">
+        <dc:Bounds x="1292" y="102" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

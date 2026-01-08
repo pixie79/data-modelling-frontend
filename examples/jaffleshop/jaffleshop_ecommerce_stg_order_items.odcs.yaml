@@ -1,0 +1,45 @@
+version: "1.0.0"
+apiVersion: v3.1.0
+kind: DataContract
+id: js-stg-order-items
+status: active
+name: stg_order_items
+domain: ecommerce
+tenant: jaffleshop
+
+description:
+  purpose: Staged order line items with product references
+
+schema:
+  - name: stg_order_items
+    description: Cleaned and standardized order line items from raw layer
+    physicalName: staging.stg_order_items
+    logicalType: object
+    properties:
+      - name: order_item_id
+        description: Standardized order item identifier
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+        primaryKey: true
+      - name: order_id
+        description: Order identifier (FK to stg_orders)
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+      - name: product_id
+        description: Product identifier (FK to stg_products)
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+
+customProperties:
+  - property: system_id
+    value: js-system-duckdb
+  - property: data_level
+    value: silver
+
+tags:
+  - staging
+  - order_items
+  - silver

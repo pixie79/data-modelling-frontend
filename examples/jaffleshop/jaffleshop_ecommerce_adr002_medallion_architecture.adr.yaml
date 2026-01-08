@@ -1,0 +1,107 @@
+id: js-adr-0002
+number: 2
+title: Adopt Medallion Architecture for Data Layers
+status: accepted
+category: architecture
+context: |
+  As Jaffleshop's data platform grows, we need a consistent approach
+  to organizing data transformations. The current ad-hoc approach leads to:
+
+  - Confusion about which tables are "source of truth"
+  - Duplicate transformations across different pipelines
+  - Difficulty in debugging data quality issues
+  - Unclear ownership of data assets
+
+  We need a layered architecture that provides clear separation of
+  concerns and enables incremental processing.
+
+decision: |
+  We will adopt the Medallion Architecture pattern with three layers:
+
+  1. **Bronze (Raw):** Immutable landing zone for source data
+     - Tables prefixed with `raw_`
+     - No transformations, schema matches source
+     - Full history retained
+
+  2. **Silver (Staging):** Cleaned and validated data
+     - Tables prefixed with `stg_`
+     - Data quality rules applied
+     - Deduplication and standardization
+
+  3. **Gold (Marts):** Business-ready dimensional models
+     - No prefix, business-friendly names
+     - Star schema design
+     - Optimized for analytics
+
+consequences: |
+  **Positive:**
+  - Clear data lineage from source to consumption
+  - Easier debugging with layer isolation
+  - Reusable staging layer across multiple marts
+  - Consistent naming conventions
+  - Incremental processing support
+
+  **Negative:**
+  - More storage due to data duplication
+  - Additional processing steps increase latency
+  - Learning curve for new team members
+
+  **Mitigations:**
+  - Use incremental models to reduce processing time
+  - Document layer responsibilities clearly
+  - Implement storage lifecycle policies
+  - Provide training on medallion architecture
+
+options:
+  - title: Medallion Architecture (Selected)
+    description: Three-layer architecture (Bronze/Silver/Gold)
+    pros:
+      - Industry standard pattern
+      - Clear separation of concerns
+      - Supports incremental processing
+      - Easy to understand and maintain
+    cons:
+      - Storage overhead
+      - Processing latency
+  - title: Lambda Architecture
+    description: Separate batch and real-time paths
+    pros:
+      - Real-time capabilities
+      - Handles late-arriving data
+    cons:
+      - Complex to maintain
+      - Code duplication
+      - Higher operational overhead
+  - title: Kappa Architecture
+    description: Stream-only processing
+    pros:
+      - Simpler than Lambda
+      - Single processing path
+    cons:
+      - Requires streaming infrastructure
+      - Reprocessing challenges
+      - Higher cost for batch workloads
+
+domain_id: js-domain-ecommerce
+workspace_id: js-workspace
+authors:
+  - data-architecture-team@jaffleshop.example
+deciders:
+  - head-of-data@jaffleshop.example
+consulted:
+  - data-engineering@jaffleshop.example
+  - analytics@jaffleshop.example
+informed:
+  - all-engineering@jaffleshop.example
+related_decisions:
+  - js-adr-0001
+related_knowledge:
+  - js-kb-0001
+tags:
+  - name: architecture
+  - name: medallion
+  - name: data-layers
+  - name: patterns
+created_at: "2024-01-11T14:00:00Z"
+updated_at: "2024-01-11T14:00:00Z"
+decided_at: "2024-01-11T14:00:00Z"

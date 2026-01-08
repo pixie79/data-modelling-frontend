@@ -28,6 +28,7 @@ export const DMNEditor: React.FC<DMNEditorProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const modelerRef = useRef<DmnModeler | null>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const { addToast } = useUIStore();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -40,53 +41,57 @@ export const DMNEditor: React.FC<DMNEditorProps> = ({
       return undefined;
     }
 
-    try {
-      const modeler = new DmnModeler({
-        container: containerRef.current,
-        // keyboard.bindTo is deprecated - keyboard binding is now implicit
-      });
+    // Defer initialization to ensure container is fully rendered
+    const timeoutId = setTimeout(() => {
+      if (!containerRef.current) return;
 
-      modelerRef.current = modeler;
+      try {
+        const modeler = new DmnModeler({
+          container: containerRef.current,
+          // keyboard.bindTo is deprecated - keyboard binding is now implicit
+        });
 
-      // Add resize observer to handle container size changes
-      const resizeObserver = new ResizeObserver(() => {
-        // Trigger window resize to ensure dmn-js canvas resizes
-        window.dispatchEvent(new Event('resize'));
-      });
-      
-      resizeObserver.observe(containerRef.current);
+        modelerRef.current = modeler;
 
-      // Import XML if provided
-      if (xml) {
-        modeler
-          .importXML(xml)
-          .then(() => {
-            setIsLoading(false);
-            setError(null);
-            // Resize canvas after import to ensure proper sizing
-            setTimeout(() => {
-              try {
-                // Trigger a resize event to ensure canvas is properly sized
-                window.dispatchEvent(new Event('resize'));
-              } catch (err) {
-                console.debug('Resize event skipped:', err);
-              }
-            }, 100);
-          })
-          .catch((err) => {
-            console.error('Failed to import DMN XML:', err);
-            setError(`Failed to load DMN diagram: ${err.message || 'Unknown error'}`);
-            setIsLoading(false);
-          });
-      } else {
-        // Create empty decision table - use minimal valid DMN 1.3 XML template
-        // Based on dmn-js examples and DMN 1.3 specification
-        // Note: dmn-js expects the root element to be 'definitions' (lowercase) per DMN spec
-        const emptyDMN = `<?xml version="1.0" encoding="UTF-8"?>
-<dmn:definitions xmlns:dmn="https://www.omg.org/spec/DMN/20191111/MODEL/" 
-                 xmlns:dmndi="https://www.omg.org/spec/DMN/20191111/DMNDI/" 
-                 xmlns:dc="https://www.omg.org/spec/DMN/20180521/DC/" 
-                 id="Definitions_1" 
+        // Add resize observer to handle container size changes
+        resizeObserverRef.current = new ResizeObserver(() => {
+          // Trigger window resize to ensure dmn-js canvas resizes
+          window.dispatchEvent(new Event('resize'));
+        });
+
+        resizeObserverRef.current.observe(containerRef.current);
+
+        // Import XML if provided
+        if (xml) {
+          modeler
+            .importXML(xml)
+            .then(() => {
+              setIsLoading(false);
+              setError(null);
+              // Resize canvas after import to ensure proper sizing
+              setTimeout(() => {
+                try {
+                  // Trigger a resize event to ensure canvas is properly sized
+                  window.dispatchEvent(new Event('resize'));
+                } catch (err) {
+                  console.debug('Resize event skipped:', err);
+                }
+              }, 100);
+            })
+            .catch((err) => {
+              console.error('Failed to import DMN XML:', err);
+              setError(`Failed to load DMN diagram: ${err.message || 'Unknown error'}`);
+              setIsLoading(false);
+            });
+        } else {
+          // Create empty decision table - use minimal valid DMN 1.3 XML template
+          // Based on dmn-js examples and DMN 1.3 specification
+          // Note: dmn-js expects the root element to be 'definitions' (lowercase) per DMN spec
+          const emptyDMN = `<?xml version="1.0" encoding="UTF-8"?>
+<dmn:definitions xmlns:dmn="https://www.omg.org/spec/DMN/20191111/MODEL/"
+                 xmlns:dmndi="https://www.omg.org/spec/DMN/20191111/DMNDI/"
+                 xmlns:dc="https://www.omg.org/spec/DMN/20180521/DC/"
+                 id="Definitions_1"
                  name="Definitions"
                  typeLanguage="http://www.omg.org/spec/DMN/20180521/FEEL/">
   <dmn:decision id="Decision_1" name="Decision 1">
@@ -107,45 +112,45 @@ export const DMNEditor: React.FC<DMNEditorProps> = ({
     </dmndi:DMNDiagram>
   </dmndi:DMNDI>
 </dmn:definitions>`;
-        
-        // Validate XML structure before importing
-        try {
-          const parser = new DOMParser();
-          const doc = parser.parseFromString(emptyDMN, 'text/xml');
-          const parseErrors = Array.from(doc.querySelectorAll('parsererror'));
-          if (parseErrors.length > 0) {
-            const errorText = parseErrors.map(e => e.textContent).join('; ');
-            console.error('XML parsing error:', errorText);
-            throw new Error(`Invalid XML structure: ${errorText}`);
-          }
-        } catch (xmlErr) {
-          console.error('XML validation failed:', xmlErr);
-        }
 
-        modeler
-          .importXML(emptyDMN)
-          .then(() => {
-            setIsLoading(false);
-            setError(null);
-            // Resize canvas after import to ensure proper sizing
-            setTimeout(() => {
-              try {
-                // Trigger a resize event to ensure canvas is properly sized
-                window.dispatchEvent(new Event('resize'));
-              } catch (err) {
-                console.debug('Resize event skipped:', err);
-              }
-            }, 100);
-          })
-          .catch((err: any) => {
-            console.error('Failed to create empty diagram:', err);
-            console.error('Template XML:', emptyDMN);
-            // Try alternative template with different namespace format
-            const alternativeDMN = `<?xml version="1.0" encoding="UTF-8"?>
-<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/" 
-             xmlns:dmndi="https://www.omg.org/spec/DMN/20191111/DMNDI/" 
-             xmlns:dc="https://www.omg.org/spec/DMN/20180521/DC/" 
-             id="Definitions_1" 
+          // Validate XML structure before importing
+          try {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(emptyDMN, 'text/xml');
+            const parseErrors = Array.from(doc.querySelectorAll('parsererror'));
+            if (parseErrors.length > 0) {
+              const errorText = parseErrors.map((e) => e.textContent).join('; ');
+              console.error('XML parsing error:', errorText);
+              throw new Error(`Invalid XML structure: ${errorText}`);
+            }
+          } catch (xmlErr) {
+            console.error('XML validation failed:', xmlErr);
+          }
+
+          modeler
+            .importXML(emptyDMN)
+            .then(() => {
+              setIsLoading(false);
+              setError(null);
+              // Resize canvas after import to ensure proper sizing
+              setTimeout(() => {
+                try {
+                  // Trigger a resize event to ensure canvas is properly sized
+                  window.dispatchEvent(new Event('resize'));
+                } catch (err) {
+                  console.debug('Resize event skipped:', err);
+                }
+              }, 100);
+            })
+            .catch((err: any) => {
+              console.error('Failed to create empty diagram:', err);
+              console.error('Template XML:', emptyDMN);
+              // Try alternative template with different namespace format
+              const alternativeDMN = `<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/"
+             xmlns:dmndi="https://www.omg.org/spec/DMN/20191111/DMNDI/"
+             xmlns:dc="https://www.omg.org/spec/DMN/20180521/DC/"
+             id="Definitions_1"
              name="Definitions">
   <decision id="Decision_1" name="Decision 1">
     <decisionTable id="DecisionTable_1" hitPolicy="UNIQUE">
@@ -165,20 +170,23 @@ export const DMNEditor: React.FC<DMNEditorProps> = ({
     </dmndi:DMNDiagram>
   </dmndi:DMNDI>
 </definitions>`;
-            modeler
-              .importXML(alternativeDMN)
-              .then(() => {
-                setIsLoading(false);
-                setError(null);
-              })
-              .catch((fallbackErr: any) => {
-                console.error('Failed to create empty diagram with alternative template:', fallbackErr);
-                // Last resort: use absolute minimal template based on DMN 1.3 spec
-                const minimalDMN = `<?xml version="1.0" encoding="UTF-8"?>
-<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/" 
-             xmlns:dmndi="https://www.omg.org/spec/DMN/20191111/DMNDI/" 
-             xmlns:dc="https://www.omg.org/spec/DMN/20180521/DC/" 
-             id="definitions" 
+              modeler
+                .importXML(alternativeDMN)
+                .then(() => {
+                  setIsLoading(false);
+                  setError(null);
+                })
+                .catch((fallbackErr: any) => {
+                  console.error(
+                    'Failed to create empty diagram with alternative template:',
+                    fallbackErr
+                  );
+                  // Last resort: use absolute minimal template based on DMN 1.3 spec
+                  const minimalDMN = `<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/"
+             xmlns:dmndi="https://www.omg.org/spec/DMN/20191111/DMNDI/"
+             xmlns:dc="https://www.omg.org/spec/DMN/20180521/DC/"
+             id="definitions"
              name="definitions">
   <decision id="decision" name="Decision">
     <decisionTable id="decisionTable" hitPolicy="UNIQUE">
@@ -198,47 +206,56 @@ export const DMNEditor: React.FC<DMNEditorProps> = ({
     </dmndi:DMNDiagram>
   </dmndi:DMNDI>
 </definitions>`;
-                modeler
-                  .importXML(minimalDMN)
-                  .then(() => {
-                    setIsLoading(false);
-                    setError(null);
-                  })
-                  .catch((minimalErr: any) => {
-                    console.error('Failed to create empty diagram with minimal template:', minimalErr);
-                    setError(`Failed to initialize editor: ${minimalErr.message || 'Unknown error'}. The DMN editor may not be properly configured. Please check the console for details.`);
-                    setIsLoading(false);
-                  });
-              });
-          });
-      }
-
-      // Cleanup on unmount
-      return () => {
-        resizeObserver.disconnect();
-        if (modelerRef.current) {
-          modelerRef.current.destroy();
-          modelerRef.current = null;
+                  modeler
+                    .importXML(minimalDMN)
+                    .then(() => {
+                      setIsLoading(false);
+                      setError(null);
+                    })
+                    .catch((minimalErr: any) => {
+                      console.error(
+                        'Failed to create empty diagram with minimal template:',
+                        minimalErr
+                      );
+                      setError(
+                        `Failed to initialize editor: ${minimalErr.message || 'Unknown error'}. The DMN editor may not be properly configured. Please check the console for details.`
+                      );
+                      setIsLoading(false);
+                    });
+                });
+            });
         }
-      };
-    } catch (err) {
-      console.error('Failed to initialize DMN modeler:', err);
-      setError(`Failed to initialize editor: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      setIsLoading(false);
-      return undefined;
-    }
+      } catch (err) {
+        console.error('Failed to initialize DMN modeler:', err);
+        setError(
+          `Failed to initialize editor: ${err instanceof Error ? err.message : 'Unknown error'}`
+        );
+        setIsLoading(false);
+      }
+    }, 100);
+
+    // Cleanup on unmount
+    return () => {
+      clearTimeout(timeoutId);
+      if (resizeObserverRef.current) {
+        resizeObserverRef.current.disconnect();
+        resizeObserverRef.current = null;
+      }
+      if (modelerRef.current) {
+        modelerRef.current.destroy();
+        modelerRef.current = null;
+      }
+    };
   }, []); // Only run once on mount
 
   // Re-import XML when it changes externally
   useEffect(() => {
     if (!modelerRef.current || !xml) return;
 
-    modelerRef.current
-      .importXML(xml)
-      .catch((err) => {
-        console.error('Failed to re-import DMN XML:', err);
-        setError(`Failed to load DMN diagram: ${err.message || 'Unknown error'}`);
-      });
+    modelerRef.current.importXML(xml).catch((err) => {
+      console.error('Failed to re-import DMN XML:', err);
+      setError(`Failed to load DMN diagram: ${err.message || 'Unknown error'}`);
+    });
   }, [xml]);
 
   const handleSave = async () => {
@@ -298,12 +315,13 @@ export const DMNEditor: React.FC<DMNEditorProps> = ({
       <div className="flex items-center justify-between p-2 bg-gray-100 border-b border-gray-200">
         <div className="flex items-center gap-2 flex-1">
           <h3 className="text-sm font-semibold text-gray-700">DMN Decision Editor</h3>
-          {isLoading && (
-            <span className="text-xs text-gray-500">Loading...</span>
-          )}
+          {isLoading && <span className="text-xs text-gray-500">Loading...</span>}
           {!readOnly && (
             <div className="flex items-center gap-2 ml-4">
-              <label htmlFor="dmn-decision-name" className="text-xs text-gray-600 whitespace-nowrap">
+              <label
+                htmlFor="dmn-decision-name"
+                className="text-xs text-gray-600 whitespace-nowrap"
+              >
                 Decision Name:
               </label>
               <input
@@ -339,16 +357,7 @@ export const DMNEditor: React.FC<DMNEditorProps> = ({
       </div>
 
       {/* Editor Container */}
-      <div 
-        ref={containerRef} 
-        className="flex-1 min-h-0 overflow-hidden w-full" 
-        style={{ 
-          height: '100%', 
-          minHeight: '400px',
-          position: 'relative',
-        }} 
-      />
+      <div ref={containerRef} className="flex-1 min-h-0" style={{ height: '100%' }} />
     </div>
   );
 };
-

@@ -30,17 +30,10 @@ export const MoveResourcesDialog: React.FC<MoveResourcesDialogProps> = ({
   onClose,
   domainId,
 }) => {
-  const { 
-    tables, 
-    systems, 
-    computeAssets, 
-    domains,
-    updateSystem, 
-    updateTable,
-    updateComputeAsset,
-  } = useModelStore();
+  const { tables, systems, computeAssets, domains, updateSystem, updateTable, updateComputeAsset } =
+    useModelStore();
   const { addToast } = useUIStore();
-  
+
   const [selectedResource, setSelectedResource] = useState<ResourceToMove | null>(null);
   const [targetSystemId, setTargetSystemId] = useState<string>('');
   const [targetDomainId, setTargetDomainId] = useState<string>('');
@@ -48,42 +41,46 @@ export const MoveResourcesDialog: React.FC<MoveResourcesDialogProps> = ({
 
   // Get all systems in current domain
   const domainSystems = useMemo(() => {
-    return systems.filter((s) => s.domain_id === domainId);
+    return systems?.filter((s) => s.domain_id === domainId) ?? [];
   }, [systems, domainId]);
 
   // Get all domains (excluding current)
   const otherDomains = useMemo(() => {
-    return domains.filter((d) => d.id !== domainId);
+    return domains?.filter((d) => d.id !== domainId) ?? [];
   }, [domains, domainId]);
 
   // Get all systems in target domain (when moving between domains)
   const targetDomainSystems = useMemo(() => {
     if (!targetDomainId || targetDomainId === domainId) return [];
-    return systems.filter((s) => s.domain_id === targetDomainId);
+    return systems?.filter((s) => s.domain_id === targetDomainId) ?? [];
   }, [systems, targetDomainId, domainId]);
 
   // Get all tables in current domain
   const domainTables = useMemo(() => {
-    return tables.filter((t) => t.primary_domain_id === domainId);
+    return tables?.filter((t) => t.primary_domain_id === domainId) ?? [];
   }, [tables, domainId]);
 
   // Get all compute assets in current domain
   const domainAssets = useMemo(() => {
-    return computeAssets.filter((a) => a.domain_id === domainId);
+    return computeAssets?.filter((a) => a.domain_id === domainId) ?? [];
   }, [computeAssets, domainId]);
 
   // Find which system a table belongs to
   const getTableSystem = (tableId: string): System | null => {
-    return systems.find((s) => s.table_ids?.includes(tableId)) || null;
+    return systems?.find((s) => s.table_ids?.includes(tableId)) || null;
   };
 
   // Find which system a compute asset belongs to
   const getAssetSystem = (assetId: string): System | null => {
-    return systems.find((s) => s.asset_ids?.includes(assetId)) || null;
+    return systems?.find((s) => s.asset_ids?.includes(assetId)) || null;
   };
 
-  const handleMoveTable = async (tableId: string, targetSystemId: string | null, targetDomainId: string) => {
-    const table = tables.find((t) => t.id === tableId);
+  const handleMoveTable = async (
+    tableId: string,
+    targetSystemId: string | null,
+    targetDomainId: string
+  ) => {
+    const table = tables?.find((t) => t.id === tableId);
     if (!table) return;
 
     // Remove from current system
@@ -95,7 +92,9 @@ export const MoveResourcesDialog: React.FC<MoveResourcesDialogProps> = ({
 
     // Add to target system (if provided and system exists in target domain)
     if (targetSystemId) {
-      const targetSystem = systems.find((s) => s.id === targetSystemId && s.domain_id === targetDomainId);
+      const targetSystem = systems.find(
+        (s) => s.id === targetSystemId && s.domain_id === targetDomainId
+      );
       if (targetSystem) {
         const updatedTableIds = [...(targetSystem.table_ids || []), tableId];
         updateSystem(targetSystemId, { table_ids: updatedTableIds });
@@ -109,7 +108,7 @@ export const MoveResourcesDialog: React.FC<MoveResourcesDialogProps> = ({
       if (!newVisibleDomains.includes(targetDomainId)) {
         newVisibleDomains.push(targetDomainId);
       }
-      
+
       updateTable(tableId, {
         primary_domain_id: targetDomainId,
         visible_domains: newVisibleDomains,
@@ -118,11 +117,15 @@ export const MoveResourcesDialog: React.FC<MoveResourcesDialogProps> = ({
 
     addToast({
       type: 'success',
-      message: `Moved table "${table.name}" ${targetDomainId !== domainId ? `to domain "${domains.find(d => d.id === targetDomainId)?.name || targetDomainId}"` : targetSystemId ? `to system "${systems.find(s => s.id === targetSystemId)?.name || targetSystemId}"` : 'and unlinked from system'}`,
+      message: `Moved table "${table.name}" ${targetDomainId !== domainId ? `to domain "${domains.find((d) => d.id === targetDomainId)?.name || targetDomainId}"` : targetSystemId ? `to system "${systems.find((s) => s.id === targetSystemId)?.name || targetSystemId}"` : 'and unlinked from system'}`,
     });
   };
 
-  const handleMoveComputeAsset = async (assetId: string, targetSystemId: string | null, targetDomainId: string) => {
+  const handleMoveComputeAsset = async (
+    assetId: string,
+    targetSystemId: string | null,
+    targetDomainId: string
+  ) => {
     const asset = computeAssets.find((a) => a.id === assetId);
     if (!asset) return;
 
@@ -135,7 +138,9 @@ export const MoveResourcesDialog: React.FC<MoveResourcesDialogProps> = ({
 
     // Add to target system (if provided and system exists in target domain)
     if (targetSystemId) {
-      const targetSystem = systems.find((s) => s.id === targetSystemId && s.domain_id === targetDomainId);
+      const targetSystem = systems.find(
+        (s) => s.id === targetSystemId && s.domain_id === targetDomainId
+      );
       if (targetSystem) {
         const updatedAssetIds = [...(targetSystem.asset_ids || []), assetId];
         updateSystem(targetSystemId, { asset_ids: updatedAssetIds });
@@ -151,7 +156,7 @@ export const MoveResourcesDialog: React.FC<MoveResourcesDialogProps> = ({
 
     addToast({
       type: 'success',
-      message: `Moved compute asset "${asset.name}" ${targetDomainId !== domainId ? `to domain "${domains.find(d => d.id === targetDomainId)?.name || targetDomainId}"` : targetSystemId ? `to system "${systems.find(s => s.id === targetSystemId)?.name || targetSystemId}"` : 'and unlinked from system'}`,
+      message: `Moved compute asset "${asset.name}" ${targetDomainId !== domainId ? `to domain "${domains.find((d) => d.id === targetDomainId)?.name || targetDomainId}"` : targetSystemId ? `to system "${systems.find((s) => s.id === targetSystemId)?.name || targetSystemId}"` : 'and unlinked from system'}`,
     });
   };
 
@@ -167,14 +172,14 @@ export const MoveResourcesDialog: React.FC<MoveResourcesDialogProps> = ({
     // Move all tables in this system to the new domain
     if (system.table_ids) {
       for (const tableId of system.table_ids) {
-        const table = tables.find((t) => t.id === tableId);
+        const table = tables?.find((t) => t.id === tableId);
         if (table) {
           const visibleDomains = table.visible_domains || [];
           const newVisibleDomains = visibleDomains.filter((d) => d !== domainId);
           if (!newVisibleDomains.includes(targetDomainId)) {
             newVisibleDomains.push(targetDomainId);
           }
-          
+
           updateTable(tableId, {
             primary_domain_id: targetDomainId,
             visible_domains: newVisibleDomains,
@@ -194,7 +199,7 @@ export const MoveResourcesDialog: React.FC<MoveResourcesDialogProps> = ({
 
     addToast({
       type: 'success',
-      message: `Moved system "${system.name}" and all its resources to domain "${domains.find(d => d.id === targetDomainId)?.name || targetDomainId}"`,
+      message: `Moved system "${system.name}" and all its resources to domain "${domains.find((d) => d.id === targetDomainId)?.name || targetDomainId}"`,
     });
   };
 
@@ -289,9 +294,7 @@ export const MoveResourcesDialog: React.FC<MoveResourcesDialogProps> = ({
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">
-              Move Resources
-            </h2>
+            <h2 className="text-xl font-semibold text-gray-900">Move Resources</h2>
             <p className="text-sm text-gray-500 mt-1">
               Move tables, compute assets, or systems between systems and domains
             </p>
@@ -302,7 +305,12 @@ export const MoveResourcesDialog: React.FC<MoveResourcesDialogProps> = ({
             title="Close"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -313,7 +321,7 @@ export const MoveResourcesDialog: React.FC<MoveResourcesDialogProps> = ({
             {/* Left: Select Resource */}
             <div>
               <h3 className="text-lg font-medium text-gray-900 mb-4">Select Resource to Move</h3>
-              
+
               {/* Tables */}
               <div className="mb-6">
                 <h4 className="text-sm font-semibold text-gray-700 mb-2">Tables</h4>
@@ -354,7 +362,8 @@ export const MoveResourcesDialog: React.FC<MoveResourcesDialogProps> = ({
                         key={asset.id}
                         onClick={() => handleSelectAsset(asset)}
                         className={`w-full text-left px-3 py-2 rounded-md border transition-colors ${
-                          selectedResource?.id === asset.id && selectedResource?.type === 'compute-asset'
+                          selectedResource?.id === asset.id &&
+                          selectedResource?.type === 'compute-asset'
                             ? 'border-blue-500 bg-blue-50'
                             : 'border-gray-200 hover:border-gray-300'
                         }`}
@@ -388,7 +397,8 @@ export const MoveResourcesDialog: React.FC<MoveResourcesDialogProps> = ({
                     >
                       <div className="font-medium text-gray-900">{system.name}</div>
                       <div className="text-xs text-gray-500">
-                        {system.table_ids?.length || 0} tables • {system.asset_ids?.length || 0} assets
+                        {system.table_ids?.length || 0} tables • {system.asset_ids?.length || 0}{' '}
+                        assets
                       </div>
                     </button>
                   ))}
@@ -402,7 +412,7 @@ export const MoveResourcesDialog: React.FC<MoveResourcesDialogProps> = ({
             {/* Right: Select Target */}
             <div>
               <h3 className="text-lg font-medium text-gray-900 mb-4">Select Target</h3>
-              
+
               {!selectedResource ? (
                 <div className="text-center py-12 text-gray-400">
                   <p>Select a resource to move</p>
@@ -412,11 +422,17 @@ export const MoveResourcesDialog: React.FC<MoveResourcesDialogProps> = ({
                   {/* Current Resource Info */}
                   <div className="bg-gray-50 rounded-lg p-4">
                     <div className="text-sm font-medium text-gray-700 mb-1">Moving:</div>
-                    <div className="text-lg font-semibold text-gray-900">{selectedResource.name}</div>
+                    <div className="text-lg font-semibold text-gray-900">
+                      {selectedResource.name}
+                    </div>
                     <div className="text-xs text-gray-500 mt-1">
                       Type: {selectedResource.type}
                       {selectedResource.currentSystemId && (
-                        <> • Current System: {systems.find(s => s.id === selectedResource.currentSystemId)?.name}</>
+                        <>
+                          {' '}
+                          • Current System:{' '}
+                          {systems.find((s) => s.id === selectedResource.currentSystemId)?.name}
+                        </>
                       )}
                     </div>
                   </div>
@@ -434,7 +450,9 @@ export const MoveResourcesDialog: React.FC<MoveResourcesDialogProps> = ({
                         setTargetSystemId(''); // Reset system when domain changes
                       }}
                     >
-                      <option value={domainId}>Current Domain ({domains.find(d => d.id === domainId)?.name || domainId})</option>
+                      <option value={domainId}>
+                        Current Domain ({domains.find((d) => d.id === domainId)?.name || domainId})
+                      </option>
                       {otherDomains.map((domain) => (
                         <option key={domain.id} value={domain.id}>
                           {domain.name}
@@ -466,7 +484,8 @@ export const MoveResourcesDialog: React.FC<MoveResourcesDialogProps> = ({
                       </select>
                       {isMovingBetweenDomains && availableSystems.length === 0 && (
                         <p className="text-xs text-yellow-600 mt-1">
-                          No systems in target domain. Resource will be unlinked and can be linked later.
+                          No systems in target domain. Resource will be unlinked and can be linked
+                          later.
                         </p>
                       )}
                     </div>
@@ -476,11 +495,24 @@ export const MoveResourcesDialog: React.FC<MoveResourcesDialogProps> = ({
                   {selectedResource.type === 'system' && (
                     <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                       <div className="flex items-start">
-                        <svg className="w-5 h-5 text-yellow-600 mt-0.5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        <svg
+                          className="w-5 h-5 text-yellow-600 mt-0.5 mr-2"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                          />
                         </svg>
                         <div className="text-sm text-yellow-800">
-                          <strong>Moving a system will move all its tables and compute assets</strong> to the target domain.
+                          <strong>
+                            Moving a system will move all its tables and compute assets
+                          </strong>{' '}
+                          to the target domain.
                         </div>
                       </div>
                     </div>
@@ -501,7 +533,11 @@ export const MoveResourcesDialog: React.FC<MoveResourcesDialogProps> = ({
           </button>
           <button
             onClick={handleMove}
-            disabled={!selectedResource || isMoving || (selectedResource.type === 'system' && !targetDomainId)}
+            disabled={
+              !selectedResource ||
+              isMoving ||
+              (selectedResource.type === 'system' && !targetDomainId)
+            }
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isMoving ? 'Moving...' : 'Move Resource'}
@@ -511,4 +547,3 @@ export const MoveResourcesDialog: React.FC<MoveResourcesDialogProps> = ({
     </div>
   );
 };
-

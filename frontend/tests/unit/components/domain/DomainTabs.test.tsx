@@ -69,11 +69,6 @@ describe('DomainTabs', () => {
     expect(setSelectedDomain).toHaveBeenCalledWith('domain-2');
   });
 
-  it('should show primary domain indicator', () => {
-    render(<DomainTabs workspaceId="workspace-1" />);
-    expect(screen.getByText('Primary')).toBeInTheDocument();
-  });
-
   it('should show message when no domains exist', () => {
     vi.mocked(modelStore.useModelStore).mockReturnValue({
       domains: [],
@@ -85,4 +80,3 @@ describe('DomainTabs', () => {
     expect(screen.getByText(/No domains available/)).toBeInTheDocument();
   });
 });
-

@@ -3,7 +3,7 @@
  * React hook for managing collaboration features
  */
 
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef, useState } from 'react';
 import { CollaborationService } from '@/services/websocket/collaborationService';
 import { useCollaborationStore } from '@/stores/collaborationStore';
 import { useModelStore } from '@/stores/modelStore';
@@ -23,8 +23,8 @@ export interface UseCollaborationOptions {
 export function useCollaboration({ workspaceId, enabled = true }: UseCollaborationOptions) {
   const { mode } = useSDKModeStore();
   const collaborationServiceRef = useRef<CollaborationService | null>(null);
-  const { setConnectionStatus, updateParticipantPresence, addConflict } =
-    useCollaborationStore();
+  const [isConnected, setIsConnected] = useState(false);
+  const { setConnectionStatus, updateParticipantPresence, addConflict } = useCollaborationStore();
   const { updateTable, updateRelationship } = useModelStore();
 
   // Initialize collaboration service
@@ -55,11 +55,7 @@ export function useCollaboration({ workspaceId, enabled = true }: UseCollaborati
 
     const unsubscribePresenceUpdate = service.onPresenceUpdate((event) => {
       // Update participant presence
-      updateParticipantPresence(
-        event.userId,
-        event.cursorPosition,
-        event.selectedElements
-      );
+      updateParticipantPresence(event.userId, event.cursorPosition, event.selectedElements);
     });
 
     const unsubscribeConflict = service.onConflict((event) => {
@@ -74,8 +70,9 @@ export function useCollaboration({ workspaceId, enabled = true }: UseCollaborati
 
     // Update connection status
     const statusInterval = setInterval(() => {
-      const isConnected = service.isConnected();
-      setConnectionStatus(isConnected ? 'connected' : 'disconnected');
+      const connected = service.isConnected();
+      setIsConnected(connected);
+      setConnectionStatus(connected ? 'connected' : 'disconnected');
     }, 1000);
 
     // Cleanup
@@ -88,17 +85,23 @@ export function useCollaboration({ workspaceId, enabled = true }: UseCollaborati
       service.disconnect();
       collaborationServiceRef.current = null;
     };
-  }, [workspaceId, enabled, mode, updateTable, updateRelationship, updateParticipantPresence, addConflict, setConnectionStatus]);
+  }, [
+    workspaceId,
+    enabled,
+    mode,
+    updateTable,
+    updateRelationship,
+    updateParticipantPresence,
+    addConflict,
+    setConnectionStatus,
+  ]);
 
   // Send table update
-  const sendTableUpdate = useCallback(
-    (tableId: string, data: TableUpdateData) => {
-      if (collaborationServiceRef.current) {
-        collaborationServiceRef.current.sendTableUpdate(tableId, data);
-      }
-    },
-    []
-  );
+  const sendTableUpdate = useCallback((tableId: string, data: TableUpdateData) => {
+    if (collaborationServiceRef.current) {
+      collaborationServiceRef.current.sendTableUpdate(tableId, data);
+    }
+  }, []);
 
   // Send relationship update
   const sendRelationshipUpdate = useCallback(
@@ -120,8 +123,6 @@ export function useCollaboration({ workspaceId, enabled = true }: UseCollaborati
     []
   );
 
-  const isConnected = collaborationServiceRef.current?.isConnected() ?? false;
-
   return {
     isConnected,
     sendTableUpdate,
@@ -129,4 +130,3 @@ export function useCollaboration({ workspaceId, enabled = true }: UseCollaborati
     sendPresenceUpdate,
   };
 }
-

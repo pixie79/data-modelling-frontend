@@ -14,47 +14,52 @@ export interface TableNodeData {
   modelType?: 'conceptual' | 'logical' | 'physical';
   nodeType?: 'table' | 'system' | 'product' | 'compute-asset';
   isOwnedByDomain?: boolean; // True if owned by current domain
+  isShared?: boolean; // True if this is a shared resource from another domain
 }
 
 export const CanvasNode: React.FC<NodeProps<TableNodeData>> = memo(({ data, selected }) => {
-  const { table, modelType = 'conceptual', isOwnedByDomain } = data;
+  const { table, modelType = 'conceptual', isOwnedByDomain, isShared = false } = data;
   const { selectedDomainId, bpmnProcesses } = useModelStore();
   const isPrimaryDomain = table.primary_domain_id === selectedDomainId;
   const isReadOnly = !isPrimaryDomain || (isOwnedByDomain !== undefined && !isOwnedByDomain);
-  
+
   // Check if table has BPMN link via transformation_links
-  const hasBPMNLink = bpmnProcesses.some((p) => 
-    p.domain_id === selectedDomainId && 
-    p.transformation_links?.some((link) => 
-      link.source_table_id === table.id || link.target_table_id === table.id
-    )
-  );
-  
-  // For cross-domain tables, use pastel shades and dotted border
-  const isCrossDomain = !isPrimaryDomain && table.visible_domains.includes(selectedDomainId || '');
-  
+  const hasBPMNLink =
+    bpmnProcesses?.some(
+      (p) =>
+        p.domain_id === selectedDomainId &&
+        p.transformation_links?.some(
+          (link) => link.source_table_id === table.id || link.target_table_id === table.id
+        )
+    ) ?? false;
+
+  // For shared resources (from other domains), use pastel shades and dashed border
+  const isCrossDomain =
+    isShared || (!isPrimaryDomain && table.visible_domains.includes(selectedDomainId || ''));
+
   // Determine what to show based on model type view
   const showColumns = modelType !== 'conceptual'; // Conceptual view: no columns
   const showDataTypes = modelType === 'physical'; // Physical view: show data types
   const showConstraints = modelType === 'physical'; // Physical view: show constraints
-  
+
   // Filter columns based on view type
   const visibleColumns = useMemo(() => {
     if (!showColumns) return [];
-    
+
     if (modelType === 'logical') {
       // Logical view: show only keys (primary keys and foreign keys)
-      return table.columns.filter(col => col.is_primary_key || col.is_foreign_key);
+      return table.columns.filter((col) => col.is_primary_key || col.is_foreign_key);
     } else if (modelType === 'physical') {
       // Physical view: show all columns
       return table.columns;
     }
-    
+
     return [];
   }, [table.columns, modelType, showColumns]);
 
   // Get quality tier and determine title bar color
-  const qualityTier: QualityTier = (table.metadata?.quality_tier as QualityTier) || table.data_level || 'operational';
+  const qualityTier: QualityTier =
+    (table.metadata?.quality_tier as QualityTier) || table.data_level || 'operational';
   const titleBarColor = useMemo(() => {
     // Cross-domain tables use pastel shades
     if (isCrossDomain) {
@@ -108,27 +113,40 @@ export const CanvasNode: React.FC<NodeProps<TableNodeData>> = memo(({ data, sele
       <Handle type="source" position={Position.Right} className="w-3 h-3" />
 
       {/* Table header with quality tier color */}
-      <div className={`px-3 py-2 ${titleBarColor} text-white font-semibold rounded-t-lg flex items-center justify-between`}>
+      <div
+        className={`px-3 py-2 ${titleBarColor} text-white font-semibold rounded-t-lg flex items-center justify-between`}
+      >
         <span>{table.name}</span>
         <div className="flex items-center gap-2">
           {qualityTier !== 'operational' && (
-            <span className="text-xs bg-black bg-opacity-20 px-2 py-0.5 rounded capitalize" title={`Quality Tier: ${qualityTier}`}>
+            <span
+              className="text-xs bg-black bg-opacity-20 px-2 py-0.5 rounded capitalize"
+              title={`Quality Tier: ${qualityTier}`}
+            >
               {qualityTier}
             </span>
           )}
           {hasBPMNLink && (
-            <span 
-              className="text-xs bg-purple-600 bg-opacity-80 px-2 py-0.5 rounded flex items-center gap-1" 
+            <span
+              className="text-xs bg-purple-600 bg-opacity-80 px-2 py-0.5 rounded flex items-center gap-1"
               title="Has BPMN process model - click to view details"
             >
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                />
               </svg>
               BPMN
             </span>
           )}
           {isReadOnly && (
-            <span className="text-xs bg-black bg-opacity-20 px-2 py-0.5 rounded" title="Read-only on this domain">
+            <span
+              className="text-xs bg-black bg-opacity-20 px-2 py-0.5 rounded"
+              title="Read-only on this domain"
+            >
               RO
             </span>
           )}
@@ -185,4 +203,3 @@ export const CanvasNode: React.FC<NodeProps<TableNodeData>> = memo(({ data, sele
 });
 
 CanvasNode.displayName = 'CanvasNode';
-

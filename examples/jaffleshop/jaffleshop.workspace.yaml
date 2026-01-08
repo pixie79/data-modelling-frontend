@@ -1,0 +1,110 @@
+id: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+name: jaffleshop
+owner_id: "550e8400-e29b-41d4-a716-446655440000"
+created_at: "2025-01-08T00:00:00Z"
+last_modified_at: "2025-01-08T00:00:00Z"
+
+domains:
+  - id: "js-domain-ecommerce"
+    name: ecommerce
+    description: |
+      E-commerce domain containing customer, order, product, and location data
+      across raw, staging, and mart layers.
+    systems:
+      - id: "js-system-duckdb"
+        name: DuckDB Lakehouse
+        description: DuckDB-based analytics lakehouse implementing medallion architecture.
+
+relationships:
+  # Raw Layer Relationships
+  - id: "js-rel-raw-orders-customers"
+    source_table_id: "js-raw-orders"
+    target_table_id: "js-raw-customers"
+    cardinality: one_to_many
+    relationship_type: foreign_key
+
+  - id: "js-rel-raw-orders-stores"
+    source_table_id: "js-raw-orders"
+    target_table_id: "js-raw-stores"
+    cardinality: one_to_many
+    relationship_type: foreign_key
+
+  - id: "js-rel-raw-items-orders"
+    source_table_id: "js-raw-items"
+    target_table_id: "js-raw-orders"
+    cardinality: one_to_many
+    relationship_type: foreign_key
+
+  - id: "js-rel-raw-items-products"
+    source_table_id: "js-raw-items"
+    target_table_id: "js-raw-products"
+    cardinality: one_to_many
+    relationship_type: foreign_key
+
+  - id: "js-rel-raw-supplies-products"
+    source_table_id: "js-raw-supplies"
+    target_table_id: "js-raw-products"
+    cardinality: one_to_many
+    relationship_type: foreign_key
+
+  # Staging Layer Relationships
+  - id: "js-rel-stg-orders-customers"
+    source_table_id: "js-stg-orders"
+    target_table_id: "js-stg-customers"
+    cardinality: one_to_many
+    relationship_type: foreign_key
+
+  - id: "js-rel-stg-orders-locations"
+    source_table_id: "js-stg-orders"
+    target_table_id: "js-stg-locations"
+    cardinality: one_to_many
+    relationship_type: foreign_key
+
+  - id: "js-rel-stg-items-orders"
+    source_table_id: "js-stg-order-items"
+    target_table_id: "js-stg-orders"
+    cardinality: one_to_many
+    relationship_type: foreign_key
+
+  - id: "js-rel-stg-items-products"
+    source_table_id: "js-stg-order-items"
+    target_table_id: "js-stg-products"
+    cardinality: one_to_many
+    relationship_type: foreign_key
+
+  - id: "js-rel-stg-supplies-products"
+    source_table_id: "js-stg-supplies"
+    target_table_id: "js-stg-products"
+    cardinality: one_to_many
+    relationship_type: foreign_key
+
+  # Mart Layer Relationships (Star Schema)
+  - id: "js-rel-mart-orders-customers"
+    source_table_id: "js-mart-orders"
+    target_table_id: "js-mart-customers"
+    cardinality: one_to_many
+    relationship_type: foreign_key
+
+  - id: "js-rel-mart-orders-locations"
+    source_table_id: "js-mart-orders"
+    target_table_id: "js-mart-locations"
+    cardinality: one_to_many
+    relationship_type: foreign_key
+
+  - id: "js-rel-mart-items-orders"
+    source_table_id: "js-mart-order-items"
+    target_table_id: "js-mart-orders"
+    cardinality: one_to_many
+    relationship_type: foreign_key
+
+  - id: "js-rel-mart-items-products"
+    source_table_id: "js-mart-order-items"
+    target_table_id: "js-mart-products"
+    cardinality: one_to_many
+    relationship_type: foreign_key
+
+  - id: "js-rel-mart-supplies-products"
+    source_table_id: "js-mart-supplies"
+    target_table_id: "js-mart-products"
+    cardinality: one_to_many
+    relationship_type: foreign_key

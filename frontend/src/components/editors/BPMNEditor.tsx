@@ -38,66 +38,71 @@ export const BPMNEditor: React.FC<BPMNEditorProps> = ({
   useEffect(() => {
     if (!containerRef.current) return undefined;
 
-    try {
-      const modeler = new BpmnModeler({
-        container: containerRef.current,
-        // keyboard.bindTo is deprecated - keyboard binding is now implicit
-      });
+    // Defer initialization to ensure container is fully rendered
+    const timeoutId = setTimeout(() => {
+      if (!containerRef.current) return;
 
-      modelerRef.current = modeler;
+      try {
+        const modeler = new BpmnModeler({
+          container: containerRef.current,
+          // keyboard.bindTo is deprecated - keyboard binding is now implicit
+        });
 
-      // Import XML if provided
-      if (xml) {
-        modeler
-          .importXML(xml)
-          .then(() => {
-            setIsLoading(false);
-            setError(null);
-          })
-          .catch((err) => {
-            console.error('Failed to import BPMN XML:', err);
-            setError(`Failed to load BPMN diagram: ${err.message || 'Unknown error'}`);
-            setIsLoading(false);
-          });
-      } else {
-        // Create empty diagram
-        modeler
-          .createDiagram()
-          .then(() => {
-            setIsLoading(false);
-          })
-          .catch((err) => {
-            console.error('Failed to create empty diagram:', err);
-            setError(`Failed to initialize editor: ${err.message || 'Unknown error'}`);
-            setIsLoading(false);
-          });
-      }
+        modelerRef.current = modeler;
 
-      // Cleanup on unmount
-      return () => {
-        if (modelerRef.current) {
-          modelerRef.current.destroy();
-          modelerRef.current = null;
+        // Import XML if provided
+        if (xml) {
+          modeler
+            .importXML(xml)
+            .then(() => {
+              setIsLoading(false);
+              setError(null);
+            })
+            .catch((err) => {
+              console.error('Failed to import BPMN XML:', err);
+              setError(`Failed to load BPMN diagram: ${err.message || 'Unknown error'}`);
+              setIsLoading(false);
+            });
+        } else {
+          // Create empty diagram
+          modeler
+            .createDiagram()
+            .then(() => {
+              setIsLoading(false);
+            })
+            .catch((err) => {
+              console.error('Failed to create empty diagram:', err);
+              setError(`Failed to initialize editor: ${err.message || 'Unknown error'}`);
+              setIsLoading(false);
+            });
         }
-      };
-    } catch (err) {
-      console.error('Failed to initialize BPMN modeler:', err);
-      setError(`Failed to initialize editor: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      setIsLoading(false);
-      return undefined;
-    }
+      } catch (err) {
+        console.error('Failed to initialize BPMN modeler:', err);
+        setError(
+          `Failed to initialize editor: ${err instanceof Error ? err.message : 'Unknown error'}`
+        );
+        setIsLoading(false);
+      }
+    }, 100);
+
+    // Cleanup on unmount
+    return () => {
+      clearTimeout(timeoutId);
+      if (modelerRef.current) {
+        modelerRef.current.destroy();
+        modelerRef.current = null;
+      }
+    };
   }, []); // Only run once on mount
 
   // Re-import XML when it changes externally
   useEffect(() => {
     if (!modelerRef.current || !xml) return;
 
-    modelerRef.current
-      .importXML(xml)
-      .catch((err) => {
-        console.error('Failed to re-import BPMN XML:', err);
-        setError(`Failed to load BPMN diagram: ${err.message || 'Unknown error'}`);
-      });
+    modelerRef.current.importXML(xml).catch((err) => {
+      console.error('Failed to re-import BPMN XML:', err);
+      setError(`Failed to load BPMN diagram: ${err.message || 'Unknown error'}`);
+    });
   }, [xml]);
 
   const handleSave = async () => {
@@ -115,7 +120,9 @@ export const BPMNEditor: React.FC<BPMNEditorProps> = ({
       // Validate XML before saving
       const validation = await bpmnService.validateXML(exportedXml);
       if (!validation.valid) {
-        throw new Error(`Invalid BPMN XML: ${validation.errors?.join(', ') || 'Validation failed'}`);
+        throw new Error(
+          `Invalid BPMN XML: ${validation.errors?.join(', ') || 'Validation failed'}`
+        );
       }
 
       await onSave(exportedXml, processName.trim() || 'Untitled Process');
@@ -160,12 +167,13 @@ export const BPMNEditor: React.FC<BPMNEditorProps> = ({
       <div className="flex items-center justify-between p-2 bg-gray-100 border-b border-gray-200">
         <div className="flex items-center gap-2 flex-1">
           <h3 className="text-sm font-semibold text-gray-700">BPMN Process Editor</h3>
-          {isLoading && (
-            <span className="text-xs text-gray-500">Loading...</span>
-          )}
+          {isLoading && <span className="text-xs text-gray-500">Loading...</span>}
           {!readOnly && (
             <div className="flex items-center gap-2 ml-4">
-              <label htmlFor="bpmn-process-name" className="text-xs text-gray-600 whitespace-nowrap">
+              <label
+                htmlFor="bpmn-process-name"
+                className="text-xs text-gray-600 whitespace-nowrap"
+              >
                 Process Name:
               </label>
               <input
@@ -205,4 +213,3 @@ export const BPMNEditor: React.FC<BPMNEditorProps> = ({
     </div>
   );
 };
-

@@ -8,6 +8,8 @@ import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { useUIStore } from './stores/uiStore';
 import { useSDKModeStore } from './services/sdk/sdkMode';
 import { sdkLoader } from './services/sdk/sdkLoader';
+import { getDuckDBService } from './services/database';
+import { DUCKDB_CDN_URL } from './types/duckdb';
 import { getPlatform } from './services/platform/platform';
 import Home from './pages/Home';
 import ModelEditor from './pages/ModelEditor';
@@ -15,9 +17,10 @@ import AuthCallback from './pages/AuthCallback';
 import NotFound from './pages/NotFound';
 
 // Use HashRouter for Electron (file:// protocol) and BrowserRouter for web
-const Router = typeof window !== 'undefined' && window.location.protocol === 'file:' 
-  ? HashRouter 
-  : BrowserRouter;
+const Router =
+  typeof window !== 'undefined' && window.location.protocol === 'file:'
+    ? HashRouter
+    : BrowserRouter;
 
 // Create a client for React Query
 const queryClient = new QueryClient({
@@ -44,55 +47,90 @@ function App() {
     initMode();
   }, [initialize]);
 
-  // Check WASM availability on startup (especially important for offline mode)
+  // Check WASM availability and preload DuckDB on startup
   useEffect(() => {
     if (!modeInitialized) {
       return; // Wait for mode initialization
     }
 
-    const checkWASM = async () => {
-      // Check WASM in Electron (always needed) or when in offline mode
+    const initializeWASMDependencies = async () => {
       const isElectron = getPlatform() === 'electron';
       const currentMode = mode || 'offline'; // Default to offline if not set
       const isOffline = currentMode === 'offline';
-      
+
+      // === 1. SDK WASM Check (for offline mode) ===
       if (isElectron || isOffline) {
-        // Try to load WASM to check if it's available
         try {
           await sdkLoader.load();
           const isActuallyLoaded = sdkLoader.isActuallyLoaded();
-          
+
           if (!isActuallyLoaded) {
-            // WASM failed to load - show warning
             addToast({
               type: 'error',
-              message: 'WASM SDK not loaded - offline functionality will be limited. Please ensure WASM files are available in the wasm/ directory.',
-              duration: 15000, // Show for 15 seconds
+              message:
+                'SDK WASM not loaded - offline functionality will be limited. Check that the SDK was downloaded during build.',
+              duration: 15000,
             });
-            console.error('[App] WASM SDK not available - offline mode functionality will be limited');
-            console.error('[App] Build instructions: cd ../data-modelling-sdk && wasm-pack build --target web --out-dir pkg --features wasm');
-            console.error('[App] Then copy pkg/ contents to frontend/public/wasm/');
+            console.error(
+              '[App] SDK WASM not available - offline mode functionality will be limited'
+            );
+            console.error(
+              '[App] For Cloudflare Pages: Check that cloudflare-build.sh downloaded the SDK from GitHub Releases'
+            );
           } else {
-            console.log('[App] WASM SDK loaded successfully');
+            console.log('[App] SDK WASM loaded successfully');
           }
         } catch (error) {
-          // WASM loading failed
           addToast({
             type: 'error',
-            message: 'Failed to load WASM SDK - offline functionality will be limited. Some features may not work. Check console for details.',
+            message: 'Failed to load SDK WASM - offline functionality will be limited.',
             duration: 15000,
           });
-          console.error('[App] Failed to load WASM SDK:', error);
-          console.error('[App] Build instructions: cd ../data-modelling-sdk && wasm-pack build --target web --out-dir pkg --features wasm');
-          console.error('[App] Then copy pkg/ contents to frontend/public/wasm/');
+          console.error('[App] Failed to load SDK WASM:', error);
+        }
+      }
+
+      // === 2. DuckDB-WASM Preload and Cache ===
+      // Preload DuckDB-WASM early so it's ready when needed
+      try {
+        console.log('[App] Preloading DuckDB-WASM...');
+        const duckdbService = getDuckDBService();
+        const initResult = await duckdbService.initialize();
+
+        if (initResult.success) {
+          console.log(
+            `[App] DuckDB-WASM initialized successfully (${initResult.storageMode} mode, version: ${initResult.version})`
+          );
+          if (!isElectron) {
+            console.log(`[App] DuckDB-WASM loaded from CDN: ${DUCKDB_CDN_URL}`);
+          }
+        } else {
+          throw new Error(initResult.error || 'DuckDB initialization failed');
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error('[App] Failed to initialize DuckDB-WASM:', errorMessage);
+
+        // Show user-friendly error
+        addToast({
+          type: 'warning',
+          message: `DuckDB initialization failed: ${errorMessage}. Some database features may not work.`,
+          duration: 10000,
+        });
+
+        // Log additional debugging info
+        if (!isElectron) {
+          console.error(`[App] DuckDB-WASM CDN URL: ${DUCKDB_CDN_URL}`);
+          console.error('[App] Check browser console Network tab for failed requests');
+          console.error('[App] Ensure Cross-Origin-Embedder-Policy headers are set correctly');
         }
       }
     };
 
-    // Delay check slightly to allow app to fully initialize
+    // Delay slightly to allow app to fully initialize
     const timeoutId = setTimeout(() => {
-      checkWASM();
-    }, 500);
+      initializeWASMDependencies();
+    }, 100);
 
     return () => clearTimeout(timeoutId);
   }, [addToast, mode, modeInitialized]);

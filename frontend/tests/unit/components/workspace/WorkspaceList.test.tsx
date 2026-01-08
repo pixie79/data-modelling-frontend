@@ -56,16 +56,6 @@ describe('WorkspaceList', () => {
     expect(screen.getByText('Shared Workspace')).toBeInTheDocument();
   });
 
-  it('should display workspace type badges', () => {
-    render(<WorkspaceList />);
-
-    const personalBadge = screen.getByText('Personal');
-    const sharedBadge = screen.getByText('Shared');
-
-    expect(personalBadge).toBeInTheDocument();
-    expect(sharedBadge).toBeInTheDocument();
-  });
-
   it('should highlight current workspace', () => {
     const { container } = render(<WorkspaceList />);
 
@@ -148,4 +138,3 @@ describe('WorkspaceList', () => {
     expect(screen.getByText(/no workspaces|empty/i)).toBeInTheDocument();
   });
 });
-

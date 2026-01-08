@@ -1,0 +1,50 @@
+version: "1.0.0"
+apiVersion: v3.1.0
+kind: DataContract
+id: js-raw-stores
+status: active
+name: raw_stores
+domain: ecommerce
+tenant: jaffleshop
+
+description:
+  purpose: Raw store/location data ingested from source systems
+
+schema:
+  - name: raw_stores
+    description: Raw store location data from Jaffle Shop source systems
+    physicalName: raw.stores
+    logicalType: object
+    properties:
+      - name: id
+        description: Unique store identifier
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+        primaryKey: true
+      - name: name
+        description: Store display name
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+      - name: opened_at
+        description: Date store opened
+        logicalType: timestamp
+        physicalType: TIMESTAMP
+        required: false
+      - name: tax_rate
+        description: Store tax rate as decimal
+        logicalType: number
+        physicalType: DOUBLE
+        required: false
+
+customProperties:
+  - property: system_id
+    value: js-system-duckdb
+  - property: data_level
+    value: bronze
+
+tags:
+  - raw
+  - stores
+  - bronze

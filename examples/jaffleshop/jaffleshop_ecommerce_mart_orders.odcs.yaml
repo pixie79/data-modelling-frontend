@@ -1,0 +1,81 @@
+version: "1.0.0"
+apiVersion: v3.1.0
+kind: DataContract
+id: js-mart-orders
+status: active
+name: orders
+domain: ecommerce
+tenant: jaffleshop
+
+description:
+  purpose: Order fact table with enriched order details
+
+schema:
+  - name: orders
+    description: Order fact table for analytics with customer and location context
+    physicalName: marts.orders
+    logicalType: object
+    properties:
+      - name: order_id
+        description: Unique order identifier
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+        primaryKey: true
+      - name: customer_id
+        description: Customer identifier (FK to customers dimension)
+        logicalType: integer
+        physicalType: INTEGER
+        required: true
+      - name: location_id
+        description: Location identifier (FK to locations dimension)
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+      - name: order_date
+        description: Date order was placed
+        logicalType: date
+        physicalType: DATE
+        required: true
+      - name: ordered_at
+        description: Timestamp order was placed
+        logicalType: timestamp
+        physicalType: TIMESTAMP
+        required: true
+      - name: order_total
+        description: Total order amount in dollars
+        logicalType: number
+        physicalType: DOUBLE
+        required: false
+      - name: tax_paid
+        description: Tax amount in dollars
+        logicalType: number
+        physicalType: DOUBLE
+        required: false
+      - name: subtotal
+        description: Subtotal in dollars
+        logicalType: number
+        physicalType: DOUBLE
+        required: false
+      - name: item_count
+        description: Number of items in order
+        logicalType: integer
+        physicalType: INTEGER
+        required: false
+      - name: is_first_order
+        description: Whether this is customer first order
+        logicalType: boolean
+        physicalType: BOOLEAN
+        required: false
+
+customProperties:
+  - property: system_id
+    value: js-system-duckdb
+  - property: data_level
+    value: gold
+
+tags:
+  - mart
+  - orders
+  - fact
+  - gold

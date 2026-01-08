@@ -1,0 +1,56 @@
+version: "1.0.0"
+apiVersion: v3.1.0
+kind: DataContract
+id: js-mart-supplies
+status: active
+name: supplies
+domain: ecommerce
+tenant: jaffleshop
+
+description:
+  purpose: Supply dimension table with cost and perishability info
+
+schema:
+  - name: supplies
+    description: Supply dimension for cost analysis
+    physicalName: marts.supplies
+    logicalType: object
+    properties:
+      - name: supply_id
+        description: Unique supply record identifier
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+        primaryKey: true
+      - name: supply_name
+        description: Supply item name
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+      - name: product_id
+        description: Product identifier (FK to products dimension)
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+      - name: supply_cost
+        description: Supply cost in dollars
+        logicalType: number
+        physicalType: DOUBLE
+        required: false
+      - name: is_perishable
+        description: Whether supply is perishable
+        logicalType: boolean
+        physicalType: BOOLEAN
+        required: false
+
+customProperties:
+  - property: system_id
+    value: js-system-duckdb
+  - property: data_level
+    value: gold
+
+tags:
+  - mart
+  - supplies
+  - dimension
+  - gold

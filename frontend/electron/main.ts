@@ -305,6 +305,206 @@ ipcMain.handle('close-app', () => {
   app.quit();
 });
 
+// ============================================================================
+// DuckDB-related IPC handlers
+// ============================================================================
+
+/**
+ * Export database/OPFS data to a native file
+ * This allows saving browser database content to the local filesystem
+ */
+ipcMain.handle(
+  'duckdb:export',
+  async (
+    _event,
+    options: {
+      data: ArrayBuffer | string;
+      defaultPath?: string;
+      format: 'json' | 'csv' | 'duckdb';
+    }
+  ) => {
+    try {
+      const filters: Electron.FileFilter[] = [];
+      let defaultExtension = '';
+
+      switch (options.format) {
+        case 'json':
+          filters.push({ name: 'JSON Files', extensions: ['json'] });
+          defaultExtension = '.json';
+          break;
+        case 'csv':
+          filters.push({ name: 'CSV Files', extensions: ['csv'] });
+          defaultExtension = '.csv';
+          break;
+        case 'duckdb':
+          filters.push({ name: 'DuckDB Database', extensions: ['duckdb', 'db'] });
+          defaultExtension = '.duckdb';
+          break;
+      }
+
+      const defaultPath =
+        options.defaultPath ||
+        `data-model-export-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}${defaultExtension}`;
+
+      const result = await dialog.showSaveDialog({
+        title: 'Export Database',
+        defaultPath,
+        filters,
+      });
+
+      if (result.canceled || !result.filePath) {
+        return { success: false, canceled: true };
+      }
+
+      // Write the data to file
+      const dataToWrite =
+        typeof options.data === 'string' ? options.data : Buffer.from(options.data);
+
+      await writeFile(result.filePath, dataToWrite);
+      console.log(`[Electron] DuckDB export saved to: ${result.filePath}`);
+
+      return { success: true, filePath: result.filePath };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[Electron] DuckDB export failed:', errorMessage);
+      return { success: false, error: errorMessage };
+    }
+  }
+);
+
+/**
+ * Import database file from native filesystem
+ * This allows loading database content from local files into the browser
+ */
+ipcMain.handle(
+  'duckdb:import',
+  async (
+    _event,
+    options: {
+      formats?: ('json' | 'csv' | 'duckdb')[];
+    }
+  ) => {
+    try {
+      const filters: Electron.FileFilter[] = [];
+      const formats = options.formats || ['json', 'csv'];
+
+      if (formats.includes('json')) {
+        filters.push({ name: 'JSON Files', extensions: ['json'] });
+      }
+      if (formats.includes('csv')) {
+        filters.push({ name: 'CSV Files', extensions: ['csv'] });
+      }
+      if (formats.includes('duckdb')) {
+        filters.push({ name: 'DuckDB Database', extensions: ['duckdb', 'db'] });
+      }
+      filters.push({ name: 'All Files', extensions: ['*'] });
+
+      const result = await dialog.showOpenDialog({
+        title: 'Import Database',
+        filters,
+        properties: ['openFile'],
+      });
+
+      if (result.canceled || result.filePaths.length === 0) {
+        return { success: false, canceled: true };
+      }
+
+      const filePath = result.filePaths[0];
+      if (!filePath) {
+        return { success: false, error: 'No file selected' };
+      }
+      const content = await readFile(filePath);
+      const extension = path.extname(filePath).toLowerCase();
+
+      // Determine format from extension
+      let format: 'json' | 'csv' | 'duckdb' | 'unknown' = 'unknown';
+      if (extension === '.json') format = 'json';
+      else if (extension === '.csv') format = 'csv';
+      else if (extension === '.duckdb' || extension === '.db') format = 'duckdb';
+
+      console.log(`[Electron] DuckDB import from: ${filePath} (format: ${format})`);
+
+      return {
+        success: true,
+        filePath,
+        format,
+        content: content.toString('utf-8'),
+        size: content.length,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[Electron] DuckDB import failed:', errorMessage);
+      return { success: false, error: errorMessage };
+    }
+  }
+);
+
+/**
+ * Get database file info (size, modification date, etc.)
+ */
+ipcMain.handle('duckdb:file-info', async (_event, filePath: string) => {
+  try {
+    const { stat } = await import('fs/promises');
+    const stats = await stat(filePath);
+    return {
+      success: true,
+      size: stats.size,
+      created: stats.birthtime.toISOString(),
+      modified: stats.mtime.toISOString(),
+      isFile: stats.isFile(),
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return { success: false, error: errorMessage };
+  }
+});
+
+/**
+ * Check if a database file exists
+ */
+ipcMain.handle('duckdb:file-exists', async (_event, filePath: string) => {
+  return existsSync(filePath);
+});
+
+/**
+ * Delete a database file
+ */
+ipcMain.handle('duckdb:delete-file', async (_event, filePath: string) => {
+  try {
+    await unlink(filePath);
+    console.log(`[Electron] Deleted database file: ${filePath}`);
+    return { success: true };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[Electron] Failed to delete database file:', errorMessage);
+    return { success: false, error: errorMessage };
+  }
+});
+
+/**
+ * Create a backup of a database file
+ */
+ipcMain.handle(
+  'duckdb:backup',
+  async (_event, options: { sourcePath: string; backupPath?: string }) => {
+    try {
+      const { copyFile } = await import('fs/promises');
+      const backupPath =
+        options.backupPath ||
+        `${options.sourcePath}.backup-${new Date().toISOString().replace(/[:.]/g, '-')}`;
+
+      await copyFile(options.sourcePath, backupPath);
+      console.log(`[Electron] Database backup created: ${backupPath}`);
+
+      return { success: true, backupPath };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[Electron] Database backup failed:', errorMessage);
+      return { success: false, error: errorMessage };
+    }
+  }
+);
+
 // Quit when all windows are closed, except on macOS
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {

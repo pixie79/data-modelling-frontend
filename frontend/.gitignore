@@ -39,12 +39,17 @@ lerna-debug.log*
 .env.test.local
 .env.production.local
 
-# WASM files (built from SDK)
-# Note: These should be built during CI/CD, but can be ignored in development
-# Uncomment the line below if you want to ignore WASM files in git
-# public/wasm/*.wasm
-# public/wasm/*.js
-# public/wasm/*.ts
+# WASM SDK files (downloaded from GitHub Releases during build)
+# These files should NOT be committed - they are downloaded by cloudflare-build.sh
+public/wasm/*
+!public/wasm/.gitkeep
 
+# DuckDB WASM files (loaded from CDN for web, local for Electron)
+public/duckdb/*
+!public/duckdb/.gitkeep
 
-
+# DuckDB database files
+*.duckdb
+*.duckdb.wal
+*.duckdb-journal
+*.db

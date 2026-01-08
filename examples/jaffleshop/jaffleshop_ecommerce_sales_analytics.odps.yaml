@@ -1,0 +1,63 @@
+apiVersion: v1.0.0
+kind: DataProduct
+id: js-product-sales-analytics
+status: active
+name: Sales Analytics
+version: "1.0.0"
+domain: ecommerce
+tenant: jaffleshop
+
+description:
+  purpose: Sales performance analytics data product providing order metrics, product performance, and revenue analysis.
+  usage: Use this data product for sales dashboards, revenue reporting, and product performance analysis.
+  limitations: Historical data available from 2020 onwards. Supply costs are estimates.
+
+inputPorts:
+  - name: stg_orders
+    version: "1.0.0"
+    contractId: js-stg-orders
+  - name: stg_order_items
+    version: "1.0.0"
+    contractId: js-stg-order-items
+  - name: stg_products
+    version: "1.0.0"
+    contractId: js-stg-products
+  - name: stg_locations
+    version: "1.0.0"
+    contractId: js-stg-locations
+
+outputPorts:
+  - name: orders
+    version: "1.0.0"
+    contractId: js-mart-orders
+  - name: order_items
+    version: "1.0.0"
+    contractId: js-mart-order-items
+  - name: products
+    version: "1.0.0"
+    contractId: js-mart-products
+  - name: locations
+    version: "1.0.0"
+    contractId: js-mart-locations
+  - name: metricflow_time_spine
+    version: "1.0.0"
+    contractId: js-mart-time-spine
+
+team:
+  name: Analytics Engineering
+
+support:
+  - channel: Data Team Slack
+    url: https://jaffleshop.slack.com/channels/data-team
+
+tags:
+  - sales
+  - orders
+  - analytics
+  - gold
+
+customProperties:
+  - property: refresh_frequency
+    value: daily
+  - property: metricflow_enabled
+    value: "true"

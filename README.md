@@ -15,6 +15,9 @@ A domain-centric data modelling application built with React and Electron. Creat
 - **Import/Export**: Support for ODCS, SQL, AVRO, JSON Schema, and Protobuf formats
 - **Cross-Platform**: Electron desktop app (macOS, Windows, Linux)
 - **Domain-Centric**: Organize data models by business domains with systems, tables, relationships, BPMN processes, and DMN decisions
+- **Decision Logs** (SDK 1.13.3+): MADR-format Architecture Decision Records with status workflow
+- **Knowledge Base** (SDK 1.13.3+): Documentation articles with types (Guide, Tutorial, Reference, etc.)
+- **DuckDB-WASM** (v2.1.0+): In-browser SQL database with OPFS persistence for advanced querying and analytics
 
 ## Prerequisites
 
@@ -184,15 +187,55 @@ frontend/
 
 ## WASM SDK Integration
 
-The application uses a WASM build of the `data-modelling-sdk` (version **1.1.0**) for offline functionality:
+The application uses a WASM build of the `data-modelling-sdk` (version **1.13.2**) for offline functionality:
 
-1. **SDK Version**: Requires `data-modelling-sdk = "1.1.0"` crate
+1. **SDK Version**: Requires `data-modelling-sdk = "1.13.2"` crate
 2. **Build Process**: The SDK is built using `wasm-pack` and copied to `public/wasm/`
 3. **Automatic Build**: Runs automatically before `npm run build` via `prebuild` script
 4. **Development**: Can be built manually with `npm run build:wasm`
 5. **Fallback**: If WASM SDK is not available, the app uses a JavaScript YAML parser fallback
 
-**Note**: The SDK must be version 1.1.0 or compatible. The API project (`data-modelling-api`) is available on [crates.io](https://crates.io/crates/data-modelling-api) as version **1.1.2** and uses `data-modelling-sdk = "1.1.0"` with features `["api-backend", "git"]`.
+**Note**: The SDK must be version 1.13.2 or compatible. The API project (`data-modelling-api`) is available on [crates.io](https://crates.io/crates/data-modelling-api) and uses `data-modelling-sdk = "1.13.2"` with features `["api-backend", "git"]`.
+
+### SDK 1.13.1 Features
+
+The SDK 1.13.1 release includes these new capabilities:
+
+- **Decision Logs (MADR)**: Architecture Decision Records following the MADR format
+  - Status workflow: Draft → Proposed → Accepted/Rejected → Superseded
+  - Categories: Architecture, Technology, Process, Security, Data, Integration
+  - Related decisions and knowledge articles linking
+  - Markdown export
+  
+- **Knowledge Base**: Documentation and knowledge management
+  - Article types: Guide, Tutorial, Reference, Concept, Troubleshooting, Runbook
+  - Publishing workflow: Draft → Review → Published → Archived
+  - Full-text search across articles
+  - Related articles and decisions linking
+  
+- **DuckDB Backend**: Optional embedded analytical database
+  - YAML ↔ Database synchronization
+  - SQL query execution
+  - Advanced analytics and reporting
+  - Configuration via `.data-model.toml`
+
+See the following documentation for more details:
+- [Configuration Guide](frontend/docs/CONFIGURATION.md)
+- [Decision Logs Guide](frontend/docs/DECISION_LOGS.md)
+- [Knowledge Base Guide](frontend/docs/KNOWLEDGE_BASE.md)
+
+### DuckDB-WASM Features (v2.1.0+)
+
+The application includes DuckDB-WASM 1.29.0 (DuckDB 1.4.3) for in-browser SQL queries:
+
+- **OPFS Persistence**: Database persists in browser's Origin Private File System
+- **Browser Compatibility**: Chrome 86+, Edge 86+, Firefox 111+, Safari 15.2+
+- **Automatic Fallback**: In-memory mode for unsupported browsers
+- **YAML Sync**: Bidirectional synchronization with YAML workspace files
+- **Type-safe Queries**: Fluent query builder with TypeScript support
+- **Developer Tools**: SQL console and database inspector (dev mode)
+
+See [DuckDB Guide](frontend/docs/DUCKDB_GUIDE.md) for detailed documentation.
 
 ## Offline Mode
 

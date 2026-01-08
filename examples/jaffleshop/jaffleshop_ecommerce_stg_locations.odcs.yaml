@@ -1,0 +1,50 @@
+version: "1.0.0"
+apiVersion: v3.1.0
+kind: DataContract
+id: js-stg-locations
+status: active
+name: stg_locations
+domain: ecommerce
+tenant: jaffleshop
+
+description:
+  purpose: Staged store location data with standardized attributes
+
+schema:
+  - name: stg_locations
+    description: Cleaned and standardized location data from raw stores
+    physicalName: staging.stg_locations
+    logicalType: object
+    properties:
+      - name: location_id
+        description: Standardized location identifier
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+        primaryKey: true
+      - name: location_name
+        description: Location display name
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+      - name: opened_date
+        description: Date location opened
+        logicalType: date
+        physicalType: DATE
+        required: false
+      - name: tax_rate
+        description: Location tax rate as decimal
+        logicalType: number
+        physicalType: DOUBLE
+        required: false
+
+customProperties:
+  - property: system_id
+    value: js-system-duckdb
+  - property: data_level
+    value: silver
+
+tags:
+  - staging
+  - locations
+  - silver

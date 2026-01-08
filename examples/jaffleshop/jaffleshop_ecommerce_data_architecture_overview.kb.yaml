@@ -1,0 +1,113 @@
+id: js-kb-0001
+number: 1
+title: Jaffleshop Data Architecture Overview
+type: guide
+status: published
+summary: >-
+  Comprehensive overview of the Jaffleshop data architecture, including the
+  medallion architecture (bronze/silver/gold layers), data flow patterns,
+  and key design principles.
+
+content: |
+  # Jaffleshop Data Architecture Overview
+
+  ## Introduction
+
+  Jaffleshop is a fictional coffee shop chain used as a reference implementation
+  for data modeling and analytics. This knowledge article provides a comprehensive
+  overview of the data architecture powering Jaffleshop's analytics capabilities.
+
+  ## Medallion Architecture
+
+  The Jaffleshop data platform follows the **medallion architecture** pattern,
+  organizing data into three distinct layers:
+
+  ### Bronze Layer (Raw)
+
+  The bronze layer contains raw, unprocessed data directly ingested from source
+  systems. Tables in this layer:
+
+  - `raw_customers` - Customer records from the POS system
+  - `raw_orders` - Order transactions
+  - `raw_items` - Order line items
+  - `raw_products` - Product catalog
+  - `raw_stores` - Store/location information
+  - `raw_supplies` - Supply chain data
+
+  **Characteristics:**
+  - Data is stored as-is from source systems
+  - No transformations or business logic applied
+  - Retains full history for auditability
+  - Schema matches source systems
+
+  ### Silver Layer (Staging)
+
+  The silver layer contains cleaned, validated, and standardized data. Tables
+  are prefixed with `stg_`:
+
+  - `stg_customers` - Cleaned customer data
+  - `stg_orders` - Standardized order records
+  - `stg_order_items` - Normalized line items
+  - `stg_products` - Validated product catalog
+  - `stg_locations` - Standardized location data
+  - `stg_supplies` - Cleaned supply records
+
+  **Characteristics:**
+  - Data quality checks applied
+  - Consistent data types and formats
+  - Business rules for validation
+  - Deduplication and cleansing
+
+  ### Gold Layer (Marts)
+
+  The gold layer contains business-ready dimensional models optimized for
+  analytics and reporting:
+
+  **Dimension Tables:**
+  - `customers` - Customer dimension with lifetime metrics
+  - `products` - Product dimension with categorization
+  - `locations` - Location dimension
+  - `supplies` - Supply dimension
+  - `metricflow_time_spine` - Date dimension for time-series analysis
+
+  **Fact Tables:**
+  - `orders` - Order fact table with measures
+  - `order_items` - Order item fact at line-item grain
+
+  ## Data Flow
+
+  ```
+  Source Systems → Bronze (Raw) → Silver (Staging) → Gold (Marts)
+       ↓              ↓               ↓                ↓
+    POS API     raw_* tables    stg_* tables    Dimensional Model
+  ```
+
+  ## Key Design Principles
+
+  1. **Immutable Bronze Layer** - Raw data is never modified
+  2. **Incremental Processing** - Only new/changed data is processed
+  3. **Schema Evolution** - Support for adding new columns without breaking
+  4. **Data Contracts** - ODCS contracts define schema expectations
+  5. **Lineage Tracking** - Full traceability from source to mart
+
+  ## Technology Stack
+
+  - **Storage:** DuckDB Lakehouse
+  - **Processing:** dbt (data build tool)
+  - **Orchestration:** BPMN-defined workflows
+  - **Metrics:** MetricFlow semantic layer
+
+domain_id: js-domain-ecommerce
+workspace_id: js-workspace
+authors:
+  - data-architecture-team@jaffleshop.example
+reviewers:
+  - data-governance@jaffleshop.example
+tags:
+  - name: architecture
+  - name: medallion
+  - name: data-platform
+  - name: overview
+created_at: "2024-01-15T10:00:00Z"
+updated_at: "2024-01-15T10:00:00Z"
+published_at: "2024-01-15T10:00:00Z"

@@ -7,7 +7,6 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { useSDKModeStore } from '@/services/sdk/sdkMode';
-import { SyncService } from '@/services/sync/syncService';
 
 // Mock dependencies
 vi.mock('@/services/sdk/sdkMode', () => ({
@@ -107,7 +106,9 @@ describe('useOfflineSync', () => {
   });
 
   it('should auto-merge when connection restored', async () => {
-    mockSyncServiceInstance.autoMergeOnConnectionRestored = vi.fn().mockResolvedValue({ success: true });
+    mockSyncServiceInstance.autoMergeOnConnectionRestored = vi
+      .fn()
+      .mockResolvedValue({ success: true });
 
     const { result } = renderHook(() =>
       useOfflineSync({
@@ -121,4 +122,3 @@ describe('useOfflineSync', () => {
     expect(mockSyncServiceInstance.autoMergeOnConnectionRestored).toHaveBeenCalled();
   });
 });
-

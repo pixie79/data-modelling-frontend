@@ -20,7 +20,7 @@ export const PresenceIndicator: React.FC<PresenceIndicatorProps> = () => {
   const otherParticipants = useMemo(() => {
     if (!user?.id) return participants;
     return participants.filter((p) => p.userId !== user.id);
-  }, [participants, user?.id]);
+  }, [participants, user]);
 
   if (!session || !session.isConnected) {
     return null;
@@ -49,7 +49,9 @@ export const PresenceIndicator: React.FC<PresenceIndicatorProps> = () => {
             title={`${participant.userName || participant.userEmail || participant.userId} - ${participant.accessLevel === 'edit' ? 'Editing' : 'Viewing'}`}
           >
             <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-medium">
-              {(participant.userName || participant.userEmail || participant.userId).charAt(0).toUpperCase()}
+              {(participant.userName || participant.userEmail || participant.userId)
+                .charAt(0)
+                .toUpperCase()}
             </div>
             {participant.selectedElements && participant.selectedElements.length > 0 && (
               <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full border-2 border-white"></div>
@@ -59,7 +61,8 @@ export const PresenceIndicator: React.FC<PresenceIndicatorProps> = () => {
               {participant.userName || participant.userEmail || participant.userId}
               {participant.selectedElements && participant.selectedElements.length > 0 && (
                 <div className="text-xs text-gray-300 mt-1">
-                  Editing: {participant.selectedElements.length} {participant.selectedElements.length === 1 ? 'element' : 'elements'}
+                  Editing: {participant.selectedElements.length}{' '}
+                  {participant.selectedElements.length === 1 ? 'element' : 'elements'}
                 </div>
               )}
             </div>
@@ -74,4 +77,3 @@ export const PresenceIndicator: React.FC<PresenceIndicatorProps> = () => {
     </div>
   );
 };
-

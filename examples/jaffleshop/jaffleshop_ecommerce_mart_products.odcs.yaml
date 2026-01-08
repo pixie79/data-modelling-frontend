@@ -1,0 +1,66 @@
+version: "1.0.0"
+apiVersion: v3.1.0
+kind: DataContract
+id: js-mart-products
+status: active
+name: products
+domain: ecommerce
+tenant: jaffleshop
+
+description:
+  purpose: Product dimension table with pricing and categorization
+
+schema:
+  - name: products
+    description: Product dimension for analytics with pricing and category info
+    physicalName: marts.products
+    logicalType: object
+    properties:
+      - name: product_id
+        description: Unique product identifier
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+        primaryKey: true
+      - name: product_name
+        description: Product display name
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+      - name: product_type
+        description: Product category type
+        logicalType: string
+        physicalType: VARCHAR
+        required: false
+      - name: product_price
+        description: Current product price in dollars
+        logicalType: number
+        physicalType: DOUBLE
+        required: false
+      - name: product_description
+        description: Product description text
+        logicalType: string
+        physicalType: VARCHAR
+        required: false
+      - name: is_food_item
+        description: Whether product is food
+        logicalType: boolean
+        physicalType: BOOLEAN
+        required: false
+      - name: is_drink_item
+        description: Whether product is drink
+        logicalType: boolean
+        physicalType: BOOLEAN
+        required: false
+
+customProperties:
+  - property: system_id
+    value: js-system-duckdb
+  - property: data_level
+    value: gold
+
+tags:
+  - mart
+  - products
+  - dimension
+  - gold

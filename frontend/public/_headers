@@ -1,0 +1,33 @@
+# Cross-Origin Isolation headers for SharedArrayBuffer (required by DuckDB-WASM)
+# Note: credentialless allows loading DuckDB WASM from CDN without CORS issues
+/*
+  Cross-Origin-Embedder-Policy: credentialless
+  Cross-Origin-Opener-Policy: same-origin
+
+# JavaScript files in wasm directory (SDK loader, workers, etc.)
+/wasm/*.js
+  Content-Type: application/javascript
+  Cross-Origin-Embedder-Policy: require-corp
+  Cross-Origin-Opener-Policy: same-origin
+
+# WASM binary files
+/wasm/*.wasm
+  Content-Type: application/wasm
+  Cross-Origin-Embedder-Policy: require-corp
+  Cross-Origin-Opener-Policy: same-origin
+
+# DuckDB JavaScript files (workers)
+/duckdb/*.js
+  Content-Type: application/javascript
+  Cross-Origin-Embedder-Policy: require-corp
+  Cross-Origin-Opener-Policy: same-origin
+
+# DuckDB WASM binary files
+/duckdb/*.wasm
+  Content-Type: application/wasm
+  Cross-Origin-Embedder-Policy: require-corp
+  Cross-Origin-Opener-Policy: same-origin
+
+# Generic WASM files anywhere
+/*.wasm
+  Content-Type: application/wasm

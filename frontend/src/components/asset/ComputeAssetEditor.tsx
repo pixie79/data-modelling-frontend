@@ -10,7 +10,29 @@ import { useUIStore } from '@/stores/uiStore';
 import { AssetMetadataForm } from './AssetMetadataForm';
 import { BPMNLink } from './BPMNLink';
 import { DMNLink } from './DMNLink';
-import type { ComputeAsset } from '@/types/cads';
+import { OpenAPILink } from './OpenAPILink';
+import type { ComputeAsset, Tag, CADSOpenAPISpec } from '@/types/cads';
+
+/**
+ * Convert a Tag to its string representation
+ */
+function tagToString(tag: Tag): string {
+  if (typeof tag === 'string') {
+    return tag;
+  }
+  if ('values' in tag) {
+    return `${tag.key}:${tag.values.join(',')}`;
+  }
+  return `${tag.key}:${tag.value}`;
+}
+
+/**
+ * Convert Tag[] to string[] for display
+ */
+function tagsToStrings(tags: Tag[] | undefined): string[] {
+  if (!tags) return [];
+  return tags.map(tagToString);
+}
 
 export interface ComputeAssetEditorProps {
   asset?: ComputeAsset;
@@ -25,8 +47,11 @@ export const ComputeAssetEditor: React.FC<ComputeAssetEditorProps> = ({
   isOpen,
   onClose,
 }) => {
-  const { addComputeAsset, updateComputeAsset } = useModelStore();
+  const { addComputeAsset, updateComputeAsset, selectedDomainId } = useModelStore();
   const { addToast } = useUIStore();
+
+  // Check if asset is editable (must belong to current domain)
+  const isEditable = !asset || asset.domain_id === selectedDomainId;
 
   const [name, setName] = useState('');
   const [type, setType] = useState<'ai' | 'ml' | 'app'>('app');
@@ -36,7 +61,10 @@ export const ComputeAssetEditor: React.FC<ComputeAssetEditorProps> = ({
   const [sourceRepo, setSourceRepo] = useState('');
   const [bpmnLink, setBpmnLink] = useState<string | undefined>(undefined);
   const [dmnLink, setDmnLink] = useState<string | undefined>(undefined);
+  const [openapiSpecs, setOpenapiSpecs] = useState<CADSOpenAPISpec[]>([]);
   const [status, setStatus] = useState<'development' | 'production' | 'deprecated'>('development');
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagsInput, setTagsInput] = useState('');
 
   // Initialize form when dialog opens or asset changes
   React.useEffect(() => {
@@ -50,10 +78,13 @@ export const ComputeAssetEditor: React.FC<ComputeAssetEditorProps> = ({
       setSourceRepo('');
       setBpmnLink(undefined);
       setDmnLink(undefined);
+      setOpenapiSpecs([]);
       setStatus('development');
+      setTags([]);
+      setTagsInput('');
       return;
     }
-    
+
     // Load asset data when dialog opens
     if (asset) {
       setName(asset.name);
@@ -64,9 +95,24 @@ export const ComputeAssetEditor: React.FC<ComputeAssetEditorProps> = ({
       setSourceRepo(asset.source_repo || '');
       setBpmnLink(asset.bpmn_link);
       setDmnLink(asset.dmn_link);
+      setOpenapiSpecs(asset.openapi_specs || []);
       setStatus(asset.status || 'development');
+      setTags(tagsToStrings(asset.tags));
+      setTagsInput(tagsToStrings(asset.tags).join(', '));
     }
   }, [asset, isOpen]);
+
+  const handleTagsInputChange = (value: string) => {
+    setTagsInput(value);
+    // Parse tags from input
+    // Split on ", " (comma + space) to separate different tags
+    // This allows "env:prod,staging" to be one tag, but "env:prod, product:food" to be two tags
+    const parsedTags = value
+      .split(/, /)
+      .map((tag) => tag.trim())
+      .filter((tag) => tag.length > 0);
+    setTags(parsedTags);
+  };
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -90,7 +136,9 @@ export const ComputeAssetEditor: React.FC<ComputeAssetEditorProps> = ({
       source_repo: sourceRepo.trim() || undefined,
       bpmn_link: bpmnLink,
       dmn_link: dmnLink,
+      openapi_specs: openapiSpecs.length > 0 ? openapiSpecs : undefined,
       status,
+      tags: tags.length > 0 ? tags : undefined,
       created_at: asset?.created_at || new Date().toISOString(),
       last_modified_at: new Date().toISOString(),
     };
@@ -112,6 +160,175 @@ export const ComputeAssetEditor: React.FC<ComputeAssetEditorProps> = ({
     onClose();
   };
 
+  // Read-only view for shared assets
+  if (!isEditable && asset) {
+    return (
+      <DraggableModal
+        isOpen={isOpen}
+        onClose={onClose}
+        title="View Node (Card) - Read Only"
+        size="lg"
+        initialPosition={{
+          x: window.innerWidth / 2 - 400,
+          y: window.innerHeight / 2 - 300,
+        }}
+      >
+        <div className="space-y-4 max-h-[80vh] overflow-y-auto">
+          {/* Read-Only Banner */}
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+            <div className="flex items-center gap-2">
+              <svg
+                className="w-5 h-5 text-yellow-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                />
+              </svg>
+              <div>
+                <h3 className="text-sm font-semibold text-yellow-800">Read-Only View</h3>
+                <p className="text-xs text-yellow-700">
+                  This asset belongs to another domain. Switch to the primary domain to edit.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Basic Information */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
+            <input
+              type="text"
+              value={asset.name}
+              disabled
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
+            <input
+              type="text"
+              value={
+                asset.type === 'ai'
+                  ? 'AI Model'
+                  : asset.type === 'ml'
+                    ? 'ML Pipeline'
+                    : 'Application'
+              }
+              disabled
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700"
+            />
+          </div>
+
+          {asset.description && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+              <textarea
+                value={asset.description}
+                disabled
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700"
+              />
+            </div>
+          )}
+
+          {asset.owner && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Owner</label>
+              <input
+                type="text"
+                value={asset.owner.name || asset.owner.email || 'Unknown'}
+                disabled
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700"
+              />
+            </div>
+          )}
+
+          {asset.engineering_team && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Engineering Team
+              </label>
+              <input
+                type="text"
+                value={asset.engineering_team}
+                disabled
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700"
+              />
+            </div>
+          )}
+
+          {asset.source_repo && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Source Repository
+              </label>
+              <input
+                type="text"
+                value={asset.source_repo}
+                disabled
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700"
+              />
+            </div>
+          )}
+
+          {asset.status && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+              <input
+                type="text"
+                value={asset.status.charAt(0).toUpperCase() + asset.status.slice(1)}
+                disabled
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700"
+              />
+            </div>
+          )}
+
+          {asset.tags && asset.tags.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Tags</label>
+              <div className="flex flex-wrap gap-2">
+                {tagsToStrings(asset.tags).map((tag, index) => (
+                  <span key={index} className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {asset.custom_properties && Object.keys(asset.custom_properties).length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Custom Properties
+              </label>
+              <div className="border border-gray-300 rounded-lg p-3 bg-gray-50">
+                <pre className="text-xs text-gray-700 overflow-auto max-h-40">
+                  {JSON.stringify(asset.custom_properties, null, 2)}
+                </pre>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end pt-4">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </DraggableModal>
+    );
+  }
+
   return (
     <DraggableModal
       isOpen={isOpen}
@@ -126,7 +343,10 @@ export const ComputeAssetEditor: React.FC<ComputeAssetEditorProps> = ({
       <div className="space-y-4 max-h-[80vh] overflow-y-auto">
         {/* Basic Information */}
         <div>
-          <label htmlFor="compute-asset-name" className="block text-sm font-medium text-gray-700 mb-2">
+          <label
+            htmlFor="compute-asset-name"
+            className="block text-sm font-medium text-gray-700 mb-2"
+          >
             Name <span className="text-red-500">*</span>
           </label>
           <input
@@ -140,7 +360,9 @@ export const ComputeAssetEditor: React.FC<ComputeAssetEditorProps> = ({
         </div>
 
         <div>
-          <label htmlFor="asset-type" className="block text-sm font-medium text-gray-700 mb-2">Type</label>
+          <label htmlFor="asset-type" className="block text-sm font-medium text-gray-700 mb-2">
+            Type
+          </label>
           <select
             id="asset-type"
             value={type}
@@ -154,7 +376,12 @@ export const ComputeAssetEditor: React.FC<ComputeAssetEditorProps> = ({
         </div>
 
         <div>
-          <label htmlFor="asset-description" className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+          <label
+            htmlFor="asset-description"
+            className="block text-sm font-medium text-gray-700 mb-2"
+          >
+            Description
+          </label>
           <textarea
             id="asset-description"
             value={description}
@@ -163,6 +390,75 @@ export const ComputeAssetEditor: React.FC<ComputeAssetEditorProps> = ({
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Asset description"
           />
+        </div>
+
+        {/* Tags */}
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <label htmlFor="asset-tags" className="block text-sm font-medium text-gray-700">
+              Tags
+            </label>
+            <div className="relative group">
+              <button
+                type="button"
+                className="w-4 h-4 flex items-center justify-center rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 text-xs font-semibold"
+                title="Tag format help"
+              >
+                ?
+              </button>
+              <div className="invisible group-hover:visible absolute left-0 top-6 z-50 w-80 bg-white border border-gray-300 rounded-lg shadow-lg p-3 text-xs">
+                <h4 className="font-semibold text-gray-900 mb-2">Tag Formats</h4>
+                <div className="space-y-2 text-gray-700">
+                  <div>
+                    <span className="font-medium">Simple:</span>
+                    <code className="ml-2 px-1 bg-gray-100 rounded">production</code>
+                    <p className="text-xs text-gray-600 mt-1">Single word tag</p>
+                  </div>
+                  <div>
+                    <span className="font-medium">Keyword:</span>
+                    <code className="ml-2 px-1 bg-gray-100 rounded">env:production</code>
+                    <p className="text-xs text-gray-600 mt-1">Key-value pair</p>
+                  </div>
+                  <div>
+                    <span className="font-medium">Keyword with list:</span>
+                    <code className="ml-2 px-1 bg-gray-100 rounded">env:production,staging</code>
+                    <p className="text-xs text-gray-600 mt-1">
+                      Key with multiple values (no spaces)
+                    </p>
+                  </div>
+                  <div className="pt-2 border-t border-gray-200 mt-2">
+                    <p className="text-xs text-gray-600">
+                      <span className="font-medium">Multiple tags:</span> Separate with comma +
+                      space
+                    </p>
+                    <code className="block mt-1 px-1 bg-gray-100 rounded">
+                      env:production, product:food
+                    </code>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <input
+            id="asset-tags"
+            type="text"
+            value={tagsInput}
+            onChange={(e) => handleTagsInputChange(e.target.value)}
+            placeholder="e.g., env:production, product:food or ml, ai-model"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          {tags.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {tags.map((tag, idx) => (
+                <span
+                  key={idx}
+                  className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Metadata Form */}
@@ -175,17 +471,35 @@ export const ComputeAssetEditor: React.FC<ComputeAssetEditorProps> = ({
           }}
           onChange={(updates) => {
             if (updates.owner !== undefined) setOwner(updates.owner);
-            if (updates.engineering_team !== undefined) setEngineeringTeam(updates.engineering_team);
+            if (updates.engineering_team !== undefined)
+              setEngineeringTeam(updates.engineering_team);
             if (updates.source_repo !== undefined) setSourceRepo(updates.source_repo);
             if (updates.status !== undefined) setStatus(updates.status);
           }}
         />
 
         {/* BPMN Link */}
-        <BPMNLink assetId={asset?.id || 'new'} domainId={domainId} currentLinkId={bpmnLink} onLinkChange={setBpmnLink} />
+        <BPMNLink
+          assetId={asset?.id || 'new'}
+          domainId={domainId}
+          currentLinkId={bpmnLink}
+          onLinkChange={setBpmnLink}
+        />
 
         {/* DMN Link */}
-        <DMNLink assetId={asset?.id || 'new'} domainId={domainId} currentLinkId={dmnLink} onLinkChange={setDmnLink} />
+        <DMNLink
+          assetId={asset?.id || 'new'}
+          domainId={domainId}
+          currentLinkId={dmnLink}
+          onLinkChange={setDmnLink}
+        />
+
+        {/* OpenAPI Specs */}
+        <OpenAPILink
+          assetId={asset?.id || 'new'}
+          currentSpecs={openapiSpecs}
+          onSpecsChange={setOpenapiSpecs}
+        />
 
         {/* Actions */}
         <div className="flex justify-end gap-2 pt-4 border-t border-gray-200">
@@ -206,4 +520,3 @@ export const ComputeAssetEditor: React.FC<ComputeAssetEditorProps> = ({
     </DraggableModal>
   );
 };
-

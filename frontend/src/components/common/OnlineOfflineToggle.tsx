@@ -30,7 +30,7 @@ export const OnlineOfflineToggle: React.FC = () => {
       if (currentState.isManualOverride && currentState.mode === 'offline') {
         return;
       }
-      
+
       if (!currentState.isManualOverride) {
         setIsChecking(true);
         const isOnline = await checkOnlineMode();
@@ -42,12 +42,12 @@ export const OnlineOfflineToggle: React.FC = () => {
         setIsChecking(false);
       }
     };
-    
+
     // Only check if not manually set to offline
     if (!(isManualOverride && mode === 'offline')) {
       checkAvailability();
     }
-    
+
     // Check periodically (every 30 seconds) - but skip if manually set to offline
     const interval = setInterval(() => {
       // Double-check manual override before making API call
@@ -73,62 +73,62 @@ export const OnlineOfflineToggle: React.FC = () => {
           setIsChecking(false);
           return;
         }
-        
-                // API is available - require authentication
-                if (!isAuthenticated) {
-                  addToast({
-                    type: 'info',
-                    message: 'Authentication required for online mode',
-                  });
-                  
-                  // Use desktop OAuth flow for Electron, web flow for browser
-                  if (isElectron()) {
-                    try {
-                      addToast({
-                        type: 'info',
-                        message: 'Opening GitHub authentication in your browser...',
-                      });
-                      
-                      // Use desktop OAuth flow
-                      const tokens = await electronAuthService.completeDesktopAuth();
-                      
-                      // Login with tokens
-                      await login(tokens);
-                      
-                      addToast({
-                        type: 'success',
-                        message: 'Successfully authenticated!',
-                      });
-                    } catch (authError) {
-                      addToast({
-                        type: 'error',
-                        message: `Authentication failed: ${authError instanceof Error ? authError.message : 'Unknown error'}`,
-                      });
-                      console.error('Desktop auth failed:', authError);
-                      setIsChecking(false);
-                      return;
-                    }
-                  } else {
-                    // Browser: Use web OAuth flow
-                    // Dynamically determine the frontend URL (origin only - API will append /auth/complete)
-                    const frontendOrigin = window.location.origin;
-                    
-                    // Use relative URL which will be proxied by Nginx in Docker
-                    // Pass only the origin - API will append /auth/complete to it
-                    window.location.href = `/api/v1/auth/github/login?redirect_uri=${encodeURIComponent(frontendOrigin)}`;
-                  }
-                  
-                  setIsChecking(false);
-                  return;
-                }
-        
+
+        // API is available - require authentication
+        if (!isAuthenticated) {
+          addToast({
+            type: 'info',
+            message: 'Authentication required for online mode',
+          });
+
+          // Use desktop OAuth flow for Electron, web flow for browser
+          if (isElectron()) {
+            try {
+              addToast({
+                type: 'info',
+                message: 'Opening GitHub authentication in your browser...',
+              });
+
+              // Use desktop OAuth flow
+              const tokens = await electronAuthService.completeDesktopAuth();
+
+              // Login with tokens
+              await login(tokens);
+
+              addToast({
+                type: 'success',
+                message: 'Successfully authenticated!',
+              });
+            } catch (authError) {
+              addToast({
+                type: 'error',
+                message: `Authentication failed: ${authError instanceof Error ? authError.message : 'Unknown error'}`,
+              });
+              console.error('Desktop auth failed:', authError);
+              setIsChecking(false);
+              return;
+            }
+          } else {
+            // Browser: Use web OAuth flow
+            // Dynamically determine the frontend URL (origin only - API will append /auth/complete)
+            const frontendOrigin = window.location.origin;
+
+            // Use relative URL which will be proxied by Nginx in Docker
+            // Pass only the origin - API will append /auth/complete to it
+            window.location.href = `/api/v1/auth/github/login?redirect_uri=${encodeURIComponent(frontendOrigin)}`;
+          }
+
+          setIsChecking(false);
+          return;
+        }
+
         // Switch to online mode
         setMode('online', true);
         addToast({
           type: 'success',
           message: 'Switched to online mode',
         });
-      } catch (error) {
+      } catch {
         addToast({
           type: 'error',
           message: 'Failed to check API availability',
@@ -170,12 +170,12 @@ export const OnlineOfflineToggle: React.FC = () => {
             `}
           />
         </button>
-        <span className={`text-sm font-medium ${mode === 'online' ? 'text-blue-600' : 'text-gray-600'}`}>
+        <span
+          className={`text-sm font-medium ${mode === 'online' ? 'text-blue-600' : 'text-gray-600'}`}
+        >
           {mode === 'online' ? 'Online' : 'Offline'}
         </span>
-        {isChecking && (
-          <span className="text-xs text-gray-500">Checking...</span>
-        )}
+        {isChecking && <span className="text-xs text-gray-500">Checking...</span>}
         {!isAuthenticated && mode === 'offline' && (
           <span className="text-xs text-gray-500">(Auth not required)</span>
         )}
@@ -194,4 +194,3 @@ export const OnlineOfflineToggle: React.FC = () => {
     </div>
   );
 };
-

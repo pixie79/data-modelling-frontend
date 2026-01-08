@@ -5,8 +5,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { dataFlowService } from '@/services/api/dataFlowService';
-import { apiClient } from '@/services/api/apiClient';
-import type { DataFlowDiagram, DataFlowNode, DataFlowConnection } from '@/types/dataflow';
+import type { DataFlowDiagram } from '@/types/dataflow';
 import type {
   ListDataFlowDiagramsResponse,
   GetDataFlowDiagramResponse,
@@ -367,4 +366,3 @@ describe('DataFlowService', () => {
     });
   });
 });
-

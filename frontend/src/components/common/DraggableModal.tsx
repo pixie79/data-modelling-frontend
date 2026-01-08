@@ -11,9 +11,11 @@ export interface DraggableModalProps {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | 'xxl';
   showCloseButton?: boolean;
   initialPosition?: { x: number; y: number };
+  noPadding?: boolean;
+  resizable?: boolean;
 }
 
 export const DraggableModal: React.FC<DraggableModalProps> = ({
@@ -24,6 +26,8 @@ export const DraggableModal: React.FC<DraggableModalProps> = ({
   size = 'md',
   showCloseButton = true,
   initialPosition,
+  noPadding = false,
+  resizable = false,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
@@ -32,6 +36,14 @@ export const DraggableModal: React.FC<DraggableModalProps> = ({
   );
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeStart, setResizeStart] = useState<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
   const hasFocusedRef = useRef(false);
   const titleId = generateAriaId('modal-title');
   const descriptionId = generateAriaId('modal-description');
@@ -43,11 +55,11 @@ export const DraggableModal: React.FC<DraggableModalProps> = ({
     const handleMouseMove = (e: MouseEvent) => {
       const newX = e.clientX - dragOffset.x;
       const newY = e.clientY - dragOffset.y;
-      
+
       // Keep modal within viewport bounds
       const maxX = window.innerWidth - (modalRef.current?.offsetWidth || 0);
       const maxY = window.innerHeight - (modalRef.current?.offsetHeight || 0);
-      
+
       setPosition({
         x: Math.max(0, Math.min(newX, maxX)),
         y: Math.max(0, Math.min(newY, maxY)),
@@ -69,7 +81,7 @@ export const DraggableModal: React.FC<DraggableModalProps> = ({
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!modalRef.current) return;
-    
+
     const rect = modalRef.current.getBoundingClientRect();
     setDragOffset({
       x: e.clientX - rect.left,
@@ -79,7 +91,53 @@ export const DraggableModal: React.FC<DraggableModalProps> = ({
     e.preventDefault(); // Prevent text selection while dragging
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleResizeMouseDown = (e: React.MouseEvent) => {
+    if (!modalRef.current) return;
+    const rect = modalRef.current.getBoundingClientRect();
+    setResizeStart({
+      x: e.clientX,
+      y: e.clientY,
+      width: rect.width,
+      height: rect.height,
+    });
+    setIsResizing(true);
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  // Handle resizing
+  useEffect(() => {
+    if (!isResizing || !resizeStart) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaX = e.clientX - resizeStart.x;
+      const deltaY = e.clientY - resizeStart.y;
+
+      const newWidth = Math.max(
+        400,
+        Math.min(resizeStart.width + deltaX, window.innerWidth * 0.95)
+      );
+      const newHeight = Math.max(
+        300,
+        Math.min(resizeStart.height + deltaY, window.innerHeight * 0.95)
+      );
+
+      setDimensions({ width: newWidth, height: newHeight });
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, resizeStart]);
+
   const [_hasFocused, _setHasFocused] = useState(false);
 
   useEffect(() => {
@@ -96,7 +154,7 @@ export const DraggableModal: React.FC<DraggableModalProps> = ({
       // Use setTimeout to ensure the modal is fully rendered and avoid focus conflicts
       const focusTimeout = setTimeout(() => {
         if (!modalRef.current || hasFocusedRef.current) return;
-        
+
         // Prioritize input fields, exclude close button
         const prioritySelectors = [
           'input[autofocus]',
@@ -107,7 +165,7 @@ export const DraggableModal: React.FC<DraggableModalProps> = ({
           'select',
           'button:not([aria-label="Close modal"]):not([aria-label="Close"])',
         ];
-        
+
         for (const selector of prioritySelectors) {
           const element = modalRef.current.querySelector<HTMLElement>(selector);
           if (element) {
@@ -120,7 +178,7 @@ export const DraggableModal: React.FC<DraggableModalProps> = ({
           }
         }
       }, 50); // Slightly longer delay to ensure modal is stable
-      
+
       return () => {
         cleanup?.();
         clearTimeout(focusTimeout);
@@ -149,9 +207,18 @@ export const DraggableModal: React.FC<DraggableModalProps> = ({
 
   const sizeClasses = {
     sm: 'w-96 max-w-[90vw]',
-    md: 'w-[400px] max-w-[90vw]', // Reduced by 20% from 500px
+    md: 'w-[400px] max-w-[90vw]',
     lg: 'w-[700px] max-w-[90vw]',
     xl: 'w-[900px] max-w-[90vw]',
+    xxl: 'w-[1400px] max-w-[95vw]',
+  };
+
+  const defaultHeights = {
+    sm: 400,
+    md: 500,
+    lg: 600,
+    xl: 700,
+    xxl: 850,
   };
 
   return (
@@ -166,19 +233,31 @@ export const DraggableModal: React.FC<DraggableModalProps> = ({
       <div
         className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
         onClick={onClose}
-        aria-hidden="true"
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            onClose();
+          }
+        }}
+        role="button"
+        tabIndex={0}
+        aria-label="Close modal"
       />
 
       {/* Draggable Modal */}
       <div
         ref={modalRef}
-        className={`fixed bg-white rounded-lg shadow-2xl ${sizeClasses[size]} max-h-[90vh] flex flex-col`}
+        className={`fixed bg-white rounded-lg shadow-2xl ${dimensions ? '' : sizeClasses[size]} ${dimensions ? '' : 'max-h-[90vh]'} flex flex-col`}
         style={{
           left: `${position.x}px`,
           top: `${position.y}px`,
           transform: 'none',
+          width: dimensions ? `${dimensions.width}px` : undefined,
+          height: dimensions ? `${dimensions.height}px` : `${defaultHeights[size]}px`,
+          maxHeight: dimensions ? undefined : '90vh',
         }}
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
       >
         {/* Header - draggable area */}
         <div
@@ -194,6 +273,8 @@ export const DraggableModal: React.FC<DraggableModalProps> = ({
           className={`flex items-center justify-between p-4 border-b border-gray-200 ${
             isDragging ? 'cursor-grabbing' : 'cursor-move'
           } select-none`}
+          role="banner"
+          aria-label="Modal header - drag to move"
         >
           <h2 id={titleId} className="text-xl font-semibold text-gray-900 flex-1">
             {title}
@@ -206,12 +287,7 @@ export const DraggableModal: React.FC<DraggableModalProps> = ({
               className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded ml-4 flex-shrink-0"
               aria-label="Close modal"
             >
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -226,8 +302,8 @@ export const DraggableModal: React.FC<DraggableModalProps> = ({
         {/* Content - scrollable */}
         <div
           id={descriptionId}
-          className="flex-1 overflow-y-auto p-6"
-          style={{ 
+          className={`flex-1 overflow-y-auto ${noPadding ? '' : 'p-6'}`}
+          style={{
             maxHeight: 'calc(90vh - 80px)',
             scrollbarWidth: 'thin',
             scrollbarColor: '#cbd5e1 #f1f5f9',
@@ -251,8 +327,19 @@ export const DraggableModal: React.FC<DraggableModalProps> = ({
           `}</style>
           {children}
         </div>
+
+        {/* Resize Handle */}
+        {resizable && (
+          <div
+            onMouseDown={handleResizeMouseDown}
+            className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
+            style={{
+              background: 'linear-gradient(135deg, transparent 50%, #94a3b8 50%)',
+            }}
+            title="Drag to resize"
+          />
+        )}
       </div>
     </div>
   );
 };
-

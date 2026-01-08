@@ -7,6 +7,8 @@ import React, { useState } from 'react';
 import { useModelStore } from '@/stores/modelStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { useDecisionStore } from '@/stores/decisionStore';
+import { useKnowledgeStore } from '@/stores/knowledgeStore';
 import { workspaceService } from '@/services/api/workspaceService';
 import { useSDKModeStore } from '@/services/sdk/sdkMode';
 import { HelpText } from '@/components/common/HelpText';
@@ -23,9 +25,25 @@ export interface DomainTabsProps {
 }
 
 export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
-  const { domains, selectedDomainId, setSelectedDomain, removeDomain, updateDomain, bpmnProcesses, updateBPMNProcess, tables, products, computeAssets, dmnDecisions, systems, relationships } = useModelStore();
+  const {
+    domains,
+    selectedDomainId,
+    setSelectedDomain,
+    removeDomain,
+    updateDomain,
+    bpmnProcesses,
+    updateBPMNProcess,
+    tables,
+    products,
+    computeAssets,
+    dmnDecisions,
+    systems,
+    relationships,
+  } = useModelStore();
   const { addToast } = useUIStore();
   const { mode } = useSDKModeStore();
+  const { decisions } = useDecisionStore();
+  const { articles } = useKnowledgeStore();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showBPMNEditor, setShowBPMNEditor] = useState(false);
   const [editingProcessId, setEditingProcessId] = useState<string | null>(null);
@@ -57,7 +75,11 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
       return;
     }
 
-    if (!window.confirm(`Are you sure you want to delete domain "${domainName}"? This action cannot be undone.`)) {
+    if (
+      !window.confirm(
+        `Are you sure you want to delete domain "${domainName}"? This action cannot be undone.`
+      )
+    ) {
       return;
     }
 
@@ -105,21 +127,21 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
         setIsLoading(false);
         return;
       }
-      
+
       // Import validation utilities
       const { generateUUID, isValidUUID } = await import('@/utils/validation');
-      
+
       // Load domain folder
       const domainData = await electronFileService.loadDomainFolder(domainPath);
-      
+
       // Extract workspace path from domain path (parent directory)
       const pathParts = domainPath.split(/[/\\]/);
       const domainName = pathParts[pathParts.length - 1];
       const workspacePath = pathParts.slice(0, -1).join('/');
-      
+
       // Check if domain with same name already exists
-      const existingDomain = domains.find(d => d.name === (domainData.domain.name || domainName));
-      
+      const existingDomain = domains.find((d) => d.name === (domainData.domain.name || domainName));
+
       let domain;
       if (existingDomain) {
         // Merge with existing domain - update it instead of creating new
@@ -137,9 +159,10 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
         setSelectedDomain(existingDomain.id);
       } else {
         // Create new domain
-        const loadedDomainId = domainData.domain.id && isValidUUID(domainData.domain.id) 
-          ? domainData.domain.id 
-          : generateUUID();
+        const loadedDomainId =
+          domainData.domain.id && isValidUUID(domainData.domain.id)
+            ? domainData.domain.id
+            : generateUUID();
         domain = {
           id: loadedDomainId,
           workspace_id: workspaceId || '',
@@ -153,17 +176,21 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
         useModelStore.getState().setDomains([...domains, domain]);
         setSelectedDomain(domain.id);
       }
-      
+
       // Merge loaded assets with existing ones
       const modelStore = useModelStore.getState();
-      
+
       if (domainData.tables.length > 0) {
         console.log(`[DomainTabs] Merging ${domainData.tables.length} table(s) into store`);
         const mergedTables = [...tables];
-        domainData.tables.forEach(table => {
-          const index = mergedTables.findIndex(t => t.id === table.id);
+        domainData.tables.forEach((table) => {
+          const index = mergedTables.findIndex((t) => t.id === table.id);
           if (index >= 0) {
-            mergedTables[index] = { ...mergedTables[index], ...table, primary_domain_id: domain.id };
+            mergedTables[index] = {
+              ...mergedTables[index],
+              ...table,
+              primary_domain_id: domain.id,
+            };
           } else {
             mergedTables.push({ ...table, primary_domain_id: domain.id });
           }
@@ -171,12 +198,12 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
         modelStore.setTables(mergedTables);
         console.log(`[DomainTabs] Total tables in store: ${mergedTables.length}`);
       }
-      
+
       if (domainData.products.length > 0) {
         console.log(`[DomainTabs] Merging ${domainData.products.length} product(s) into store`);
         const mergedProducts = [...products];
-        domainData.products.forEach(product => {
-          const index = mergedProducts.findIndex(p => p.id === product.id);
+        domainData.products.forEach((product) => {
+          const index = mergedProducts.findIndex((p) => p.id === product.id);
           if (index >= 0) {
             mergedProducts[index] = { ...mergedProducts[index], ...product, domain_id: domain.id };
           } else {
@@ -186,12 +213,12 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
         modelStore.setProducts(mergedProducts);
         console.log(`[DomainTabs] Total products in store: ${mergedProducts.length}`);
       }
-      
+
       if (domainData.assets.length > 0) {
         console.log(`[DomainTabs] Merging ${domainData.assets.length} asset(s) into store`);
         const mergedAssets = [...computeAssets];
-        domainData.assets.forEach(asset => {
-          const index = mergedAssets.findIndex(a => a.id === asset.id);
+        domainData.assets.forEach((asset) => {
+          const index = mergedAssets.findIndex((a) => a.id === asset.id);
           if (index >= 0) {
             mergedAssets[index] = { ...mergedAssets[index], ...asset, domain_id: domain.id };
           } else {
@@ -201,14 +228,20 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
         modelStore.setComputeAssets(mergedAssets);
         console.log(`[DomainTabs] Total assets in store: ${mergedAssets.length}`);
       }
-      
+
       if (domainData.bpmnProcesses.length > 0) {
-        console.log(`[DomainTabs] Merging ${domainData.bpmnProcesses.length} BPMN process(es) into store`);
+        console.log(
+          `[DomainTabs] Merging ${domainData.bpmnProcesses.length} BPMN process(es) into store`
+        );
         const mergedProcesses = [...bpmnProcesses];
-        domainData.bpmnProcesses.forEach(process => {
-          const index = mergedProcesses.findIndex(p => p.id === process.id);
+        domainData.bpmnProcesses.forEach((process) => {
+          const index = mergedProcesses.findIndex((p) => p.id === process.id);
           if (index >= 0) {
-            mergedProcesses[index] = { ...mergedProcesses[index], ...process, domain_id: domain.id };
+            mergedProcesses[index] = {
+              ...mergedProcesses[index],
+              ...process,
+              domain_id: domain.id,
+            };
           } else {
             mergedProcesses.push({ ...process, domain_id: domain.id });
           }
@@ -216,14 +249,20 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
         modelStore.setBPMNProcesses(mergedProcesses);
         console.log(`[DomainTabs] Total BPMN processes in store: ${mergedProcesses.length}`);
       }
-      
+
       if (domainData.dmnDecisions.length > 0) {
-        console.log(`[DomainTabs] Merging ${domainData.dmnDecisions.length} DMN decision(s) into store`);
+        console.log(
+          `[DomainTabs] Merging ${domainData.dmnDecisions.length} DMN decision(s) into store`
+        );
         const mergedDecisions = [...dmnDecisions];
-        domainData.dmnDecisions.forEach(decision => {
-          const index = mergedDecisions.findIndex(d => d.id === decision.id);
+        domainData.dmnDecisions.forEach((decision) => {
+          const index = mergedDecisions.findIndex((d) => d.id === decision.id);
           if (index >= 0) {
-            mergedDecisions[index] = { ...mergedDecisions[index], ...decision, domain_id: domain.id };
+            mergedDecisions[index] = {
+              ...mergedDecisions[index],
+              ...decision,
+              domain_id: domain.id,
+            };
           } else {
             mergedDecisions.push({ ...decision, domain_id: domain.id });
           }
@@ -231,13 +270,13 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
         modelStore.setDMNDecisions(mergedDecisions);
         console.log(`[DomainTabs] Total DMN decisions in store: ${mergedDecisions.length}`);
       }
-      
+
       // Merge systems and relationships
       if (domainData.systems.length > 0) {
         console.log(`[DomainTabs] Merging ${domainData.systems.length} system(s) into store`);
         const mergedSystems = [...systems];
-        domainData.systems.forEach(system => {
-          const index = mergedSystems.findIndex(s => s.id === system.id);
+        domainData.systems.forEach((system) => {
+          const index = mergedSystems.findIndex((s) => s.id === system.id);
           if (index >= 0) {
             mergedSystems[index] = { ...mergedSystems[index], ...system, domain_id: domain.id };
           } else {
@@ -247,22 +286,33 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
         modelStore.setSystems(mergedSystems);
         console.log(`[DomainTabs] Total systems in store: ${mergedSystems.length}`);
       }
-      
+
       if (domainData.relationships.length > 0) {
-        console.log(`[DomainTabs] Merging ${domainData.relationships.length} relationship(s) into store`);
+        console.log(
+          `[DomainTabs] Merging ${domainData.relationships.length} relationship(s) into store`
+        );
         const mergedRelationships = [...relationships];
-        domainData.relationships.forEach(relationship => {
-          const index = mergedRelationships.findIndex(r => r.id === relationship.id);
+        domainData.relationships.forEach((relationship) => {
+          const index = mergedRelationships.findIndex((r) => r.id === relationship.id);
           if (index >= 0) {
-            mergedRelationships[index] = { ...mergedRelationships[index], ...relationship, domain_id: domain.id, workspace_id: workspaceId };
+            mergedRelationships[index] = {
+              ...mergedRelationships[index],
+              ...relationship,
+              domain_id: domain.id,
+              workspace_id: workspaceId,
+            };
           } else {
-            mergedRelationships.push({ ...relationship, domain_id: domain.id, workspace_id: workspaceId });
+            mergedRelationships.push({
+              ...relationship,
+              domain_id: domain.id,
+              workspace_id: workspaceId,
+            });
           }
         });
         modelStore.setRelationships(mergedRelationships);
         console.log(`[DomainTabs] Total relationships in store: ${mergedRelationships.length}`);
       }
-      
+
       // Also ensure workspace_id is set on all other loaded assets
       if (domainData.tables.length > 0) {
         console.log(`[DomainTabs] Merging ${domainData.tables.length} table(s) into store`);
@@ -270,11 +320,11 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
       if (domainData.assets.length > 0) {
         console.log(`[DomainTabs] Merging ${domainData.assets.length} asset(s) into store`);
       }
-      
+
       addToast({
         type: 'success',
-        message: existingDomain 
-          ? `Merged domain "${domain.name}" with existing domain` 
+        message: existingDomain
+          ? `Merged domain "${domain.name}" with existing domain`
           : `Loaded domain: ${domain.name}`,
       });
     } catch (err) {
@@ -290,14 +340,14 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
 
   const handleSaveDomain = async (domainId?: string) => {
     const platform = getPlatform();
-    
+
     if (platform === 'browser') {
       // Browser mode: Always prompt for directory access (like Electron)
       try {
         const { browserFileService } = await import('@/services/platform/browser');
         const { localFileService } = await import('@/services/storage/localFileService');
-        const workspace = useWorkspaceStore.getState().workspaces.find(w => w.id === workspaceId);
-        
+        const workspace = useWorkspaceStore.getState().workspaces.find((w) => w.id === workspaceId);
+
         if (!workspace) {
           addToast({
             type: 'error',
@@ -315,7 +365,7 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
           return;
         }
 
-        const domain = domains.find(d => d.id === targetDomainId);
+        const domain = domains.find((d) => d.id === targetDomainId);
         if (!domain) {
           addToast({
             type: 'error',
@@ -328,18 +378,21 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
         setShowSaveMenu(false);
 
         // Check for cached directory handle first, only prompt if not available
-        let directoryHandle: FileSystemDirectoryHandle | null | undefined = browserFileService.getCachedDirectoryHandle(workspace.name || workspace.id);
-        
+        let directoryHandle: FileSystemDirectoryHandle | null | undefined =
+          browserFileService.getCachedDirectoryHandle(workspace.name || workspace.id);
+
         if (!directoryHandle) {
           // No cached handle - request directory access (prompt user)
-          directoryHandle = await browserFileService.requestDirectoryAccess(workspace.name || workspace.id);
-          
+          directoryHandle = await browserFileService.requestDirectoryAccess(
+            workspace.name || workspace.id
+          );
+
           if (!directoryHandle) {
             // User cancelled - offer ZIP download instead
             const useZip = window.confirm(
               'Directory access was cancelled. Would you like to download a ZIP file instead?'
             );
-            
+
             if (!useZip) {
               setIsSaving(false);
               return;
@@ -348,13 +401,13 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
         }
 
         // Get domain assets
-        const domainTables = tables.filter(t => t.primary_domain_id === domain.id);
-        const domainProducts = products.filter(p => p.domain_id === domain.id);
-        const domainAssets = computeAssets.filter(a => a.domain_id === domain.id);
-        const domainBpmn = bpmnProcesses.filter(p => p.domain_id === domain.id);
-        const domainDmn = dmnDecisions.filter(d => d.domain_id === domain.id);
-        const domainSystems = systems.filter(s => s.domain_id === domain.id);
-        const domainRelationships = relationships.filter(r => r.domain_id === domain.id);
+        const domainTables = tables.filter((t) => t.primary_domain_id === domain.id);
+        const domainProducts = products.filter((p) => p.domain_id === domain.id);
+        const domainAssets = computeAssets.filter((a) => a.domain_id === domain.id);
+        const domainBpmn = bpmnProcesses.filter((p) => p.domain_id === domain.id);
+        const domainDmn = dmnDecisions.filter((d) => d.domain_id === domain.id);
+        const domainSystems = systems.filter((s) => s.domain_id === domain.id);
+        const domainRelationships = relationships.filter((r) => r.domain_id === domain.id);
 
         // Save domain folder
         await localFileService.saveDomainFolder(
@@ -376,14 +429,17 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
             name: workspace.name || workspace.id,
             created_at: workspace.created_at || new Date().toISOString(),
             last_modified_at: new Date().toISOString(),
-            domains: domains.map(d => ({ id: d.id, name: d.name })),
+            domains: domains.map((d) => ({ id: d.id, name: d.name })),
           };
-          await localFileService.saveWorkspaceMetadata(workspace.name || workspace.id, workspaceMetadata);
+          await localFileService.saveWorkspaceMetadata(
+            workspace.name || workspace.id,
+            workspaceMetadata
+          );
         }
 
         addToast({
           type: 'success',
-          message: directoryHandle 
+          message: directoryHandle
             ? `Saved domain: ${domain.name} to directory`
             : `Downloaded domain: ${domain.name} as ZIP`,
         });
@@ -398,7 +454,7 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
       }
       return;
     }
-    
+
     if (platform !== 'electron') {
       addToast({
         type: 'error',
@@ -421,7 +477,7 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
 
     try {
       const domain = domains.find((d) => d.id === targetDomainId);
-      
+
       if (!domain) {
         addToast({
           type: 'error',
@@ -442,7 +498,7 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
       }
 
       const selectedPath = result.filePaths[0];
-      
+
       // Get all domain assets
       const domainTables = tables.filter((t) => t.primary_domain_id === targetDomainId);
       const domainProducts = products.filter((p) => p.domain_id === targetDomainId);
@@ -451,7 +507,7 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
       const domainDmnDecisions = dmnDecisions.filter((d) => d.domain_id === targetDomainId);
       const domainSystems = systems.filter((s) => s.domain_id === targetDomainId);
       const domainRelationships = relationships.filter((r) => r.domain_id === targetDomainId);
-      
+
       // Convert domain to DomainType format
       const domainType = {
         id: domain.id,
@@ -462,7 +518,7 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
         created_at: domain.created_at,
         last_modified_at: domain.last_modified_at,
       } as any;
-      
+
       // Determine workspace path and domain path
       // If user selects a folder that ends with domain name, use parent as workspace
       // Otherwise, use selected path as workspace (will create subfolder)
@@ -473,14 +529,16 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
       }
       const pathParts = selectedPath.split(/[/\\]/).filter(Boolean);
       const lastPart = pathParts[pathParts.length - 1];
-      const workspacePath = (lastPart === domain.name && pathParts.length > 1)
-        ? pathParts.slice(0, -1).join('/')
-        : selectedPath;
-      
-      const domainPath = (lastPart === domain.name && pathParts.length > 1)
-        ? selectedPath
-        : `${selectedPath}/${domain.name}`;
-      
+      const workspacePath =
+        lastPart === domain.name && pathParts.length > 1
+          ? pathParts.slice(0, -1).join('/')
+          : selectedPath;
+
+      const domainPath =
+        lastPart === domain.name && pathParts.length > 1
+          ? selectedPath
+          : `${selectedPath}/${domain.name}`;
+
       // Save domain folder (saveDomainFolder expects domainPath, not workspacePath)
       await electronFileService.saveDomainFolder(
         domainPath,
@@ -493,13 +551,13 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
         domainSystems,
         domainRelationships
       );
-      
+
       // Update domain with folder paths
       updateDomain(domain.id, {
         workspace_path: workspacePath,
         folder_path: domainPath,
       });
-      
+
       // Save workspace.yaml with all domain IDs
       const allDomains = domains;
       const workspaceMetadata = {
@@ -507,13 +565,13 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
         name: workspaceId, // Use workspaceId as name if workspace name not available
         created_at: new Date().toISOString(),
         last_modified_at: new Date().toISOString(),
-        domains: allDomains.map(d => ({
+        domains: allDomains.map((d) => ({
           id: d.id,
           name: d.name,
         })),
       };
       await electronFileService.saveWorkspaceMetadata(workspacePath, workspaceMetadata);
-      
+
       addToast({
         type: 'success',
         message: `Saved domain: ${domain.name}`,
@@ -529,67 +587,16 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  // @ts-expect-error - Unused function kept for potential future use
-  const _handleLoadWorkspace = async () => {
-    if (getPlatform() !== 'electron') {
-      addToast({
-        type: 'error',
-        message: 'Load Workspace is only available in Electron offline mode',
-      });
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      // Show folder selection dialog for workspace root
-      const result = await platformFileService.showOpenDialog({
-        properties: ['openDirectory'],
-        title: 'Select Workspace Folder to Load',
-      });
-
-      if (result.canceled || !result.filePaths || result.filePaths.length === 0) {
-        setIsLoading(false);
-        return;
-      }
-
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      // @ts-expect-error - Unused variable kept for potential future use
-      const _workspacePath = result.filePaths[0];
-      
-      // Import validation utilities
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { generateUUID: _generateUUID, isValidUUID: _isValidUUID } = await import('@/utils/validation');
-      
-      // For now, we'll require the user to manually select domain folders
-      // In the future, we could add directory listing to automatically find all domain folders
-      // For now, show a message that they should use "Load Domain" for each domain folder
-      addToast({
-        type: 'info',
-        message: 'Please use "Load Domain" to load individual domain folders. Workspace auto-detection coming soon.',
-      });
-      
-      setIsLoading(false);
-    } catch (err) {
-      console.error('Failed to load workspace:', err);
-      addToast({
-        type: 'error',
-        message: `Failed to load workspace: ${err instanceof Error ? err.message : 'Unknown error'}`,
-      });
-      setIsLoading(false);
-    }
-  };
-
   const handleSaveAllDomains = async () => {
     const platform = getPlatform();
-    
+
     if (platform === 'browser') {
       // Browser mode: Always prompt for directory access (like Electron)
       try {
         const { browserFileService } = await import('@/services/platform/browser');
         const { localFileService } = await import('@/services/storage/localFileService');
-        const workspace = useWorkspaceStore.getState().workspaces.find(w => w.id === workspaceId);
-        
+        const workspace = useWorkspaceStore.getState().workspaces.find((w) => w.id === workspaceId);
+
         if (!workspace) {
           addToast({
             type: 'error',
@@ -602,18 +609,21 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
         setShowSaveMenu(false);
 
         // Check for cached directory handle first, only prompt if not available
-        let directoryHandle: FileSystemDirectoryHandle | null | undefined = browserFileService.getCachedDirectoryHandle(workspace.name || workspace.id);
-        
+        let directoryHandle: FileSystemDirectoryHandle | null | undefined =
+          browserFileService.getCachedDirectoryHandle(workspace.name || workspace.id);
+
         if (!directoryHandle) {
           // No cached handle - request directory access (prompt user)
-          directoryHandle = await browserFileService.requestDirectoryAccess(workspace.name || workspace.id);
-          
+          directoryHandle = await browserFileService.requestDirectoryAccess(
+            workspace.name || workspace.id
+          );
+
           if (!directoryHandle) {
             // User cancelled - offer ZIP download instead
             const useZip = window.confirm(
               'Directory access was cancelled. Would you like to download a ZIP file with all domains instead?'
             );
-            
+
             if (!useZip) {
               setIsSaving(false);
               return;
@@ -623,13 +633,13 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
 
         // Save each domain
         for (const domain of domains) {
-          const domainTables = tables.filter(t => t.primary_domain_id === domain.id);
-          const domainProducts = products.filter(p => p.domain_id === domain.id);
-          const domainAssets = computeAssets.filter(a => a.domain_id === domain.id);
-          const domainBpmn = bpmnProcesses.filter(p => p.domain_id === domain.id);
-          const domainDmn = dmnDecisions.filter(d => d.domain_id === domain.id);
-          const domainSystems = systems.filter(s => s.domain_id === domain.id);
-          const domainRelationships = relationships.filter(r => r.domain_id === domain.id);
+          const domainTables = tables.filter((t) => t.primary_domain_id === domain.id);
+          const domainProducts = products.filter((p) => p.domain_id === domain.id);
+          const domainAssets = computeAssets.filter((a) => a.domain_id === domain.id);
+          const domainBpmn = bpmnProcesses.filter((p) => p.domain_id === domain.id);
+          const domainDmn = dmnDecisions.filter((d) => d.domain_id === domain.id);
+          const domainSystems = systems.filter((s) => s.domain_id === domain.id);
+          const domainRelationships = relationships.filter((r) => r.domain_id === domain.id);
 
           await localFileService.saveDomainFolder(
             workspace.name || workspace.id,
@@ -651,9 +661,12 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
             name: workspace.name || workspace.id,
             created_at: workspace.created_at || new Date().toISOString(),
             last_modified_at: new Date().toISOString(),
-            domains: domains.map(d => ({ id: d.id, name: d.name })),
+            domains: domains.map((d) => ({ id: d.id, name: d.name })),
           };
-          await localFileService.saveWorkspaceMetadata(workspace.name || workspace.id, workspaceMetadata);
+          await localFileService.saveWorkspaceMetadata(
+            workspace.name || workspace.id,
+            workspaceMetadata
+          );
         }
 
         addToast({
@@ -673,7 +686,7 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
       }
       return;
     }
-    
+
     if (platform !== 'electron') {
       addToast({
         type: 'error',
@@ -706,11 +719,11 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
       }
 
       const workspacePath = result.filePaths[0];
-      
+
       // Save each domain to its own subfolder
       for (const domain of domains) {
         const domainPath = `${workspacePath}/${domain.name}`;
-        
+
         // Get all domain assets
         const domainTables = tables.filter((t) => t.primary_domain_id === domain.id);
         const domainProducts = products.filter((p) => p.domain_id === domain.id);
@@ -719,7 +732,7 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
         const domainDmnDecisions = dmnDecisions.filter((d) => d.domain_id === domain.id);
         const domainSystems = systems.filter((s) => s.domain_id === domain.id);
         const domainRelationships = relationships.filter((r) => r.domain_id === domain.id);
-        
+
         // Convert domain to DomainType format
         const domainType = {
           id: domain.id,
@@ -730,7 +743,7 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
           created_at: domain.created_at,
           last_modified_at: domain.last_modified_at,
         } as any;
-        
+
         // Save domain folder
         await electronFileService.saveDomainFolder(
           domainPath,
@@ -743,14 +756,14 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
           domainSystems,
           domainRelationships
         );
-        
+
         // Update domain with folder paths
         useModelStore.getState().updateDomain(domain.id, {
           workspace_path: workspacePath,
           folder_path: domainPath,
         });
       }
-      
+
       // Save workspace.yaml with all domain IDs after saving all domains
       if (workspacePath && workspaceId) {
         const workspaceMetadata = {
@@ -758,14 +771,14 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
           name: workspaceId, // Use workspaceId as name if workspace name not available
           created_at: new Date().toISOString(),
           last_modified_at: new Date().toISOString(),
-          domains: domains.map(d => ({
+          domains: domains.map((d) => ({
             id: d.id,
             name: d.name,
           })),
         };
         await electronFileService.saveWorkspaceMetadata(workspacePath, workspaceMetadata);
       }
-      
+
       addToast({
         type: 'success',
         message: `Saved all ${domains.length} domain(s)`,
@@ -791,9 +804,15 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
 
   return (
     <>
-      <div className="flex items-center border-b border-gray-200 bg-white" role="tablist" aria-label="Domain tabs">
+      <div
+        className="flex items-center border-b border-gray-200 bg-white"
+        role="tablist"
+        aria-label="Domain tabs"
+      >
         {domains.map((domain) => {
           const isSelected = selectedDomainId === domain.id;
+          const domainDecisionCount = decisions.filter((d) => d.domain_id === domain.id).length;
+          const domainArticleCount = articles.filter((a) => a.domain_id === domain.id).length;
           return (
             <div key={domain.id} className="flex items-center group">
               <button
@@ -804,14 +823,36 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
                 id={`domain-tab-${domain.id}`}
                 className={`
                   px-4 py-2 text-sm font-medium border-b-2 transition-colors
-                  ${isSelected
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
+                  ${
+                    isSelected
+                      ? 'border-blue-600 text-blue-600'
+                      : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
                   }
                 `}
               >
                 <div className="flex items-center gap-2">
                   <span>{domain.name}</span>
+                  {/* Decision and Knowledge counts */}
+                  {(domainDecisionCount > 0 || domainArticleCount > 0) && (
+                    <div className="flex items-center gap-1">
+                      {domainDecisionCount > 0 && (
+                        <span
+                          className="px-1.5 py-0.5 text-xs rounded-full bg-amber-100 text-amber-700"
+                          title={`${domainDecisionCount} decision${domainDecisionCount !== 1 ? 's' : ''}`}
+                        >
+                          {domainDecisionCount}D
+                        </span>
+                      )}
+                      {domainArticleCount > 0 && (
+                        <span
+                          className="px-1.5 py-0.5 text-xs rounded-full bg-emerald-100 text-emerald-700"
+                          title={`${domainArticleCount} knowledge article${domainArticleCount !== 1 ? 's' : ''}`}
+                        >
+                          {domainArticleCount}K
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </button>
               {domains.length > 1 && (
@@ -837,7 +878,7 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
         >
           + Add Domain
         </button>
-        
+
         {/* Move Resources button */}
         {selectedDomainId && (
           <button
@@ -849,7 +890,7 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
             Move Resources
           </button>
         )}
-        
+
         {/* Save/Load Domain buttons - available in offline mode (Electron or Browser) */}
         {mode === 'offline' && (
           <div className="ml-2 flex items-center gap-2">
@@ -885,26 +926,29 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
                     title="Save options"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
                     </svg>
                   </button>
                 )}
               </div>
-              
+
               {/* Dropdown menu for save options */}
               {showSaveMenu && domains.length > 1 && (
                 <>
-                  <div 
-                    className="fixed inset-0 z-10" 
-                    onClick={() => setShowSaveMenu(false)}
-                  />
+                  <div className="fixed inset-0 z-10" onClick={() => setShowSaveMenu(false)} />
                   <div className="absolute right-0 mt-1 w-56 bg-white rounded-md shadow-lg border border-gray-200 z-20">
                     <button
                       onClick={() => handleSaveDomain()}
                       disabled={isSaving || !selectedDomainId}
                       className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Save Current Domain ({domains.find((d) => d.id === selectedDomainId)?.name || 'None'})
+                      Save Current Domain (
+                      {domains.find((d) => d.id === selectedDomainId)?.name || 'None'})
                     </button>
                     <button
                       onClick={handleSaveAllDomains}
@@ -919,7 +963,7 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
             </div>
           </div>
         )}
-        
+
         <div className="ml-auto px-4">
           <HelpText
             text="Business domains organize your model into separate canvases. Tables can appear on multiple domains but are only editable on their primary domain."
@@ -927,9 +971,9 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
           />
         </div>
       </div>
-      
+
       {/* BPMN Process Links */}
-      {selectedDomainId && bpmnProcesses.length > 0 && (
+      {selectedDomainId && bpmnProcesses && bpmnProcesses.length > 0 && (
         <div className="bg-gray-50 border-b border-gray-200 px-4 py-2">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-medium text-gray-600">BPMN Processes:</span>
@@ -951,7 +995,7 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
           </div>
         </div>
       )}
-      
+
       <CreateDomainDialog
         isOpen={showCreateDialog}
         onClose={() => {
@@ -963,7 +1007,7 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
         }}
         workspaceId={workspaceId}
       />
-      
+
       {/* BPMN Editor Modal */}
       {editingProcessId && (
         <EditorModal
@@ -981,7 +1025,11 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
             onSave: async (xml: string, name: string) => {
               try {
                 const process = await bpmnService.parseXML(xml);
-                updateBPMNProcess(editingProcessId, { ...process, id: editingProcessId, name: name.trim() || process.name || 'Untitled Process' });
+                updateBPMNProcess(editingProcessId, {
+                  ...process,
+                  id: editingProcessId,
+                  name: name.trim() || process.name || 'Untitled Process',
+                });
                 addToast({
                   type: 'success',
                   message: 'BPMN process saved successfully',
@@ -1010,4 +1058,3 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
     </>
   );
 };
-

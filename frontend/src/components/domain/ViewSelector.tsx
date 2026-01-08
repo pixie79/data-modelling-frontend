@@ -43,6 +43,16 @@ const VIEW_MODES: Array<{ value: ViewMode; label: string; description: string }>
     label: 'Data Products',
     description: 'View ODPS data products',
   },
+  {
+    value: 'decisions',
+    label: 'Decisions',
+    description: 'Architecture Decision Records (MADR)',
+  },
+  {
+    value: 'knowledge',
+    label: 'Knowledge',
+    description: 'Knowledge base articles and documentation',
+  },
 ];
 
 export const ViewSelector: React.FC<ViewSelectorProps> = ({ domainId }) => {
@@ -75,7 +85,7 @@ export const ViewSelector: React.FC<ViewSelectorProps> = ({ domainId }) => {
 
   const handleCloseApp = () => {
     const platform = getPlatform();
-    
+
     // Check for pending changes - show confirmation dialog with options
     if (pendingChanges) {
       setShowExitConfirm(true);
@@ -100,12 +110,12 @@ export const ViewSelector: React.FC<ViewSelectorProps> = ({ domainId }) => {
     setIsClosing(true);
     setShowExitConfirm(false);
     const platform = getPlatform();
-    
+
     try {
       await manualSave();
       // Small delay to show save feedback
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
       if (platform === 'electron') {
         await closeElectronApp();
       } else {
@@ -126,7 +136,7 @@ export const ViewSelector: React.FC<ViewSelectorProps> = ({ domainId }) => {
     setShowExitConfirm(false);
     setIsClosing(true);
     const platform = getPlatform();
-    
+
     try {
       if (platform === 'electron') {
         await closeElectronApp();
@@ -139,9 +149,11 @@ export const ViewSelector: React.FC<ViewSelectorProps> = ({ domainId }) => {
       const errorMessage = error instanceof Error ? error.message : 'Failed to close workspace';
       addToast({
         type: 'error',
-        message: platform === 'electron' && (errorMessage.includes('not available') || errorMessage.includes('not a function'))
-          ? 'Close app feature requires rebuilding Electron. Please rebuild the app.'
-          : 'Failed to close workspace',
+        message:
+          platform === 'electron' &&
+          (errorMessage.includes('not available') || errorMessage.includes('not a function'))
+            ? 'Close app feature requires rebuilding Electron. Please rebuild the app.'
+            : 'Failed to close workspace',
       });
       setIsClosing(false);
     }
@@ -153,19 +165,23 @@ export const ViewSelector: React.FC<ViewSelectorProps> = ({ domainId }) => {
 
   // Views that require systems to exist
   const systemDependentViews: ViewMode[] = ['process', 'operational', 'analytical'];
-  
+
   // Get selected system if one is selected
   const selectedSystem = selectedSystemId ? systems.find((s) => s.id === selectedSystemId) : null;
   const showSelectedSystem = selectedSystem && systemDependentViews.includes(currentView);
 
   return (
-    <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 border-b border-gray-200" role="tablist" aria-label="View mode selector">
+    <div
+      className="flex items-center gap-2 px-4 py-2 bg-gray-50 border-b border-gray-200"
+      role="tablist"
+      aria-label="View mode selector"
+    >
       <span className="text-sm font-medium text-gray-700 mr-2">View:</span>
       {VIEW_MODES.map((view) => {
         const isSelected = currentView === view.value;
         const requiresSystems = systemDependentViews.includes(view.value);
         const isDisabled = requiresSystems && !hasSystems;
-        
+
         return (
           <button
             key={view.value}
@@ -175,11 +191,12 @@ export const ViewSelector: React.FC<ViewSelectorProps> = ({ domainId }) => {
             disabled={isDisabled}
             className={`
               px-3 py-1 text-sm font-medium rounded transition-colors
-              ${isSelected
-                ? 'bg-blue-600 text-white'
-                : isDisabled
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
-                : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+              ${
+                isSelected
+                  ? 'bg-blue-600 text-white'
+                  : isDisabled
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+                    : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
               }
             `}
             title={isDisabled ? `${view.description} (requires systems)` : view.description}
@@ -188,20 +205,16 @@ export const ViewSelector: React.FC<ViewSelectorProps> = ({ domainId }) => {
           </button>
         );
       })}
-      
+
       {/* Selected System indicator - only show in system-dependent views */}
       {showSelectedSystem && (
         <div className="ml-4 flex items-center gap-2 px-3 py-1 bg-indigo-50 border border-indigo-200 rounded">
           <span className="text-xs font-medium text-indigo-700">System:</span>
-          <span className="text-xs text-indigo-900 font-semibold">
-            {selectedSystem.name}
-          </span>
-          <span className="text-xs text-indigo-600">
-            ({selectedSystem.system_type})
-          </span>
+          <span className="text-xs text-indigo-900 font-semibold">{selectedSystem.name}</span>
+          <span className="text-xs text-indigo-600">({selectedSystem.system_type})</span>
         </div>
       )}
-      
+
       <div className="ml-auto flex items-center gap-2">
         {/* Auto-save Toggle */}
         <label className="flex items-center gap-2 px-2 py-1 text-sm text-gray-700 cursor-pointer">
@@ -221,11 +234,12 @@ export const ViewSelector: React.FC<ViewSelectorProps> = ({ domainId }) => {
           disabled={isSaving || isClosing}
           className={`
             px-3 py-1 text-sm font-medium rounded transition-colors flex items-center gap-1
-            ${pendingChanges
-              ? 'bg-green-600 text-white hover:bg-green-700'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            ${
+              pendingChanges
+                ? 'bg-green-600 text-white hover:bg-green-700'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }
-            ${(isSaving || isClosing) ? 'opacity-50 cursor-not-allowed' : ''}
+            ${isSaving || isClosing ? 'opacity-50 cursor-not-allowed' : ''}
           `}
           title={pendingChanges ? 'Save changes' : 'No unsaved changes'}
         >
@@ -252,7 +266,11 @@ export const ViewSelector: React.FC<ViewSelectorProps> = ({ domainId }) => {
             bg-red-600 text-white hover:bg-red-700
             ${isClosing ? 'opacity-50 cursor-not-allowed' : ''}
           `}
-          title={getPlatform() === 'electron' ? 'Close application' : 'Close workspace and return to workspace selection'}
+          title={
+            getPlatform() === 'electron'
+              ? 'Close application'
+              : 'Close workspace and return to workspace selection'
+          }
         >
           {isClosing ? (
             <>
@@ -266,7 +284,7 @@ export const ViewSelector: React.FC<ViewSelectorProps> = ({ domainId }) => {
             </>
           )}
         </button>
-        
+
         <HelpText
           text="View modes are filters/views of the same domain data. Process, Operational, and Analytical views require systems to exist. Switch between views to see different perspectives of your domain."
           title="About View Modes"
@@ -306,4 +324,3 @@ export const ViewSelector: React.FC<ViewSelectorProps> = ({ domainId }) => {
     </div>
   );
 };
-

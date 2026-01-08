@@ -89,12 +89,15 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
               Something went wrong
             </h1>
             <p className="text-gray-600 text-center mb-6">
-              We're sorry, but something unexpected happened. Please try refreshing the page or contact support if the problem persists.
+              We&apos;re sorry, but something unexpected happened. Please try refreshing the page or
+              contact support if the problem persists.
             </p>
 
             {import.meta.env.DEV && this.state.error && (
               <div className="mb-6 p-4 bg-gray-100 rounded-lg overflow-auto max-h-48">
-                <p className="text-sm font-semibold text-gray-900 mb-2">Error Details (Development Only):</p>
+                <p className="text-sm font-semibold text-gray-900 mb-2">
+                  Error Details (Development Only):
+                </p>
                 <pre className="text-xs text-red-600 whitespace-pre-wrap break-words">
                   {this.state.error.toString()}
                   {this.state.errorInfo?.componentStack && (
@@ -152,4 +155,3 @@ export function withErrorBoundary<P extends object>(
     );
   };
 }
-

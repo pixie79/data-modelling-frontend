@@ -78,13 +78,21 @@ describe('CanvasNode', () => {
   });
 
   it('should render table columns', () => {
-    render(<CanvasNode data={{ table: mockTable }} id="table-1" selected={false} />);
+    render(
+      <CanvasNode
+        data={{ table: mockTable, modelType: 'physical' }}
+        id="table-1"
+        selected={false}
+      />
+    );
     expect(screen.getByText('id')).toBeInTheDocument();
     expect(screen.getByText('name')).toBeInTheDocument();
   });
 
   it('should highlight selected table', () => {
-    const { container } = render(<CanvasNode data={{ table: mockTable }} id="table-1" selected={true} />);
+    const { container } = render(
+      <CanvasNode data={{ table: mockTable }} id="table-1" selected={true} />
+    );
     const node = container.firstChild;
     expect(node).toHaveClass('border-blue-600');
   });
@@ -104,13 +112,16 @@ describe('CanvasNode', () => {
     // ReactFlow Handle components are rendered by ReactFlow, not directly testable in unit tests
     // This is tested in integration/E2E tests where ReactFlow is fully initialized
     // For unit tests, we verify the component renders without errors
-    const { container } = render(<CanvasNode data={{ table: mockTable }} id="table-1" selected={false} />);
+    const { container } = render(
+      <CanvasNode data={{ table: mockTable }} id="table-1" selected={false} />
+    );
     expect(container.querySelector('.bg-white')).toBeInTheDocument(); // Verify component renders
   });
 
   it('should show primary key indicators', () => {
-    render(<CanvasNode data={{ table: mockTable }} id="table-1" selected={false} />);
+    render(
+      <CanvasNode data={{ table: mockTable, modelType: 'logical' }} id="table-1" selected={false} />
+    );
     expect(screen.getByText('PK')).toBeInTheDocument();
   });
 });
-

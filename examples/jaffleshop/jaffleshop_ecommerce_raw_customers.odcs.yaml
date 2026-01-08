@@ -1,0 +1,40 @@
+version: "1.0.0"
+apiVersion: v3.1.0
+kind: DataContract
+id: js-raw-customers
+status: active
+name: raw_customers
+domain: ecommerce
+tenant: jaffleshop
+
+description:
+  purpose: Raw customer data ingested from source systems
+
+schema:
+  - name: raw_customers
+    description: Raw customer data from Jaffle Shop source systems
+    physicalName: raw.customers
+    logicalType: object
+    properties:
+      - name: id
+        description: Unique customer identifier from source system
+        logicalType: integer
+        physicalType: INTEGER
+        required: true
+        primaryKey: true
+      - name: name
+        description: Customer full name
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+
+customProperties:
+  - property: system_id
+    value: js-system-duckdb
+  - property: data_level
+    value: bronze
+
+tags:
+  - raw
+  - customers
+  - bronze

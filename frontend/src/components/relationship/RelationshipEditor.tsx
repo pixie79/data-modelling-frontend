@@ -8,7 +8,7 @@ import { DraggableModal } from '@/components/common/DraggableModal';
 import { useModelStore } from '@/stores/modelStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useSDKModeStore } from '@/services/sdk/sdkMode';
-import type { Relationship, RelationshipType, Cardinality } from '@/types/relationship';
+import type { RelationshipType, Cardinality } from '@/types/relationship';
 
 export interface RelationshipEditorProps {
   relationshipId: string;
@@ -21,12 +21,21 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
   isOpen,
   onClose,
 }) => {
-  const { relationships, tables, systems, computeAssets, updateRelationship, updateRelationshipRemote, removeRelationship, selectedDomainId } = useModelStore();
+  const {
+    relationships,
+    tables,
+    systems,
+    computeAssets,
+    updateRelationship,
+    updateRelationshipRemote,
+    removeRelationship,
+    selectedDomainId,
+  } = useModelStore();
   const { addToast } = useUIStore();
   const { mode } = useSDKModeStore();
-  
+
   const relationship = relationships.find((r) => r.id === relationshipId);
-  
+
   const [relationshipType, setRelationshipType] = useState<RelationshipType>('one-to-one');
   const [sourceCardinality, setSourceCardinality] = useState<Cardinality>('1');
   const [targetCardinality, setTargetCardinality] = useState<Cardinality>('1');
@@ -34,6 +43,8 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
   const [targetKey, setTargetKey] = useState<string>('');
   const [label, setLabel] = useState('');
   const [description, setDescription] = useState('');
+  const [color, setColor] = useState<string>('#000000');
+  const [drawioEdgeId, setDrawioEdgeId] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
 
   // Load relationship data when dialog opens
@@ -46,20 +57,24 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
       setTargetKey(relationship.target_key || '');
       setLabel(relationship.label || '');
       setDescription(relationship.description || '');
+      setColor(relationship.color || '#000000');
+      setDrawioEdgeId(relationship.drawio_edge_id || '');
     }
   }, [relationship, isOpen, relationships]);
 
   // Get available keys for a table (primary keys and compound keys)
-  const getTableKeys = (tableId: string): Array<{ id: string; name: string; type: 'primary' | 'compound' }> => {
-    const table = tables.find(t => t.id === tableId);
+  const getTableKeys = (
+    tableId: string
+  ): Array<{ id: string; name: string; type: 'primary' | 'compound' }> => {
+    const table = tables.find((t) => t.id === tableId);
     if (!table) return [];
 
     const keys: Array<{ id: string; name: string; type: 'primary' | 'compound' }> = [];
 
     // Add single column primary keys
     table.columns
-      .filter(col => col.is_primary_key)
-      .forEach(col => {
+      .filter((col) => col.is_primary_key)
+      .forEach((col) => {
         keys.push({
           id: col.id,
           name: `${col.name} (Primary Key)`,
@@ -69,9 +84,9 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
 
     // Add compound keys
     if (table.compoundKeys) {
-      table.compoundKeys.forEach(ck => {
+      table.compoundKeys.forEach((ck) => {
         const columnNames = ck.column_ids
-          .map(colId => table.columns.find(c => c.id === colId)?.name)
+          .map((colId) => table.columns.find((c) => c.id === colId)?.name)
           .filter(Boolean)
           .join(', ');
         keys.push({
@@ -105,11 +120,12 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
 
   const sourceName = getNodeName(relationship.source_id, relationship.source_type);
   const targetName = getNodeName(relationship.target_id, relationship.target_type);
-  const isTableToTable = relationship.source_type === 'table' && relationship.target_type === 'table';
+  const isTableToTable =
+    relationship.source_type === 'table' && relationship.target_type === 'table';
 
   const handleSave = async () => {
     if (!relationship || !selectedDomainId) return;
-    
+
     setIsSaving(true);
     try {
       const updates = {
@@ -120,26 +136,40 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
         target_key: isTableToTable && targetKey ? targetKey : undefined,
         label: label.trim() || undefined,
         description: description.trim() || undefined,
+        color: color !== '#000000' ? color : undefined,
+        drawio_edge_id: drawioEdgeId.trim() || undefined,
         last_modified_at: new Date().toISOString(),
       };
 
-      console.log('[RelationshipEditor] Saving relationship:', { relationshipId, updates, currentRelationship: relationship });
+      console.log('[RelationshipEditor] Saving relationship:', {
+        relationshipId,
+        updates,
+        currentRelationship: relationship,
+      });
 
       // Update remote first if in online mode (this also updates local store)
       if (mode === 'online') {
         try {
-          const updatedRel = await updateRelationshipRemote(selectedDomainId, relationshipId, updates);
+          const updatedRel = await updateRelationshipRemote(
+            selectedDomainId,
+            relationshipId,
+            updates
+          );
           console.log('[RelationshipEditor] Relationship updated remotely:', updatedRel);
           // updateRelationshipRemote already updates the store, so we don't need to call updateRelationship again
           // But ensure the relationshipId matches
           if (updatedRel.id !== relationshipId) {
-            console.warn('[RelationshipEditor] Remote relationship has different ID:', { localId: relationshipId, remoteId: updatedRel.id });
+            console.warn('[RelationshipEditor] Remote relationship has different ID:', {
+              localId: relationshipId,
+              remoteId: updatedRel.id,
+            });
             // The store should already be updated by updateRelationshipRemote, but log for debugging
           }
         } catch (error) {
           addToast({
             type: 'error',
-            message: error instanceof Error ? error.message : 'Failed to update relationship on server',
+            message:
+              error instanceof Error ? error.message : 'Failed to update relationship on server',
           });
           setIsSaving(false);
           return;
@@ -149,90 +179,56 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
         updateRelationship(relationshipId, updates);
       }
 
-      // For table-to-table relationships, always create/update bidirectional relationship
+      // For table-to-table relationships, update reverse relationship if it exists
+      // NOTE: We should NOT create reverse relationships here - they should only be created
+      // during initial relationship creation (in onConnect handler), not during updates
       if (isTableToTable) {
         // Get fresh relationships from store AFTER the update to avoid stale closure
         // This ensures we see the most recent state including any updates
         const currentRelationships = useModelStore.getState().relationships;
-        
+
         // Also get the updated relationship to ensure we have the latest data
-        const updatedRelationship = currentRelationships.find((r) => r.id === relationshipId) || relationship;
-        
+        const updatedRelationship =
+          currentRelationships.find((r) => r.id === relationshipId) || relationship;
+
         // Check if reverse relationship exists (exclude current relationship)
         const reverseRelationship = currentRelationships.find(
-          (r) => r.id !== relationshipId && r.source_id === updatedRelationship.target_id && r.target_id === updatedRelationship.source_id
+          (r) =>
+            r.id !== relationshipId &&
+            r.source_id === updatedRelationship.target_id &&
+            r.target_id === updatedRelationship.source_id
         );
-        
-        console.log('[RelationshipEditor] Checking reverse relationship:', { 
-          relationshipId, 
-          sourceId: updatedRelationship.source_id, 
+
+        console.log('[RelationshipEditor] Checking reverse relationship:', {
+          relationshipId,
+          sourceId: updatedRelationship.source_id,
           targetId: updatedRelationship.target_id,
           reverseFound: !!reverseRelationship,
           reverseId: reverseRelationship?.id,
-          totalRelationships: currentRelationships.length
+          totalRelationships: currentRelationships.length,
         });
 
-        if (!reverseRelationship) {
-          // Create reverse relationship - always use UUIDs
-          const { generateUUID } = await import('@/utils/validation');
-          const reverseId = generateUUID();
-          const reverseRel: Relationship = {
-            id: reverseId,
-            workspace_id: updatedRelationship.workspace_id,
-            domain_id: updatedRelationship.domain_id,
-            source_id: updatedRelationship.target_id,
-            target_id: updatedRelationship.source_id,
-            source_type: updatedRelationship.target_type,
-            target_type: updatedRelationship.source_type,
-            source_table_id: updatedRelationship.target_id,
-            target_table_id: updatedRelationship.source_id,
-            type: relationshipType,
-            source_cardinality: targetCardinality, // Swapped
-            target_cardinality: sourceCardinality, // Swapped
-            label: label.trim() || undefined,
-            description: description.trim() || undefined,
-            model_type: updatedRelationship.model_type,
-            is_circular: updatedRelationship.is_circular,
-            created_at: new Date().toISOString(),
-            last_modified_at: new Date().toISOString(),
-          };
-          useModelStore.getState().addRelationship(reverseRel);
-          
-          // Create reverse relationship remotely if in online mode
-          if (mode === 'online') {
-            try {
-              const { relationshipService } = await import('@/services/api/relationshipService');
-              if (!reverseRel.source_table_id || !reverseRel.target_table_id) {
-                throw new Error('Reverse relationship missing source or target table ID');
-              }
-              await relationshipService.createRelationship(selectedDomainId, {
-                source_table_id: reverseRel.source_table_id,
-                target_table_id: reverseRel.target_table_id,
-                type: reverseRel.type,
-                source_cardinality: reverseRel.source_cardinality,
-                target_cardinality: reverseRel.target_cardinality,
-                label: reverseRel.label,
-              });
-            } catch (error) {
-              console.warn('Failed to create reverse relationship on server:', error);
-            }
-          }
-        } else {
-          // Update reverse relationship
+        if (reverseRelationship) {
+          // Update existing reverse relationship (do NOT create a new one)
           const reverseUpdates = {
             type: relationshipType,
             source_cardinality: targetCardinality, // Swapped
             target_cardinality: sourceCardinality, // Swapped
             label: label.trim() || undefined,
             description: description.trim() || undefined,
+            color: color !== '#000000' ? color : undefined,
             last_modified_at: new Date().toISOString(),
           };
           updateRelationship(reverseRelationship.id, reverseUpdates);
-          
+
           // Update reverse relationship remotely if in online mode
           if (mode === 'online') {
             try {
-              await updateRelationshipRemote(selectedDomainId, reverseRelationship.id, reverseUpdates);
+              await updateRelationshipRemote(
+                selectedDomainId,
+                reverseRelationship.id,
+                reverseUpdates
+              );
             } catch (error) {
               console.warn('Failed to update reverse relationship on server:', error);
             }
@@ -257,17 +253,17 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
 
   const handleReverse = () => {
     if (!relationship) return;
-    
+
     // Swap source and target
     const newSourceId = relationship.target_id;
     const newTargetId = relationship.source_id;
     const newSourceType = relationship.target_type;
     const newTargetType = relationship.source_type;
-    
+
     // Swap cardinalities
     const newSourceCardinality = relationship.target_cardinality;
     const newTargetCardinality = relationship.source_cardinality;
-    
+
     // Update the relationship
     updateRelationship(relationshipId, {
       source_id: newSourceId,
@@ -280,11 +276,11 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
       target_table_id: newTargetType === 'table' ? newTargetId : undefined,
       last_modified_at: new Date().toISOString(),
     });
-    
+
     // Update local state to reflect the swap
     setSourceCardinality(newSourceCardinality);
     setTargetCardinality(newTargetCardinality);
-    
+
     addToast({
       type: 'success',
       message: 'Relationship reversed successfully',
@@ -294,7 +290,7 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
   const handleDelete = () => {
     if (window.confirm('Are you sure you want to delete this relationship?')) {
       removeRelationship(relationshipId);
-      
+
       // Also remove reverse relationship if it exists
       const reverseRelationship = relationships.find(
         (r) => r.source_id === relationship.target_id && r.target_id === relationship.source_id
@@ -336,161 +332,239 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
             </div>
           </div>
 
-        {/* Relationship Type (only for table-to-table) */}
-        {isTableToTable && (
-          <>
-            <div>
-              <label htmlFor="relationship-type" className="block text-sm font-medium text-gray-700 mb-2">
-                Relationship Type
-              </label>
-              <select
-                id="relationship-type"
-                value={relationshipType}
-                onChange={(e) => {
-                  const newType = e.target.value as RelationshipType;
-                  setRelationshipType(newType);
-                  
-                  // Auto-update cardinalities based on type
-                  if (newType === 'one-to-one') {
-                    setSourceCardinality('1');
-                    setTargetCardinality('1');
-                  } else if (newType === 'one-to-many') {
-                    setSourceCardinality('1');
-                    setTargetCardinality('N');
-                  } else if (newType === 'many-to-many') {
-                    setSourceCardinality('N');
-                    setTargetCardinality('N');
-                  }
-                }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="one-to-one">One-to-One</option>
-                <option value="one-to-many">One-to-Many</option>
-                <option value="many-to-many">Many-to-Many</option>
-              </select>
-            </div>
+          {/* Relationship Type (only for table-to-table) */}
+          {isTableToTable && (
+            <>
+              <div>
+                <label
+                  htmlFor="relationship-type"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Relationship Type
+                </label>
+                <select
+                  id="relationship-type"
+                  value={relationshipType}
+                  onChange={(e) => {
+                    const newType = e.target.value as RelationshipType;
+                    setRelationshipType(newType);
 
-            {/* Source Key Selection */}
-            <div>
-              <label htmlFor="source-key" className="block text-sm font-medium text-gray-700 mb-2">
-                Source Key (from {sourceName})
-              </label>
-              <select
-                id="source-key"
-                value={sourceKey}
-                onChange={(e) => setSourceKey(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select a key...</option>
-                {getTableKeys(relationship.source_id).map(key => (
-                  <option key={key.id} value={key.id}>
-                    {key.name}
-                  </option>
-                ))}
-              </select>
-              {getTableKeys(relationship.source_id).length === 0 && (
-                <p className="mt-1 text-xs text-yellow-600">
-                  No keys found. Add a primary key or compound key to the source table.
-                </p>
-              )}
-            </div>
+                    // Auto-update cardinalities based on type
+                    if (newType === 'one-to-one') {
+                      setSourceCardinality('1');
+                      setTargetCardinality('1');
+                    } else if (newType === 'one-to-many') {
+                      setSourceCardinality('1');
+                      setTargetCardinality('N');
+                    } else if (newType === 'many-to-many') {
+                      setSourceCardinality('N');
+                      setTargetCardinality('N');
+                    }
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="one-to-one">One-to-One</option>
+                  <option value="one-to-many">One-to-Many</option>
+                  <option value="many-to-many">Many-to-Many</option>
+                </select>
+              </div>
 
-            {/* Target Key Selection */}
-            <div>
-              <label htmlFor="target-key" className="block text-sm font-medium text-gray-700 mb-2">
-                Target Key (from {targetName})
-              </label>
-              <select
-                id="target-key"
-                value={targetKey}
-                onChange={(e) => setTargetKey(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select a key...</option>
-                {getTableKeys(relationship.target_id).map(key => (
-                  <option key={key.id} value={key.id}>
-                    {key.name}
-                  </option>
-                ))}
-              </select>
-              {getTableKeys(relationship.target_id).length === 0 && (
-                <p className="mt-1 text-xs text-yellow-600">
-                  No keys found. Add a primary key or compound key to the target table.
-                </p>
-              )}
-            </div>
-          </>
-        )}
+              {/* Source Key Selection */}
+              <div>
+                <label
+                  htmlFor="source-key"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Source Key (from {sourceName})
+                </label>
+                <select
+                  id="source-key"
+                  value={sourceKey}
+                  onChange={(e) => setSourceKey(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select a key...</option>
+                  {getTableKeys(relationship.source_id).map((key) => (
+                    <option key={key.id} value={key.id}>
+                      {key.name}
+                    </option>
+                  ))}
+                </select>
+                {getTableKeys(relationship.source_id).length === 0 && (
+                  <p className="mt-1 text-xs text-yellow-600">
+                    No keys found. Add a primary key or compound key to the source table.
+                  </p>
+                )}
+              </div>
 
-        {/* Cardinality (only for table-to-table) */}
-        {isTableToTable && (
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="source-cardinality" className="block text-sm font-medium text-gray-700 mb-2">
-                Source Cardinality ({sourceName})
-              </label>
-              <select
-                id="source-cardinality"
-                value={sourceCardinality}
-                onChange={(e) => setSourceCardinality(e.target.value as Cardinality)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="0">0 (Optional)</option>
-                <option value="1">1 (Required)</option>
-                <option value="N">N (Many)</option>
-              </select>
+              {/* Target Key Selection */}
+              <div>
+                <label
+                  htmlFor="target-key"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Target Key (from {targetName})
+                </label>
+                <select
+                  id="target-key"
+                  value={targetKey}
+                  onChange={(e) => setTargetKey(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select a key...</option>
+                  {getTableKeys(relationship.target_id).map((key) => (
+                    <option key={key.id} value={key.id}>
+                      {key.name}
+                    </option>
+                  ))}
+                </select>
+                {getTableKeys(relationship.target_id).length === 0 && (
+                  <p className="mt-1 text-xs text-yellow-600">
+                    No keys found. Add a primary key or compound key to the target table.
+                  </p>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Cardinality (only for table-to-table) */}
+          {isTableToTable && (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label
+                  htmlFor="source-cardinality"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Source Cardinality ({sourceName})
+                </label>
+                <select
+                  id="source-cardinality"
+                  value={sourceCardinality}
+                  onChange={(e) => setSourceCardinality(e.target.value as Cardinality)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="0">0 (Optional)</option>
+                  <option value="1">1 (Required)</option>
+                  <option value="N">N (Many)</option>
+                </select>
+              </div>
+              <div>
+                <label
+                  htmlFor="target-cardinality"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Target Cardinality ({targetName})
+                </label>
+                <select
+                  id="target-cardinality"
+                  value={targetCardinality}
+                  onChange={(e) => setTargetCardinality(e.target.value as Cardinality)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="0">0 (Optional)</option>
+                  <option value="1">1 (Required)</option>
+                  <option value="N">N (Many)</option>
+                </select>
+              </div>
             </div>
-            <div>
-              <label htmlFor="target-cardinality" className="block text-sm font-medium text-gray-700 mb-2">
-                Target Cardinality ({targetName})
-              </label>
-              <select
-                id="target-cardinality"
-                value={targetCardinality}
-                onChange={(e) => setTargetCardinality(e.target.value as Cardinality)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="0">0 (Optional)</option>
-                <option value="1">1 (Required)</option>
-                <option value="N">N (Many)</option>
-              </select>
-            </div>
+          )}
+
+          {/* Label */}
+          <div>
+            <label
+              htmlFor="relationship-label"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Label (Optional)
+            </label>
+            <input
+              id="relationship-label"
+              type="text"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="e.g., 'belongs to', 'contains', 'references'"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              This label will appear on the canvas next to the relationship line
+            </p>
           </div>
-        )}
 
-        {/* Label */}
-        <div>
-          <label htmlFor="relationship-label" className="block text-sm font-medium text-gray-700 mb-2">
-            Label (Optional)
-          </label>
-          <input
-            id="relationship-label"
-            type="text"
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            placeholder="e.g., 'belongs to', 'contains', 'references'"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <p className="mt-1 text-xs text-gray-500">
-            This label will appear on the canvas next to the relationship line
-          </p>
-        </div>
+          {/* Line Color */}
+          <div>
+            <label
+              htmlFor="relationship-color"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Line Color
+            </label>
+            <div className="flex items-center gap-3">
+              <input
+                id="relationship-color"
+                type="color"
+                value={color}
+                onChange={(e) => setColor(e.target.value)}
+                className="h-10 w-20 rounded border border-gray-300 cursor-pointer"
+              />
+              <input
+                type="text"
+                value={color}
+                onChange={(e) => setColor(e.target.value)}
+                placeholder="#000000"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+              />
+              <button
+                type="button"
+                onClick={() => setColor('#000000')}
+                className="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-md hover:bg-gray-50"
+                title="Reset to default (black)"
+              >
+                Reset
+              </button>
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              Choose a color for the relationship line on the canvas
+            </p>
+          </div>
 
-        {/* Description/Notes */}
-        <div>
-          <label htmlFor="relationship-description" className="block text-sm font-medium text-gray-700 mb-2">
-            Description / Notes (Optional)
-          </label>
-          <textarea
-            id="relationship-description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Add notes or description about this relationship..."
-            rows={4}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
+          {/* DrawIO Edge ID */}
+          <div>
+            <label
+              htmlFor="drawio-edge-id"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              DrawIO Edge ID (Optional)
+            </label>
+            <input
+              id="drawio-edge-id"
+              type="text"
+              value={drawioEdgeId}
+              onChange={(e) => setDrawioEdgeId(e.target.value)}
+              placeholder="e.g., edge-1, mxCell-123"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Link this relationship to a specific edge in a DrawIO diagram for synchronization
+            </p>
+          </div>
 
+          {/* Description/Notes */}
+          <div>
+            <label
+              htmlFor="relationship-description"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Description / Notes (Optional)
+            </label>
+            <textarea
+              id="relationship-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Add notes or description about this relationship..."
+              rows={4}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
         </div>
 
         {/* Actions - Fixed at bottom */}
@@ -534,4 +608,3 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
     </DraggableModal>
   );
 };
-

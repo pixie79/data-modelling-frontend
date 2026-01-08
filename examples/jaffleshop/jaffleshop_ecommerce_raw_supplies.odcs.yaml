@@ -1,0 +1,55 @@
+version: "1.0.0"
+apiVersion: v3.1.0
+kind: DataContract
+id: js-raw-supplies
+status: active
+name: raw_supplies
+domain: ecommerce
+tenant: jaffleshop
+
+description:
+  purpose: Raw supply chain data for products
+
+schema:
+  - name: raw_supplies
+    description: Raw supply chain data linking products to suppliers
+    physicalName: raw.supplies
+    logicalType: object
+    properties:
+      - name: id
+        description: Unique supply record identifier
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+        primaryKey: true
+      - name: name
+        description: Supply item name
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+      - name: cost
+        description: Supply cost in cents
+        logicalType: integer
+        physicalType: INTEGER
+        required: false
+      - name: perishable
+        description: Whether supply item is perishable
+        logicalType: boolean
+        physicalType: BOOLEAN
+        required: false
+      - name: sku
+        description: Product SKU (FK to raw_products.sku)
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+
+customProperties:
+  - property: system_id
+    value: js-system-duckdb
+  - property: data_level
+    value: bronze
+
+tags:
+  - raw
+  - supplies
+  - bronze

@@ -5,7 +5,6 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { CollaborationService } from '@/services/websocket/collaborationService';
-import { WebSocketClient } from '@/services/websocket/websocketClient';
 import type { Table } from '@/types/table';
 import type { Relationship } from '@/types/relationship';
 
@@ -286,4 +285,3 @@ describe('CollaborationService', () => {
     });
   });
 });
-

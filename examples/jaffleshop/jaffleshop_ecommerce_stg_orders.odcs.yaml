@@ -1,0 +1,65 @@
+version: "1.0.0"
+apiVersion: v3.1.0
+kind: DataContract
+id: js-stg-orders
+status: active
+name: stg_orders
+domain: ecommerce
+tenant: jaffleshop
+
+description:
+  purpose: Staged order data with standardized fields and business logic applied
+
+schema:
+  - name: stg_orders
+    description: Cleaned and standardized order data from raw layer
+    physicalName: staging.stg_orders
+    logicalType: object
+    properties:
+      - name: order_id
+        description: Standardized order identifier
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+        primaryKey: true
+      - name: customer_id
+        description: Customer identifier (FK to stg_customers)
+        logicalType: integer
+        physicalType: INTEGER
+        required: true
+      - name: location_id
+        description: Location identifier (FK to stg_locations)
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+      - name: ordered_at
+        description: Order timestamp (standardized timezone)
+        logicalType: timestamp
+        physicalType: TIMESTAMP
+        required: true
+      - name: order_total
+        description: Total order amount in dollars
+        logicalType: number
+        physicalType: DOUBLE
+        required: false
+      - name: tax_paid
+        description: Tax amount in dollars
+        logicalType: number
+        physicalType: DOUBLE
+        required: false
+      - name: subtotal
+        description: Subtotal in dollars
+        logicalType: number
+        physicalType: DOUBLE
+        required: false
+
+customProperties:
+  - property: system_id
+    value: js-system-duckdb
+  - property: data_level
+    value: silver
+
+tags:
+  - staging
+  - orders
+  - silver

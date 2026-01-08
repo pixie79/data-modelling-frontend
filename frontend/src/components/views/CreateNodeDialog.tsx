@@ -108,10 +108,10 @@ export const CreateNodeDialog: React.FC<CreateNodeDialogProps> = ({
       setImportYaml('');
       setImportFile(null);
       setError(null);
-      
+
       // Small delay to ensure store updates propagate before closing
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       onClose();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to import CADS asset';
@@ -186,8 +186,8 @@ export const CreateNodeDialog: React.FC<CreateNodeDialogProps> = ({
       }
 
       // Small delay to ensure store updates propagate before closing
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       // Close dialog
       onClose();
     } catch (err) {
@@ -231,9 +231,7 @@ export const CreateNodeDialog: React.FC<CreateNodeDialogProps> = ({
               setError(null);
             }}
             className={`flex-1 px-4 py-2 text-sm font-medium rounded ${
-              !importMode
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              !importMode ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
             Create New
@@ -248,9 +246,7 @@ export const CreateNodeDialog: React.FC<CreateNodeDialogProps> = ({
               setError(null);
             }}
             className={`flex-1 px-4 py-2 text-sm font-medium rounded ${
-              importMode
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              importMode ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
             Import
@@ -278,14 +274,17 @@ export const CreateNodeDialog: React.FC<CreateNodeDialogProps> = ({
                   const file = e.target.files?.[0] || null;
                   setImportFile(file);
                   if (file) {
-                    file.text().then((text) => {
-                      setImportYaml(text);
-                    }).catch((_error) => {
-                      addToast({
-                        type: 'error',
-                        message: 'Failed to read file',
+                    file
+                      .text()
+                      .then((text) => {
+                        setImportYaml(text);
+                      })
+                      .catch((_error) => {
+                        addToast({
+                          type: 'error',
+                          message: 'Failed to read file',
+                        });
                       });
-                    });
                   }
                 }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -346,7 +345,6 @@ export const CreateNodeDialog: React.FC<CreateNodeDialogProps> = ({
                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                   error ? 'border-red-500' : 'border-gray-300'
                 }`}
-                autoFocus
                 disabled={isCreating}
               />
             </div>
@@ -369,7 +367,10 @@ export const CreateNodeDialog: React.FC<CreateNodeDialogProps> = ({
             </div>
 
             <div>
-              <label htmlFor="node-description" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="node-description"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Description (Optional)
               </label>
               <textarea
@@ -406,4 +407,3 @@ export const CreateNodeDialog: React.FC<CreateNodeDialogProps> = ({
     </DraggableModal>
   );
 };
-

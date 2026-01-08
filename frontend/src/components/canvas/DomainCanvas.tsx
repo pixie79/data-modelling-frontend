@@ -177,13 +177,23 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
       try {
         const { odcsService } = await import('@/services/sdk/odcsService');
         const { browserFileService } = await import('@/services/platform/browser');
+
+        // Get system name prefix if table belongs to a system
+        let systemPrefix = '';
+        if (table.metadata && table.metadata.system_id) {
+          const system = systems.find((s) => s.id === table.metadata!.system_id);
+          if (system) {
+            systemPrefix = `${system.name}_`;
+          }
+        }
+
         const workspace = {
           workspace_id: table.workspace_id,
           domain_id: table.primary_domain_id || domainId,
           tables: [table],
         };
         const yamlContent = await odcsService.toYAML(workspace);
-        const fileName = `${table.name.replace(/\s+/g, '_')}.odcs.yaml`;
+        const fileName = `${systemPrefix}${table.name.replace(/\s+/g, '_')}.odcs.yaml`;
         browserFileService.downloadFile(fileName, yamlContent, 'text/yaml');
 
         useUIStore.getState().addToast({
@@ -197,7 +207,7 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
         });
       }
     },
-    [tables, domainId]
+    [tables, systems, domainId]
   );
 
   // Handle system edit
@@ -254,8 +264,16 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
       try {
         const { cadsService } = await import('@/services/sdk/cadsService');
         const { browserFileService } = await import('@/services/platform/browser');
+
+        // Get system name prefix if asset belongs to a system
+        let systemPrefix = '';
+        const system = systems.find((s) => s.asset_ids?.includes(asset.id));
+        if (system) {
+          systemPrefix = `${system.name}_`;
+        }
+
         const yamlContent = await cadsService.toYAML(asset);
-        const fileName = `${asset.name.replace(/\s+/g, '_')}.cads.yaml`;
+        const fileName = `${systemPrefix}${asset.name.replace(/\s+/g, '_')}.cads.yaml`;
         browserFileService.downloadFile(fileName, yamlContent, 'text/yaml');
 
         useUIStore.getState().addToast({
@@ -269,7 +287,7 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
         });
       }
     },
-    [computeAssets]
+    [computeAssets, systems]
   );
 
   // Handle BPMN click on table (open BPMN process linked via transformation_links)
@@ -369,6 +387,46 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
     [selectedSystemId, currentView, setSelectedSystem, onTableNodeClick]
   );
 
+  // Get shared resources from other domains (read-only references)
+  // This needs to be computed before visibleTables so we can check if selected system is shared
+  const sharedResources = useMemo(() => {
+    const domain = domains.find((d) => d.id === domainId);
+    if (!domain?.shared_resources || domain.shared_resources.length === 0) {
+      return { tables: [], systems: [], assets: [] };
+    }
+
+    const sharedTables: typeof tables = [];
+    const sharedSystems: typeof systems = [];
+    const sharedAssets: typeof computeAssets = [];
+
+    domain.shared_resources.forEach((ref) => {
+      if (ref.resource_type === 'table') {
+        const table = tables.find((t) => t.id === ref.resource_id);
+        if (table) {
+          sharedTables.push(table);
+        }
+      } else if (ref.resource_type === 'system') {
+        const system = systems.find((s) => s.id === ref.resource_id);
+        if (system) {
+          sharedSystems.push(system);
+        }
+      } else if (ref.resource_type === 'asset') {
+        const asset = computeAssets.find((a) => a.id === ref.resource_id);
+        if (asset) {
+          sharedAssets.push(asset);
+        }
+      }
+    });
+
+    console.log('[DomainCanvas] Shared resources loaded:', {
+      tables: sharedTables.length,
+      systems: sharedSystems.length,
+      assets: sharedAssets.length,
+    });
+
+    return { tables: sharedTables, systems: sharedSystems, assets: sharedAssets };
+  }, [domains, domainId, tables, systems, computeAssets]);
+
   // Get filtered tables based on view mode and data level
   const visibleTables = useMemo(() => {
     const allTables = tables;
@@ -399,6 +457,8 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
       (currentView === 'process' || currentView === 'operational' || currentView === 'analytical')
     ) {
       const selectedSystem = systems.find((s) => s.id === selectedSystemId);
+      const isSharedSystem = sharedResources.systems.some((s) => s.id === selectedSystemId);
+
       console.log(`[DomainCanvas] Filtering by selected system ${selectedSystemId}:`, {
         system: selectedSystem
           ? {
@@ -407,17 +467,38 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
               table_ids: selectedSystem.table_ids,
             }
           : null,
+        isSharedSystem,
         filteredBefore: filtered.length,
       });
+
       if (selectedSystem && selectedSystem.table_ids) {
-        filtered = filtered.filter((t) => selectedSystem.table_ids?.includes(t.id));
+        if (isSharedSystem) {
+          // For shared systems: only show tables that are explicitly shared AND belong to this system
+          // This prevents new tables from appearing without being explicitly shared
+          const sharedTableIds = new Set(sharedResources.tables.map((t) => t.id));
+          filtered = tables.filter(
+            (t) => selectedSystem.table_ids?.includes(t.id) && sharedTableIds.has(t.id)
+          );
+        } else {
+          // For owned systems: only show tables from current domain that belong to this system
+          filtered = tables.filter(
+            (t) => t.primary_domain_id === domainId && selectedSystem.table_ids?.includes(t.id)
+          );
+        }
         console.log(`[DomainCanvas] Filtered to ${filtered.length} table(s) after system filter`);
       }
     }
 
     return filtered;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [getFilteredTables, currentView, domainId, selectedSystemId, systems, tables]);
+  }, [
+    getFilteredTables,
+    currentView,
+    domainId,
+    selectedSystemId,
+    systems,
+    tables,
+    sharedResources,
+  ]);
 
   // Get systems for current domain
   const domainSystems = useMemo(() => {
@@ -450,13 +531,27 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
       (currentView === 'process' || currentView === 'operational' || currentView === 'analytical')
     ) {
       const selectedSystem = systems.find((s) => s.id === selectedSystemId);
+      const isSharedSystem = sharedResources.systems.some((s) => s.id === selectedSystemId);
+
       if (selectedSystem && selectedSystem.asset_ids) {
-        assets = assets.filter((a) => selectedSystem.asset_ids?.includes(a.id));
+        if (isSharedSystem) {
+          // For shared systems: only show assets that are explicitly shared AND belong to this system
+          // This prevents new assets from appearing without being explicitly shared
+          const sharedAssetIds = new Set(sharedResources.assets.map((a) => a.id));
+          assets = computeAssets.filter(
+            (a) => selectedSystem.asset_ids?.includes(a.id) && sharedAssetIds.has(a.id)
+          );
+        } else {
+          // For owned systems: only show assets from current domain that belong to this system
+          assets = computeAssets.filter(
+            (a) => a.domain_id === domainId && selectedSystem.asset_ids?.includes(a.id)
+          );
+        }
       }
     }
 
     return assets;
-  }, [computeAssets, domainId, selectedSystemId, currentView, systems]);
+  }, [computeAssets, domainId, selectedSystemId, currentView, systems, sharedResources]);
 
   // Filter relationships for current domain
   const domainRelationships = useMemo(() => {
@@ -473,14 +568,69 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
 
     // In Systems view, show systems as nodes with table cards inside
     if (currentView === 'systems') {
-      domainSystems.forEach((system, index) => {
+      // Combine owned and shared systems
+      const allSystems = [...domainSystems, ...sharedResources.systems];
+
+      allSystems.forEach((system, index) => {
+        const isShared = sharedResources.systems.some((s) => s.id === system.id);
+
         // Get tables belonging to this system
-        const systemTables = visibleTables.filter((table) => system.table_ids?.includes(table.id));
+        // For shared systems: only show tables from the shared system (not from current domain)
+        // For owned systems: show tables from current domain + foreign tables
+        let systemTables: typeof tables = [];
+        if (isShared) {
+          // For shared systems, look up tables globally (not limited to current domain)
+          systemTables = tables.filter((table) => system.table_ids?.includes(table.id));
+        } else {
+          // For owned systems, ONLY show:
+          // 1. Tables from current domain that belong to this system
+          // 2. Foreign tables (explicitly shared with target_system_id)
+          // DO NOT include tables from shared systems
+          systemTables = visibleTables.filter((table) => system.table_ids?.includes(table.id));
+
+          // Add foreign tables (from other domains) that explicitly target this system
+          const foreignTables =
+            domain?.shared_resources
+              ?.filter((ref) => ref.resource_type === 'table' && ref.target_system_id === system.id)
+              .map((ref) => tables.find((t) => t.id === ref.resource_id))
+              .filter((t): t is (typeof tables)[0] => t !== undefined) || [];
+
+          foreignTables.forEach((table) => {
+            if (!systemTables.some((t) => t.id === table.id)) {
+              systemTables.push(table);
+            }
+          });
+        }
 
         // Get compute assets belonging to this system
-        const systemAssets = domainComputeAssets.filter((asset) =>
-          system.asset_ids?.includes(asset.id)
-        );
+        // For shared systems: only show assets from the shared system (not from current domain)
+        // For owned systems: show assets from current domain + foreign assets
+        let systemAssets: typeof computeAssets = [];
+        if (isShared) {
+          // For shared systems, look up assets globally (not limited to current domain)
+          systemAssets = computeAssets.filter((asset) => system.asset_ids?.includes(asset.id));
+        } else {
+          // For owned systems, ONLY show:
+          // 1. Assets from current domain that belong to this system
+          // 2. Foreign assets (explicitly shared with target_system_id)
+          // DO NOT include assets from shared systems
+          systemAssets = domainComputeAssets.filter((asset) =>
+            system.asset_ids?.includes(asset.id)
+          );
+
+          // Add foreign assets (from other domains) that explicitly target this system
+          const foreignAssets =
+            domain?.shared_resources
+              ?.filter((ref) => ref.resource_type === 'asset' && ref.target_system_id === system.id)
+              .map((ref) => computeAssets.find((a) => a.id === ref.resource_id))
+              .filter((a): a is (typeof computeAssets)[0] => a !== undefined) || [];
+
+          foreignAssets.forEach((asset) => {
+            if (!systemAssets.some((a) => a.id === asset.id)) {
+              systemAssets.push(asset);
+            }
+          });
+        }
 
         // Use view-specific position if available, then fallback to system.position_x/y, then default
         const defaultX = 100 + (index % 3) * 450;
@@ -504,13 +654,16 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
             description: system.description,
             tables: systemTables,
             computeAssets: systemAssets,
+            isShared, // Mark if this is a shared resource from another domain
             onTableClick: handleTableCardClick,
             onTableBPMNClick: handleTableBPMNClick,
             tableHasBPMN: tableHasBPMN,
-            onEdit: handleSystemEdit,
-            onDelete: handleSystemDelete,
-            onAssetEdit: handleAssetEdit,
-            onAssetDelete: handleAssetDelete,
+            // Only allow edit/delete for owned systems, not shared ones
+            onEdit: isShared ? undefined : handleSystemEdit,
+            onDelete: isShared ? undefined : handleSystemDelete,
+            // For tables/assets within systems: check if individual items are shared
+            onAssetEdit: handleAssetEdit, // Will be filtered in handler based on asset
+            onAssetDelete: handleAssetDelete, // Will be filtered in handler based on asset
             onAssetExport: handleAssetExport,
             onAssetBPMNClick: handleAssetBPMNClick,
             onAssetDMNClick: handleAssetDMNClick,
@@ -525,8 +678,15 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
     }
 
     // For other views (Process, Operational, Analytical), show tables and compute assets as separate nodes
-    const tableNodes = visibleTables.map((table, index) => {
+    // Include both owned and shared tables (deduplicated)
+    const tableMap = new Map();
+    [...visibleTables, ...sharedResources.tables].forEach((table) => {
+      tableMap.set(table.id, table);
+    });
+    const allVisibleTables = Array.from(tableMap.values());
+    const tableNodes = allVisibleTables.map((table, index) => {
       const isOwnedByDomain = table.primary_domain_id === domainId;
+      const isShared = sharedResources.tables.some((t) => t.id === table.id);
 
       // Use view-specific position if available, then fallback to table.position_x/y, then default
       const defaultX = 100 + (index % 4) * 300;
@@ -544,6 +704,7 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
           table,
           nodeType: 'table',
           isOwnedByDomain,
+          isShared, // Mark if this is a shared resource from another domain
           // Determine model type based on current view
           modelType: currentView === 'process' ? 'logical' : 'physical',
         },
@@ -552,9 +713,17 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
     });
 
     // Add compute asset nodes (only in Process View)
+    // Include both owned and shared assets (deduplicated)
+    const assetMap = new Map();
+    [...domainComputeAssets, ...sharedResources.assets].forEach((asset) => {
+      assetMap.set(asset.id, asset);
+    });
+    const allVisibleAssets = Array.from(assetMap.values());
     const computeAssetNodes =
       currentView === 'process'
-        ? domainComputeAssets.map((asset) => {
+        ? allVisibleAssets.map((asset) => {
+            const isShared = sharedResources.assets.some((a) => a.id === asset.id);
+
             // Use view-specific position if available, then fallback to asset.position_x/y, then default
             const centerX = window.innerWidth / 2 - 200;
             const centerY = window.innerHeight / 2 - 150;
@@ -570,9 +739,11 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
               data: {
                 asset,
                 nodeType: 'compute-asset' as const,
-                onEdit: handleAssetEdit,
-                onDelete: handleAssetDelete,
-                onExport: handleAssetExport,
+                isShared, // Mark if this is a shared resource from another domain
+                // Only allow edit/delete for owned resources, not shared ones
+                onEdit: isShared ? undefined : handleAssetEdit,
+                onDelete: isShared ? undefined : handleAssetDelete,
+                onExport: handleAssetExport, // Allow export for all resources
                 onBPMNClick: handleAssetBPMNClick,
                 onDMNClick: handleAssetDMNClick,
               },
@@ -586,6 +757,7 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
     domainSystems,
     visibleTables,
     domainComputeAssets,
+    sharedResources,
     selectedTableId,
     selectedSystemId,
     domainId,
@@ -600,6 +772,10 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
     handleAssetEdit,
     handleAssetDelete,
     handleAssetExport,
+    handleAssetBPMNClick,
+    handleAssetDMNClick,
+    handleTableBPMNClick,
+    tableHasBPMN,
   ]);
 
   // Get transformation links from BPMN processes
@@ -611,6 +787,14 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
 
   // Convert relationships to ReactFlow edges
   const initialEdges: Edge[] = useMemo(() => {
+    console.log('[DomainCanvas] Computing initialEdges from relationships:', {
+      relationshipCount: domainRelationships.length,
+      relationshipIds: domainRelationships.map((r) => r.id),
+      duplicateRelIds: domainRelationships
+        .map((r) => r.id)
+        .filter((id, index, arr) => arr.indexOf(id) !== index),
+    });
+
     const relationshipEdges = domainRelationships
       .filter((rel) => {
         // Get source and target IDs (support both new format and legacy format)
@@ -650,6 +834,17 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
         const targetType =
           relationship.target_type || (relationship.target_table_id ? 'table' : 'table');
 
+        // Check if this is a cross-domain relationship (either source or target is a shared resource)
+        const isSourceShared =
+          sharedResources.tables.some((t) => t.id === sourceId) ||
+          sharedResources.systems.some((s) => s.id === sourceId) ||
+          sharedResources.assets.some((a) => a.id === sourceId);
+        const isTargetShared =
+          sharedResources.tables.some((t) => t.id === targetId) ||
+          sharedResources.systems.some((s) => s.id === targetId) ||
+          sharedResources.assets.some((a) => a.id === targetId);
+        const isCrossDomain = isSourceShared || isTargetShared;
+
         // Use Crow's Foot notation (cardinality edge) only for table-to-table relationships
         // in Operational and Analytical views
         const isTableToTable = sourceType === 'table' && targetType === 'table';
@@ -661,7 +856,7 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
           type: useCardinalityEdge ? 'cardinality' : 'default', // Use default edge for non-table relationships
           source: sourceId,
           target: targetId,
-          data: { relationship },
+          data: { relationship, isCrossDomain },
           selected: selectedRelationshipId === relationship.id,
           animated: false,
           style: { stroke: '#374151', strokeWidth: 2 },
@@ -783,6 +978,13 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
   }, [visibleTables, domainComputeAssets, domainSystems, currentView, initialNodes, setNodes]);
 
   useEffect(() => {
+    console.log('[DomainCanvas] Updating edges:', {
+      edgeCount: initialEdges.length,
+      edgeIds: initialEdges.map((e) => e.id),
+      duplicateIds: initialEdges
+        .map((e) => e.id)
+        .filter((id, index, arr) => arr.indexOf(id) !== index),
+    });
     setEdges(initialEdges);
   }, [initialEdges, setEdges]);
 

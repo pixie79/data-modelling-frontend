@@ -87,6 +87,8 @@ export const Dialog: React.FC<DialogProps> = ({
           ref={dialogRef}
           className={`relative bg-white rounded-lg shadow-xl ${sizeClasses[size]} w-full`}
           onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
         >
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
@@ -99,12 +101,7 @@ export const Dialog: React.FC<DialogProps> = ({
                 className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
                 aria-label="Close dialog"
               >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -125,4 +122,3 @@ export const Dialog: React.FC<DialogProps> = ({
     </div>
   );
 };
-

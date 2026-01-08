@@ -1,0 +1,55 @@
+version: "1.0.0"
+apiVersion: v3.1.0
+kind: DataContract
+id: js-stg-supplies
+status: active
+name: stg_supplies
+domain: ecommerce
+tenant: jaffleshop
+
+description:
+  purpose: Staged supply chain data with cost calculations
+
+schema:
+  - name: stg_supplies
+    description: Cleaned and standardized supply data from raw layer
+    physicalName: staging.stg_supplies
+    logicalType: object
+    properties:
+      - name: supply_id
+        description: Standardized supply record identifier
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+        primaryKey: true
+      - name: supply_name
+        description: Supply item name
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+      - name: product_id
+        description: Product identifier (FK to stg_products)
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+      - name: supply_cost
+        description: Supply cost in dollars
+        logicalType: number
+        physicalType: DOUBLE
+        required: false
+      - name: is_perishable
+        description: Whether supply item is perishable
+        logicalType: boolean
+        physicalType: BOOLEAN
+        required: false
+
+customProperties:
+  - property: system_id
+    value: js-system-duckdb
+  - property: data_level
+    value: silver
+
+tags:
+  - staging
+  - supplies
+  - silver

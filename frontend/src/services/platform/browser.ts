@@ -9,7 +9,7 @@ import JSZip from 'jszip';
  * File System Access API directory handle cache
  * Stores directory handles for auto-save functionality
  */
-let directoryHandleCache: Map<string, FileSystemDirectoryHandle> = new Map();
+const directoryHandleCache: Map<string, FileSystemDirectoryHandle> = new Map();
 
 /**
  * Browser file operations using File API and File System Access API

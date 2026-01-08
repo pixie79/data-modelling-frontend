@@ -27,7 +27,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({ workspaceId, cla
     try {
       const versionList = await versioningService.getVersionHistory(workspaceId);
       setVersions(versionList);
-    } catch (error) {
+    } catch {
       addToast({
         type: 'error',
         message: 'Failed to load version history',
@@ -38,7 +38,11 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({ workspaceId, cla
   };
 
   const handleRestore = async (versionId: string) => {
-    if (!confirm('Are you sure you want to restore this version? This will overwrite the current workspace.')) {
+    if (
+      !confirm(
+        'Are you sure you want to restore this version? This will overwrite the current workspace.'
+      )
+    ) {
       return;
     }
 
@@ -50,7 +54,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({ workspaceId, cla
         message: 'Version restored successfully',
       });
       await loadVersions();
-    } catch (error) {
+    } catch {
       addToast({
         type: 'error',
         message: 'Failed to restore version',
@@ -83,9 +87,12 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({ workspaceId, cla
             >
               <div className="flex items-center justify-between">
                 <div className="flex-1">
-                  <div className="font-medium text-gray-900">{version.description || 'No description'}</div>
+                  <div className="font-medium text-gray-900">
+                    {version.description || 'No description'}
+                  </div>
                   <div className="text-sm text-gray-500 mt-1">
-                    Created by {version.created_by} on {new Date(version.created_at).toLocaleString()}
+                    Created by {version.created_by} on{' '}
+                    {new Date(version.created_at).toLocaleString()}
                   </div>
                 </div>
                 <button
@@ -103,6 +110,3 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({ workspaceId, cla
     </div>
   );
 };
-
-
-

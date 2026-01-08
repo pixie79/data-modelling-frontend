@@ -156,7 +156,7 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({ isOpen, 
         case 'protobuf':
           workspace = await importExportService.importFromProtobuf(content);
           break;
-        case 'odps':
+        case 'odps': {
           const { odpsService } = await import('@/services/sdk/odpsService');
           const odpsProduct = await odpsService.parseYAML(content);
           // Add product to store
@@ -167,7 +167,8 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({ isOpen, 
           });
           onClose();
           return;
-        case 'cads':
+        }
+        case 'cads': {
           const { cadsService } = await import('@/services/sdk/cadsService');
           const cadsAsset = await cadsService.parseYAML(content);
           // Add asset to store
@@ -178,7 +179,8 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({ isOpen, 
           });
           onClose();
           return;
-        case 'bpmn':
+        }
+        case 'bpmn': {
           const { bpmnService } = await import('@/services/sdk/bpmnService');
           const bpmnProcess = await bpmnService.parseXML(content);
           // Add process to store
@@ -189,7 +191,8 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({ isOpen, 
           });
           onClose();
           return;
-        case 'dmn':
+        }
+        case 'dmn': {
           const { dmnService } = await import('@/services/sdk/dmnService');
           const dmnDecision = await dmnService.parseXML(content);
           // Add decision to store
@@ -200,13 +203,15 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({ isOpen, 
           });
           onClose();
           return;
-        case 'openapi':
+        }
+        case 'openapi': {
           const { openapiService } = await import('@/services/sdk/openapiService');
           const openapiSpec = await openapiService.parse(content, 'yaml');
           // Convert OpenAPI spec to workspace structure
           const openapiTables = await openapiService.toODCSTables(openapiSpec);
           workspace = { tables: openapiTables, relationships: [], domains: [] };
           break;
+        }
         default:
           throw new Error(`Unsupported import format: ${format}`);
       }
@@ -510,7 +515,7 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({ isOpen, 
           filename = 'workspace.proto';
           mimeType = 'text/plain';
           break;
-        case 'odps':
+        case 'odps': {
           if (products.length === 0) {
             throw new Error('No data products to export');
           }
@@ -526,7 +531,8 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({ isOpen, 
           filename = `${productToExport.name || 'product'}.odps.yaml`;
           mimeType = 'application/yaml';
           break;
-        case 'cads':
+        }
+        case 'cads': {
           if (computeAssets.length === 0) {
             throw new Error('No compute assets to export');
           }
@@ -539,7 +545,8 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({ isOpen, 
           filename = `${assetToExport.name || 'asset'}.cads.yaml`;
           mimeType = 'application/yaml';
           break;
-        case 'bpmn':
+        }
+        case 'bpmn': {
           if (bpmnProcesses.length === 0) {
             throw new Error('No BPMN processes to export');
           }
@@ -552,7 +559,8 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({ isOpen, 
           filename = `${processToExport.name || 'process'}.bpmn`;
           mimeType = 'application/xml';
           break;
-        case 'dmn':
+        }
+        case 'dmn': {
           if (dmnDecisions.length === 0) {
             throw new Error('No DMN decisions to export');
           }
@@ -565,12 +573,14 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({ isOpen, 
           filename = `${decisionToExport.name || 'decision'}.dmn`;
           mimeType = 'application/xml';
           break;
-        case 'openapi':
+        }
+        case 'openapi': {
           const { openapiService } = await import('@/services/sdk/openapiService');
           content = await openapiService.toFormat(workspace as any, 'yaml');
           filename = 'workspace.openapi.yaml';
           mimeType = 'application/yaml';
           break;
+        }
         default:
           throw new Error(`Unsupported export format: ${exportFormat}`);
       }

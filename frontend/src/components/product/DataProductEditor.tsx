@@ -38,6 +38,7 @@ export const DataProductEditor: React.FC<DataProductEditorProps> = ({
   const [outputPorts, setOutputPorts] = useState<ODPSOutputPort[]>([]);
   const [support, setSupport] = useState<ODPSSupport>({});
 
+  // Initialize form state from product prop
   useEffect(() => {
     if (product) {
       setName(product.name);
@@ -76,7 +77,7 @@ export const DataProductEditor: React.FC<DataProductEditorProps> = ({
 
     try {
       const importedProduct = await odpsService.parseYAML(importYaml);
-      
+
       // Ensure domain_id is set
       const productData: DataProduct = {
         ...importedProduct,
@@ -176,7 +177,9 @@ export const DataProductEditor: React.FC<DataProductEditorProps> = ({
     <Dialog
       isOpen={isOpen}
       onClose={onClose}
-      title={product ? 'Edit Data Product' : (importMode ? 'Import Data Product' : 'Create Data Product')}
+      title={
+        product ? 'Edit Data Product' : importMode ? 'Import Data Product' : 'Create Data Product'
+      }
       size="lg"
     >
       <div className="space-y-4 max-h-[80vh] overflow-y-auto">
@@ -239,14 +242,17 @@ export const DataProductEditor: React.FC<DataProductEditorProps> = ({
                   setImportFile(file);
                   if (file) {
                     // Read file and populate textarea
-                    file.text().then((text) => {
-                      setImportYaml(text);
-                    }).catch((_error) => {
-                      addToast({
-                        type: 'error',
-                        message: 'Failed to read file',
+                    file
+                      .text()
+                      .then((text) => {
+                        setImportYaml(text);
+                      })
+                      .catch((_error) => {
+                        addToast({
+                          type: 'error',
+                          message: 'Failed to read file',
+                        });
                       });
-                    });
                   }
                 }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -298,190 +304,193 @@ export const DataProductEditor: React.FC<DataProductEditorProps> = ({
                 onChange={(e) => setName(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Product name"
-                autoFocus={!importMode && isOpen && !product}
               />
             </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Product description"
-          />
-        </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Product description"
+              />
+            </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value as 'draft' | 'published' | 'deprecated')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="draft">Draft</option>
-              <option value="published">Published</option>
-              <option value="deprecated">Deprecated</option>
-            </select>
-          </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                <select
+                  value={status}
+                  onChange={(e) =>
+                    setStatus(e.target.value as 'draft' | 'published' | 'deprecated')
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="draft">Draft</option>
+                  <option value="published">Published</option>
+                  <option value="deprecated">Deprecated</option>
+                </select>
+              </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Team</label>
-            <input
-              type="text"
-              value={team}
-              onChange={(e) => setTeam(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Team name"
-            />
-          </div>
-        </div>
-
-        {/* Linked Tables */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Linked Tables</label>
-          <select
-            multiple
-            value={linkedTables}
-            onChange={(e) =>
-              setLinkedTables(Array.from(e.target.selectedOptions, (option) => option.value))
-            }
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            size={5}
-          >
-            {tables.map((table) => (
-              <option key={table.id} value={table.id}>
-                {table.name}
-              </option>
-            ))}
-          </select>
-          <p className="mt-1 text-xs text-gray-500">Hold Ctrl/Cmd to select multiple tables</p>
-        </div>
-
-        {/* Input Ports */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="block text-sm font-medium text-gray-700">Input Ports</label>
-            <button
-              onClick={handleAddInputPort}
-              className="text-sm text-blue-600 hover:text-blue-800"
-            >
-              + Add Port
-            </button>
-          </div>
-          <div className="space-y-2">
-            {inputPorts.map((port, index) => (
-              <div key={index} className="flex gap-2 items-start">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Team</label>
                 <input
                   type="text"
-                  value={port.name}
-                  onChange={(e) => handleUpdateInputPort(index, { name: e.target.value })}
-                  placeholder="Port name"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={team}
+                  onChange={(e) => setTeam(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Team name"
                 />
-                <select
-                  value={port.table_id}
-                  onChange={(e) => handleUpdateInputPort(index, { table_id: e.target.value })}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select table</option>
-                  {tables.map((table) => (
-                    <option key={table.id} value={table.id}>
-                      {table.name}
-                    </option>
-                  ))}
-                </select>
+              </div>
+            </div>
+
+            {/* Linked Tables */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Linked Tables</label>
+              <select
+                multiple
+                value={linkedTables}
+                onChange={(e) =>
+                  setLinkedTables(Array.from(e.target.selectedOptions, (option) => option.value))
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                size={5}
+              >
+                {tables.map((table) => (
+                  <option key={table.id} value={table.id}>
+                    {table.name}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-gray-500">Hold Ctrl/Cmd to select multiple tables</p>
+            </div>
+
+            {/* Input Ports */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700">Input Ports</label>
                 <button
-                  onClick={() => handleRemoveInputPort(index)}
-                  className="text-red-600 hover:text-red-800"
+                  onClick={handleAddInputPort}
+                  className="text-sm text-blue-600 hover:text-blue-800"
                 >
-                  ×
+                  + Add Port
                 </button>
               </div>
-            ))}
-          </div>
-        </div>
+              <div className="space-y-2">
+                {inputPorts.map((port, index) => (
+                  <div key={index} className="flex gap-2 items-start">
+                    <input
+                      type="text"
+                      value={port.name}
+                      onChange={(e) => handleUpdateInputPort(index, { name: e.target.value })}
+                      placeholder="Port name"
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <select
+                      value={port.table_id}
+                      onChange={(e) => handleUpdateInputPort(index, { table_id: e.target.value })}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Select table</option>
+                      {tables.map((table) => (
+                        <option key={table.id} value={table.id}>
+                          {table.name}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => handleRemoveInputPort(index)}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
 
-        {/* Output Ports */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="block text-sm font-medium text-gray-700">Output Ports</label>
-            <button
-              onClick={handleAddOutputPort}
-              className="text-sm text-blue-600 hover:text-blue-800"
-            >
-              + Add Port
-            </button>
-          </div>
-          <div className="space-y-2">
-            {outputPorts.map((port, index) => (
-              <div key={index} className="flex gap-2 items-start">
+            {/* Output Ports */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700">Output Ports</label>
+                <button
+                  onClick={handleAddOutputPort}
+                  className="text-sm text-blue-600 hover:text-blue-800"
+                >
+                  + Add Port
+                </button>
+              </div>
+              <div className="space-y-2">
+                {outputPorts.map((port, index) => (
+                  <div key={index} className="flex gap-2 items-start">
+                    <input
+                      type="text"
+                      value={port.name}
+                      onChange={(e) => handleUpdateOutputPort(index, { name: e.target.value })}
+                      placeholder="Port name"
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <select
+                      value={port.table_id}
+                      onChange={(e) => handleUpdateOutputPort(index, { table_id: e.target.value })}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Select table</option>
+                      {tables.map((table) => (
+                        <option key={table.id} value={table.id}>
+                          {table.name}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => handleRemoveOutputPort(index)}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Support Information */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Support Information
+              </label>
+              <div className="space-y-2">
                 <input
                   type="text"
-                  value={port.name}
-                  onChange={(e) => handleUpdateOutputPort(index, { name: e.target.value })}
-                  placeholder="Port name"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={support.team || ''}
+                  onChange={(e) => setSupport({ ...support, team: e.target.value })}
+                  placeholder="Support team"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-                <select
-                  value={port.table_id}
-                  onChange={(e) => handleUpdateOutputPort(index, { table_id: e.target.value })}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select table</option>
-                  {tables.map((table) => (
-                    <option key={table.id} value={table.id}>
-                      {table.name}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={() => handleRemoveOutputPort(index)}
-                  className="text-red-600 hover:text-red-800"
-                >
-                  ×
-                </button>
+                <input
+                  type="text"
+                  value={support.contact || ''}
+                  onChange={(e) => setSupport({ ...support, contact: e.target.value })}
+                  placeholder="Contact email"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <input
+                  type="text"
+                  value={support.slack_channel || ''}
+                  onChange={(e) => setSupport({ ...support, slack_channel: e.target.value })}
+                  placeholder="Slack channel"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <input
+                  type="url"
+                  value={support.documentation_url || ''}
+                  onChange={(e) => setSupport({ ...support, documentation_url: e.target.value })}
+                  placeholder="Documentation URL"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Support Information */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Support Information</label>
-          <div className="space-y-2">
-            <input
-              type="text"
-              value={support.team || ''}
-              onChange={(e) => setSupport({ ...support, team: e.target.value })}
-              placeholder="Support team"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <input
-              type="text"
-              value={support.contact || ''}
-              onChange={(e) => setSupport({ ...support, contact: e.target.value })}
-              placeholder="Contact email"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <input
-              type="text"
-              value={support.slack_channel || ''}
-              onChange={(e) => setSupport({ ...support, slack_channel: e.target.value })}
-              placeholder="Slack channel"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <input
-              type="url"
-              value={support.documentation_url || ''}
-              onChange={(e) => setSupport({ ...support, documentation_url: e.target.value })}
-              placeholder="Documentation URL"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-        </div>
+            </div>
 
             {/* Actions */}
             <div className="flex justify-end gap-2 pt-4 border-t border-gray-200">
@@ -504,4 +513,3 @@ export const DataProductEditor: React.FC<DataProductEditorProps> = ({
     </Dialog>
   );
 };
-

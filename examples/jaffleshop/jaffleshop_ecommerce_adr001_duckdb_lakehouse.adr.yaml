@@ -1,0 +1,104 @@
+id: js-adr-0001
+number: 1
+title: Use DuckDB as the Lakehouse Engine
+status: accepted
+category: technology
+context: |
+  Jaffleshop needs a data lakehouse solution to support analytics workloads.
+  The solution must:
+  - Handle both batch and interactive queries efficiently
+  - Support standard SQL syntax
+  - Integrate with dbt for transformations
+  - Be cost-effective for a growing business
+  - Support local development without cloud infrastructure
+
+  We evaluated several options including Snowflake, Databricks, BigQuery,
+  and DuckDB. Each has different trade-offs in terms of cost, complexity,
+  and capabilities.
+
+decision: |
+  We will use DuckDB as the primary lakehouse engine for the Jaffleshop
+  data platform.
+
+  DuckDB is an embedded analytical database that:
+  - Runs in-process with zero external dependencies
+  - Provides excellent performance for OLAP workloads
+  - Supports full SQL with window functions, CTEs, etc.
+  - Has native dbt integration via dbt-duckdb adapter
+  - Enables local development without cloud costs
+  - Can read/write Parquet files directly
+
+consequences: |
+  **Positive:**
+  - Zero infrastructure cost for development and testing
+  - Fast iteration cycles with in-process execution
+  - Easy onboarding for new developers
+  - Full SQL compatibility with other databases
+  - Excellent performance for datasets up to 100GB
+  - Native support for data lake file formats
+
+  **Negative:**
+  - May need migration to cloud data warehouse at scale
+  - Limited to single-node processing
+  - No built-in data sharing features
+  - Community support vs enterprise support
+
+  **Mitigations:**
+  - Design for portability to Snowflake/BigQuery
+  - Monitor data volumes for scaling triggers
+  - Document migration path in runbooks
+
+options:
+  - title: DuckDB (Selected)
+    description: Embedded analytical database, runs in-process
+    pros:
+      - Zero infrastructure cost
+      - Fast local development
+      - dbt integration
+      - Parquet native support
+    cons:
+      - Single-node only
+      - May not scale beyond 100GB efficiently
+  - title: Snowflake
+    description: Cloud-native data warehouse
+    pros:
+      - Infinite scalability
+      - Enterprise features
+      - Strong ecosystem
+    cons:
+      - Pay-per-use costs
+      - Requires cloud setup
+      - Slower local development
+  - title: BigQuery
+    description: Google Cloud serverless data warehouse
+    pros:
+      - Serverless architecture
+      - Pay-per-query pricing
+      - ML integration
+    cons:
+      - GCP lock-in
+      - Cold start latency
+      - Complex cost management
+
+domain_id: js-domain-ecommerce
+workspace_id: js-workspace
+authors:
+  - platform-team@jaffleshop.example
+deciders:
+  - cto@jaffleshop.example
+  - head-of-data@jaffleshop.example
+consulted:
+  - data-engineering@jaffleshop.example
+  - analytics@jaffleshop.example
+informed:
+  - all-engineering@jaffleshop.example
+related_knowledge:
+  - js-kb-0001
+tags:
+  - name: technology
+  - name: database
+  - name: lakehouse
+  - name: infrastructure
+created_at: "2024-01-10T11:00:00Z"
+updated_at: "2024-01-10T11:00:00Z"
+decided_at: "2024-01-10T11:00:00Z"

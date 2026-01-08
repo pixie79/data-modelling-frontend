@@ -62,16 +62,74 @@ class ODCSService {
       if (sdk && 'parse_odcs_yaml' in sdk && typeof (sdk as any).parse_odcs_yaml === 'function') {
         console.log('[ODCSService] Using SDK parse_odcs_yaml method (SDK 1.8.4+)');
         try {
+          // IMPORTANT: SDK parse_odcs_yaml does NOT return customProperties from the YAML
+          // We need to extract it from the raw YAML before SDK processing
+          let rawCustomProperties: any[] = [];
+          try {
+            const yaml = await import('js-yaml');
+            const rawParsed = yaml.load(yamlContent) as any;
+            if (
+              rawParsed &&
+              rawParsed.customProperties &&
+              Array.isArray(rawParsed.customProperties)
+            ) {
+              rawCustomProperties = rawParsed.customProperties;
+              console.log(
+                '[ODCSService] Extracted customProperties from raw YAML:',
+                rawCustomProperties
+              );
+            }
+          } catch (yamlErr) {
+            console.warn(
+              '[ODCSService] Failed to extract customProperties from raw YAML:',
+              yamlErr
+            );
+          }
+
           // SDK 1.8.4+: No preprocessing needed, SDK handles validation
           const resultJson = (sdk as any).parse_odcs_yaml(yamlContent);
           const result = JSON.parse(resultJson);
           console.log('[ODCSService] SDK parse_odcs_yaml result:', result);
 
-          // SDK 1.8.4+: Returns complete, validated data - no merging needed
+          // Log table structure to verify quality rules are included
+          if (result.tables && result.tables.length > 0) {
+            console.log('[ODCSService] First table structure:', {
+              name: result.tables[0].name,
+              columnsCount: result.tables[0].columns?.length,
+              hasQualityRules: !!result.tables[0].quality_rules,
+              firstColumnQuality: result.tables[0].columns?.[0]?.quality,
+              firstColumnSample: result.tables[0].columns?.[0],
+            });
+          }
+
+          // SDK 1.8.4+: Normalize tables to ensure quality rules are in expected format
+          // The SDK returns 'quality' array on columns, but UI expects 'quality_rules'
+          // IMPORTANT: customProperties is at the root level of ODCS, not on each table
+          // SDK does NOT pass through customProperties, so we use the raw YAML extraction
+          const rootCustomProperties = rawCustomProperties;
+          console.log(
+            '[ODCSService] Injecting root customProperties into tables:',
+            rootCustomProperties
+          );
+
+          const normalizedTables = (result.tables || []).map((table: any, index: number) => {
+            // Inject root-level customProperties into table if table doesn't have its own
+            const tableWithCustomProps = {
+              ...table,
+              customProperties:
+                table.customProperties || table.custom_properties || rootCustomProperties,
+            };
+            return this.normalizeTable(tableWithCustomProps, index, {}, {});
+          });
+
+          // SDK 1.8.4+: Returns complete, validated data - preserve all fields
+          // Spread result first, then override tables with normalized version
+          const { tables: _rawTables, ...restResult } = result;
           return {
+            ...restResult, // Preserve any additional fields from SDK
             workspace_id: result.workspace_id,
             domain_id: result.domain_id,
-            tables: result.tables || [],
+            tables: normalizedTables,
             relationships: result.relationships || [],
             data_flow_diagrams: result.data_flow_diagrams || [],
           };
@@ -129,12 +187,31 @@ class ODCSService {
           const result = JSON.parse(resultJson);
           console.log('[ODCSService] SDK parse_odcl_yaml result:', result);
 
+          // Log table structure to verify quality rules are included
+          if (result.tables && result.tables.length > 0) {
+            console.log('[ODCSService] First table structure:', {
+              name: result.tables[0].name,
+              columnsCount: result.tables[0].columns?.length,
+              hasQualityRules: !!result.tables[0].quality_rules,
+              firstColumnQuality: result.tables[0].columns?.[0]?.quality,
+              firstColumnSample: result.tables[0].columns?.[0],
+            });
+          }
+
+          // SDK 1.8.4+: Normalize tables to ensure quality rules are in expected format
+          // The SDK returns 'quality' array on columns, but UI expects 'quality_rules'
+          const normalizedTables = (result.tables || []).map((table: any, index: number) =>
+            this.normalizeTable(table, index, {}, {})
+          );
+
           // SDK 1.8.4+ returns complete workspace structure with all ODCL metadata
-          // No need for merging or validation - SDK handles everything
+          // Spread result first, then override tables with normalized version
+          const { tables: _rawTables, ...restResult } = result;
           return {
+            ...restResult, // Preserve any additional fields from SDK
             workspace_id: result.workspace_id,
             domain_id: result.domain_id,
-            tables: result.tables || [],
+            tables: normalizedTables,
             relationships: result.relationships || [],
             data_flow_diagrams: result.data_flow_diagrams || [],
           };
@@ -887,8 +964,8 @@ class ODCSService {
 
       // Extract workspace_id and domain_id from SDK result or use defaults
       // SDK may not return these for ODCL format, so we'll extract from original if needed
-      let workspaceId = sdkResult.workspace_id;
-      let domainId = sdkResult.domain_id;
+      const workspaceId = sdkResult.workspace_id;
+      const domainId = sdkResult.domain_id;
 
       // For ODCL format, workspace_id and domain_id might not be in SDK result
       // They should be extracted from the ODCL id field
@@ -1243,6 +1320,16 @@ class ODCSService {
     if (item.quality_tier) metadata.quality_tier = item.quality_tier;
     if (item.data_modeling_method) metadata.data_modeling_method = item.data_modeling_method;
 
+    // Convert customProperties array to metadata object (ODCS v3.1.0 format)
+    // customProperties: [{ property: "system_id", value: "js-system-duckdb" }]
+    if (item.customProperties && Array.isArray(item.customProperties)) {
+      for (const prop of item.customProperties) {
+        if (prop.property && prop.value !== undefined) {
+          metadata[prop.property] = prop.value;
+        }
+      }
+    }
+
     // Apply ODCL table-level metadata if provided
     let finalDescription = item.description || item.info?.description;
     if (odclTableMetadata) {
@@ -1445,6 +1532,7 @@ class ODCSService {
           col.description || col.desc || (colConstraints.description as string) || undefined,
         constraints: Object.keys(colConstraints).length > 0 ? colConstraints : undefined,
         quality_rules: qualityArray || colQualityRules, // Store quality array if present, otherwise use quality_rules object
+        quality: qualityArray, // Preserve raw quality array for UI components
         order: col.order ?? colIndex,
         created_at: col.created_at || col.createdAt || now,
       };
@@ -1602,45 +1690,80 @@ class ODCSService {
 
   /**
    * Fallback YAML converter for offline mode when WASM SDK is not available
-   * Converts workspace to basic ODCS YAML format
+   * Converts workspace to ODCS v3.1.0 YAML format
+   * Fallback when SDK is not available
    */
   private toYAMLFallback(workspace: ODCSWorkspace): string {
     try {
+      const tables = workspace.tables || [];
+
+      // If no tables, return minimal valid ODCS
+      if (tables.length === 0) {
+        const emptyContract: any = {
+          apiVersion: 'v3.1.0',
+          kind: 'DataContract',
+          id: workspace.workspace_id || 'unknown',
+          version: '1.0.0',
+          status: 'draft',
+        };
+        return yaml.dump(emptyContract, {
+          indent: 2,
+          lineWidth: 120,
+          noRefs: true,
+          sortKeys: false,
+        });
+      }
+
+      // For single table export (most common case), produce ODCS v3.1.0 format
+      const table = tables[0]!;
       const yamlData: any = {
-        workspace_id: workspace.workspace_id,
-        domain_id: workspace.domain_id,
-        tables: workspace.tables || [],
+        // Required fields per ODCS v3.1.0 schema
+        apiVersion: 'v3.1.0',
+        kind: 'DataContract',
+        id: table.id,
+        version: '1.0.0',
+        status: (table as any).metadata?.status || 'active',
+        name: table.name,
+
+        // Optional fields
+        ...(table.description && {
+          description: {
+            purpose: table.description,
+          },
+        }),
+        ...(workspace.domain_id && { domain: workspace.domain_id }),
+
+        // Schema array with table definition
+        schema: [
+          {
+            name: table.name,
+            ...(table.description && { description: table.description }),
+            logicalType: 'object',
+            properties: (table.columns || []).map((col: any) => ({
+              name: col.name,
+              ...(col.description && { description: col.description }),
+              logicalType: this.mapDataTypeToLogicalType(col.data_type),
+              physicalType: col.data_type,
+              required: !col.nullable,
+              ...(col.is_primary_key && { primaryKey: true }),
+            })),
+          },
+        ],
+
+        // Custom properties for metadata
+        ...((table as any).metadata && {
+          customProperties: Object.entries((table as any).metadata).map(([property, value]) => ({
+            property,
+            value: String(value),
+          })),
+        }),
+
+        // Tags
+        ...(table.tags &&
+          table.tags.length > 0 && {
+            tags: table.tags,
+          }),
       };
-
-      if (workspace.relationships && workspace.relationships.length > 0) {
-        yamlData.relationships = workspace.relationships;
-      }
-
-      if (workspace.data_flow_diagrams && workspace.data_flow_diagrams.length > 0) {
-        yamlData.data_flow_diagrams = workspace.data_flow_diagrams.map((diagram) => ({
-          id: diagram.id,
-          name: diagram.name,
-          // Legacy data flow diagrams removed - replaced by BPMN processes
-          nodes: (diagram as any).nodes?.map((node: any) => ({
-            id: node.id,
-            type: node.type,
-            label: node.label,
-            position_x: node.position_x,
-            position_y: node.position_y,
-            width: node.width,
-            height: node.height,
-            metadata: node.metadata,
-          })),
-          connections: (diagram as any).connections?.map((conn: any) => ({
-            id: conn.id,
-            source_node_id: conn.source_node_id,
-            target_node_id: conn.target_node_id,
-            label: conn.label,
-            metadata: conn.metadata,
-          })),
-          linked_tables: (diagram as any).linked_tables || [],
-        }));
-      }
 
       return yaml.dump(yamlData, {
         indent: 2,
@@ -1653,6 +1776,47 @@ class ODCSService {
         `Failed to convert to YAML: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
+  }
+
+  /**
+   * Map physical data type to ODCS logical type
+   */
+  private mapDataTypeToLogicalType(dataType: string): string {
+    const type = (dataType || 'VARCHAR').toUpperCase();
+
+    if (type.includes('INT') || type === 'BIGINT' || type === 'SMALLINT' || type === 'TINYINT') {
+      return 'integer';
+    }
+    if (
+      type.includes('FLOAT') ||
+      type.includes('DOUBLE') ||
+      type.includes('DECIMAL') ||
+      type.includes('NUMERIC') ||
+      type === 'REAL'
+    ) {
+      return 'number';
+    }
+    if (type.includes('BOOL')) {
+      return 'boolean';
+    }
+    if (type === 'DATE') {
+      return 'date';
+    }
+    if (type.includes('TIMESTAMP') || type.includes('DATETIME')) {
+      return 'timestamp';
+    }
+    if (type === 'TIME') {
+      return 'time';
+    }
+    if (type.includes('ARRAY') || type.includes('LIST')) {
+      return 'array';
+    }
+    if (type.includes('STRUCT') || type.includes('OBJECT') || type === 'JSON' || type === 'JSONB') {
+      return 'object';
+    }
+
+    // Default to string for VARCHAR, CHAR, TEXT, etc.
+    return 'string';
   }
 
   /**

@@ -1,0 +1,176 @@
+# Open Data Modelling Application - LLM Context
+
+This file provides context for Large Language Models working with this codebase.
+
+## Project Overview
+
+A domain-centric data modelling application built with React, TypeScript, and Electron.
+Creates data architectures, models, and flow diagrams entirely offline.
+
+**Version**: 2.1.1
+**License**: ISC
+
+## Technology Stack
+
+### Frontend
+- React 18 with TypeScript
+- Vite build system
+- ReactFlow for infinite canvas
+- Zustand for state management
+- TanStack Query for async state
+- TailwindCSS for styling
+- Vitest for testing
+
+### Desktop
+- Electron for cross-platform desktop app
+- Native file system access
+- IPC for main/renderer communication
+
+### WASM Modules
+- **data-modelling-sdk 1.13.3**: YAML parsing, validation, ODCS/ODCL format support, Knowledge Base, Decision Records
+- **DuckDB-WASM 1.29.0**: In-browser SQL database (DuckDB 1.4.3)
+
+## Key Features
+
+1. **Data Modelling**: Conceptual, logical, physical models with crow's feet notation
+2. **Domain-Centric**: Organize by business domains with systems, tables, relationships
+3. **Decision Logs**: MADR-format Architecture Decision Records
+4. **Knowledge Base**: Documentation articles (Guide, Tutorial, Reference, etc.)
+5. **DuckDB-WASM**: In-browser SQL with OPFS persistence
+6. **Import/Export**: ODCS, SQL, AVRO, JSON Schema, Protobuf formats
+7. **Offline Only**: No backend server required
+
+## Project Structure
+
+```
+dm/
+├── frontend/                 # Main application
+│   ├── src/
+│   │   ├── components/       # React components
+│   │   ├── services/         # Business logic
+│   │   │   ├── database/     # DuckDB services
+│   │   │   ├── sdk/          # WASM SDK integration
+│   │   │   ├── storage/      # File storage
+│   │   │   └── platform/     # Platform abstraction
+│   │   ├── stores/           # Zustand stores
+│   │   ├── hooks/            # React hooks
+│   │   ├── types/            # TypeScript types
+│   │   └── contexts/         # React contexts
+│   ├── electron/             # Electron main/preload
+│   ├── tests/                # Test files
+│   ├── public/wasm/          # WASM binaries
+│   └── docs/                 # Documentation
+├── CHANGELOG.md
+├── README.md
+└── TODO.md                   # Implementation tasks
+```
+
+## DuckDB-WASM Integration (v2.1.0)
+
+### Services
+- `duckdbService.ts`: Core DuckDB initialization and query execution
+- `opfsManager.ts`: OPFS file system management
+- `schemaManager.ts`: Database schema and migrations
+- `syncEngine.ts`: YAML ↔ DuckDB synchronization
+- `queryBuilder.ts`: Type-safe SQL query builder
+- `duckdbStorageAdapter.ts`: Storage interface implementation
+
+### React Hooks
+- `useDuckDB()`: Access DuckDB service
+- `useQuery()`: Execute SELECT queries
+- `useMutation()`: Execute INSERT/UPDATE/DELETE
+- `useSyncStatus()`: Monitor sync state
+
+### Browser Support
+- Chrome 86+, Edge 86+: Full OPFS support
+- Firefox 111+: Full OPFS support
+- Safari 15.2+: Limited OPFS support
+- Fallback: In-memory mode for unsupported browsers
+
+## Important Files
+
+### Configuration
+- `vite.config.ts`: Build configuration with WASM support
+- `tsconfig.json`: TypeScript configuration
+- `package.json`: Dependencies and scripts
+
+### Documentation
+- `docs/DUCKDB_GUIDE.md`: User guide
+- `docs/api/DUCKDB_SERVICE.md`: API reference
+- `docs/api/SYNC_ENGINE.md`: Sync engine reference
+- `docs/DUCKDB_BINDINGS.md`: WASM bindings
+- `docs/SDK_BINDINGS.md`: SDK bindings
+
+### Tests
+- `tests/unit/services/database/`: DuckDB unit tests (117 tests)
+- Total test count: 604 tests
+
+## Development Commands
+
+```bash
+cd frontend
+
+# Development
+npm run electron:dev     # Start Electron dev mode
+npm run dev              # Start Vite dev server
+
+# Testing
+npm test                 # Run all tests
+npm run test:coverage    # Tests with coverage
+npm run type-check       # TypeScript validation
+
+# Building
+npm run build:wasm       # Build WASM SDK
+npm run build            # Build frontend
+npm run electron:build   # Build Electron app
+```
+
+## Code Conventions
+
+- TypeScript strict mode enabled
+- 95% test coverage requirement
+- No partial implementations or TODOs
+- Conventional commit messages
+- ESLint + Prettier formatting
+
+## Architecture Notes
+
+### Singleton Services
+- DuckDB service uses singleton pattern
+- OPFS manager uses singleton pattern
+- Access via `getDuckDBService()`, `getOPFSManager()`
+
+### Query Builder Pattern
+```typescript
+import { query } from './queryBuilder';
+
+const { sql, params } = query
+  .select('tables')
+  .where('domain_id', '=', domainId)
+  .orderBy('name', 'ASC')
+  .build();
+```
+
+### Sync Engine
+- Hash-based change detection (SHA-256)
+- Bidirectional YAML ↔ DuckDB sync
+- Configurable sync strategies
+
+## Common Tasks
+
+### Adding a New Table to DuckDB
+1. Update `schemaManager.ts` with CREATE TABLE
+2. Add types to `types/duckdb.ts`
+3. Add operations to `duckdbStorageAdapter.ts`
+4. Create sync logic in `syncEngine.ts`
+5. Add tests
+
+### Adding a New React Hook
+1. Create hook in `hooks/` directory
+2. Use existing hooks as templates
+3. Add tests in `tests/unit/hooks/`
+
+### Modifying Electron IPC
+1. Add handler in `electron/main.ts`
+2. Expose in `electron/preload.ts`
+3. Add types in `services/platform/electron.ts`

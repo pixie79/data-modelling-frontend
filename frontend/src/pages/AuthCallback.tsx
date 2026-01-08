@@ -21,7 +21,9 @@ const AuthCallback: React.FC = () => {
   const { login } = useAuth();
   const { addToast } = useUIStore();
   const { setMode } = useSDKModeStore();
-  const [status, setStatus] = useState<'processing' | 'selecting-email' | 'success' | 'error'>('processing');
+  const [status, setStatus] = useState<'processing' | 'selecting-email' | 'success' | 'error'>(
+    'processing'
+  );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [hasProcessed, setHasProcessed] = useState(false);
   const [availableEmails, setAvailableEmails] = useState<EmailOption[]>([]);
@@ -39,7 +41,7 @@ const AuthCallback: React.FC = () => {
     const currentOrigin = window.location.origin;
     const currentPath = window.location.pathname;
     const currentSearch = window.location.search;
-    
+
     // Check if we're on the API server (port 8081) instead of the frontend (port 5173)
     if (currentOrigin.includes(':8081') && currentPath === '/auth/complete') {
       console.warn('[AuthCallback] Detected redirect to API server, redirecting to frontend...');
@@ -54,7 +56,7 @@ const AuthCallback: React.FC = () => {
         // Get the auth code from URL
         const code = searchParams.get('code');
         const error = searchParams.get('error');
-        
+
         // Note: select_email=true in the URL is informational (GitHub required email selection)
         // The API auto-selects an email and proceeds with authentication
         // Email selection for workspace creation happens later via /auth/select-email endpoint
@@ -95,8 +97,15 @@ const AuthCallback: React.FC = () => {
           body: JSON.stringify({ code }),
         });
 
-        console.log('[AuthCallback] Exchange response status:', response.status, response.statusText);
-        console.log('[AuthCallback] Exchange response headers:', Object.fromEntries(response.headers.entries()));
+        console.log(
+          '[AuthCallback] Exchange response status:',
+          response.status,
+          response.statusText
+        );
+        console.log(
+          '[AuthCallback] Exchange response headers:',
+          Object.fromEntries(response.headers.entries())
+        );
 
         if (!response.ok) {
           let errorMessage = `Failed to exchange code: ${response.status} ${response.statusText}`;
@@ -119,15 +128,17 @@ const AuthCallback: React.FC = () => {
 
         const responseText = await response.text();
         console.log('[AuthCallback] Exchange response text:', responseText);
-        
+
         let data: any;
         try {
           data = JSON.parse(responseText);
         } catch (parseError) {
           console.error('[AuthCallback] Failed to parse response as JSON:', parseError);
-          throw new Error(`Invalid JSON response from authentication server: ${responseText.substring(0, 200)}`);
+          throw new Error(
+            `Invalid JSON response from authentication server: ${responseText.substring(0, 200)}`
+          );
         }
-        
+
         // Log the response for debugging
         console.log('[AuthCallback] Exchange response data:', {
           hasAccessToken: !!data.access_token,
@@ -135,13 +146,18 @@ const AuthCallback: React.FC = () => {
           hasAccessTokenCamel: !!data.accessToken,
           hasRefreshTokenCamel: !!data.refreshToken,
           allKeys: Object.keys(data),
-          tokenKeys: Object.keys(data).filter(k => k.toLowerCase().includes('token')),
+          tokenKeys: Object.keys(data).filter((k) => k.toLowerCase().includes('token')),
         });
-        
+
         // Check if email selection is required
-        if (data.select_email === true && data.emails && Array.isArray(data.emails) && data.emails.length > 0) {
+        if (
+          data.select_email === true &&
+          data.emails &&
+          Array.isArray(data.emails) &&
+          data.emails.length > 0
+        ) {
           console.log('[AuthCallback] Email selection required, showing email selection UI');
-          
+
           // Check if API provided a session code (API 1.1.2+ should provide this)
           const sessionCodeValue = data.code || data.session_code || data.session_id;
           if (sessionCodeValue && typeof sessionCodeValue === 'string') {
@@ -149,18 +165,25 @@ const AuthCallback: React.FC = () => {
             setSessionCode(sessionCodeValue);
             setAuthCode(code); // Store OAuth code as backup
           } else {
-            console.warn('[AuthCallback] No session code found in response. API response keys:', Object.keys(data));
-            console.warn('[AuthCallback] API 1.1.2+ should provide a session code for email selection.');
-            console.warn('[AuthCallback] Without a session code, email selection may not work properly.');
-            
+            console.warn(
+              '[AuthCallback] No session code found in response. API response keys:',
+              Object.keys(data)
+            );
+            console.warn(
+              '[AuthCallback] API 1.1.2+ should provide a session code for email selection.'
+            );
+            console.warn(
+              '[AuthCallback] Without a session code, email selection may not work properly.'
+            );
+
             // Store OAuth code - we'll try to use it, but it may already be consumed
             setAuthCode(code);
-            
+
             // If there's only one email or a primary email, we could auto-select it
             // But the user explicitly requested email selection, so we should show the UI
             // The API design is broken - we can't select email without a session code
           }
-          
+
           // Extract emails (handle both string and object formats)
           const emails: EmailOption[] = data.emails.map((email: string | EmailOption) => {
             if (typeof email === 'string') {
@@ -172,17 +195,22 @@ const AuthCallback: React.FC = () => {
           setStatus('selecting-email');
           return;
         }
-        
+
         // Validate response has required fields
         // Check for both snake_case and camelCase variants
         const accessToken = data.access_token || data.accessToken;
         const refreshToken = data.refresh_token || data.refreshToken;
-        
+
         if (!accessToken || !refreshToken) {
-          console.error('[AuthCallback] Invalid response structure - full data:', JSON.stringify(data, null, 2));
-          throw new Error(`Invalid response from authentication server: missing tokens. Response keys: ${Object.keys(data).join(', ')}. Response: ${JSON.stringify(data).substring(0, 500)}`);
+          console.error(
+            '[AuthCallback] Invalid response structure - full data:',
+            JSON.stringify(data, null, 2)
+          );
+          throw new Error(
+            `Invalid response from authentication server: missing tokens. Response keys: ${Object.keys(data).join(', ')}. Response: ${JSON.stringify(data).substring(0, 500)}`
+          );
         }
-        
+
         // Login with tokens (handle both snake_case and camelCase)
         await login({
           access_token: accessToken,
@@ -219,16 +247,19 @@ const AuthCallback: React.FC = () => {
   const handleEmailSelection = async (selectedEmail: string) => {
     try {
       console.log('[AuthCallback] User selected email:', selectedEmail);
-      
+
       // API 1.1.2+ provides a session code in the exchange response
       // Use session code if available, otherwise fall back to OAuth code
       const codeToUse = sessionCode || authCode;
-      
+
       if (!codeToUse) {
         throw new Error('No code available for email selection');
       }
 
-      console.log('[AuthCallback] Using code for email selection:', codeToUse === sessionCode ? 'session code' : 'OAuth code');
+      console.log(
+        '[AuthCallback] Using code for email selection:',
+        codeToUse === sessionCode ? 'session code' : 'OAuth code'
+      );
 
       // API 1.1.2+ should accept the session code for email selection
       // Try with session code in body first (API 1.1.2+ format)
@@ -237,7 +268,7 @@ const AuthCallback: React.FC = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           email: selectedEmail,
           code: codeToUse, // Use session code or OAuth code
         }),
@@ -246,21 +277,24 @@ const AuthCallback: React.FC = () => {
       if (!selectResponse.ok) {
         // Try with code as query parameter (alternative format)
         console.log('[AuthCallback] Trying select-email with code as query parameter...');
-        selectResponse = await fetch(`/api/v1/auth/select-email?code=${encodeURIComponent(codeToUse)}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ 
-            email: selectedEmail,
-          }),
-        });
+        selectResponse = await fetch(
+          `/api/v1/auth/select-email?code=${encodeURIComponent(codeToUse)}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              email: selectedEmail,
+            }),
+          }
+        );
       }
 
       if (!selectResponse.ok) {
         const errorText = await selectResponse.text();
         console.error('[AuthCallback] select-email failed:', selectResponse.status, errorText);
-        
+
         // If select-email fails, try to exchange with selected_email directly (API 1.1.2+ should support this)
         console.log('[AuthCallback] Attempting to exchange code with selected_email parameter...');
         const exchangeResponse = await fetch('/api/v1/auth/exchange', {
@@ -268,7 +302,7 @@ const AuthCallback: React.FC = () => {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             code: authCode, // Use original OAuth code
             selected_email: selectedEmail,
           }),
@@ -276,8 +310,14 @@ const AuthCallback: React.FC = () => {
 
         if (!exchangeResponse.ok) {
           const exchangeErrorText = await exchangeResponse.text();
-          console.error('[AuthCallback] Exchange with selected_email failed:', exchangeResponse.status, exchangeErrorText);
-          throw new Error(`Failed to complete email selection: ${exchangeErrorText || selectResponse.statusText}`);
+          console.error(
+            '[AuthCallback] Exchange with selected_email failed:',
+            exchangeResponse.status,
+            exchangeErrorText
+          );
+          throw new Error(
+            `Failed to complete email selection: ${exchangeErrorText || selectResponse.statusText}`
+          );
         }
 
         const exchangeData = await exchangeResponse.json();
@@ -345,7 +385,7 @@ const AuthCallback: React.FC = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           code: authCode,
           selected_email: selectedEmail,
         }),
@@ -353,7 +393,9 @@ const AuthCallback: React.FC = () => {
 
       if (!exchangeResponse.ok) {
         const errorText = await exchangeResponse.text();
-        throw new Error(`Failed to exchange code after email selection: ${errorText || exchangeResponse.statusText}`);
+        throw new Error(
+          `Failed to exchange code after email selection: ${errorText || exchangeResponse.statusText}`
+        );
       }
 
       const exchangeData = await exchangeResponse.json();
@@ -384,7 +426,9 @@ const AuthCallback: React.FC = () => {
     } catch (error) {
       console.error('[AuthCallback] Email selection error:', error);
       setStatus('error');
-      setErrorMessage(error instanceof Error ? error.message : 'Failed to complete email selection');
+      setErrorMessage(
+        error instanceof Error ? error.message : 'Failed to complete email selection'
+      );
       addToast({
         type: 'error',
         message: `Email selection failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -405,7 +449,9 @@ const AuthCallback: React.FC = () => {
         {status === 'selecting-email' && (
           <>
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Select Your Email</h2>
-            <p className="text-gray-600 mb-6">Please select which email address you want to use for this session:</p>
+            <p className="text-gray-600 mb-6">
+              Please select which email address you want to use for this session:
+            </p>
             <div className="space-y-2">
               {availableEmails.map((emailOption) => (
                 <button
@@ -424,7 +470,9 @@ const AuthCallback: React.FC = () => {
                       )}
                     </div>
                     {emailOption.primary && (
-                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Primary</span>
+                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                        Primary
+                      </span>
                     )}
                   </div>
                 </button>
@@ -443,18 +491,25 @@ const AuthCallback: React.FC = () => {
           <>
             <div className="text-red-600 text-5xl mb-4">✗</div>
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Authentication Failed</h2>
-            <p className="text-gray-600 mb-4">{errorMessage || 'An error occurred during authentication'}</p>
-            {errorMessage && (errorMessage.includes('API limitation') || errorMessage.includes('API design issue')) && (
-              <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-left">
-                <p className="text-sm text-yellow-800 font-semibold mb-2">⚠️ API Design Issue Detected</p>
-                <p className="text-sm text-yellow-700 mb-2">
-                  The API requires email selection but doesn't provide the necessary endpoints or session codes.
-                </p>
-                <p className="text-sm text-yellow-700">
-                  This is a known issue with API 1.1.2. Please report this to the API maintainers.
-                </p>
-              </div>
-            )}
+            <p className="text-gray-600 mb-4">
+              {errorMessage || 'An error occurred during authentication'}
+            </p>
+            {errorMessage &&
+              (errorMessage.includes('API limitation') ||
+                errorMessage.includes('API design issue')) && (
+                <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-left">
+                  <p className="text-sm text-yellow-800 font-semibold mb-2">
+                    ⚠️ API Design Issue Detected
+                  </p>
+                  <p className="text-sm text-yellow-700 mb-2">
+                    The API requires email selection but doesn&apos;t provide the necessary
+                    endpoints or session codes.
+                  </p>
+                  <p className="text-sm text-yellow-700">
+                    This is a known issue with API 1.1.2. Please report this to the API maintainers.
+                  </p>
+                </div>
+              )}
             <p className="text-sm text-gray-500 mt-4">Redirecting you back to the home page...</p>
           </>
         )}

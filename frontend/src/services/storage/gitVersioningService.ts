@@ -30,14 +30,9 @@ class GitVersioningService {
       return false;
     }
 
-    try {
-      // In a real implementation, this would execute git init
-      // For now, we'll just return success
-      return true;
-    } catch (error) {
-      console.error('Failed to initialize Git:', error);
-      return false;
-    }
+    // In a real implementation, this would execute git init
+    // For now, we'll just return success
+    return true;
   }
 
   /**
@@ -68,7 +63,9 @@ class GitVersioningService {
       const commitHash = `commit-${Date.now()}`;
       return commitHash;
     } catch (error) {
-      throw new Error(`Failed to create commit: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to create commit: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -80,17 +77,12 @@ class GitVersioningService {
       return [];
     }
 
-    try {
-      // In a real implementation, this would execute:
-      // git log --format="%H|%s|%an|%ai" workspace.yaml
-      // and parse the output
+    // In a real implementation, this would execute:
+    // git log --format="%H|%s|%an|%ai" workspace.yaml
+    // and parse the output
 
-      // For now, return empty array
-      return [];
-    } catch (error) {
-      console.error('Failed to get Git history:', error);
-      return [];
-    }
+    // For now, return empty array
+    return [];
   }
 
   /**
@@ -109,7 +101,9 @@ class GitVersioningService {
       // For now, just log
       console.log(`Reverting to commit ${commitHash}`);
     } catch (error) {
-      throw new Error(`Failed to revert to commit: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to revert to commit: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -129,10 +123,11 @@ class GitVersioningService {
       // For now, return YAML content as diff
       return yamlContent;
     } catch (error) {
-      throw new Error(`Failed to export for conflict resolution: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to export for conflict resolution: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 }
 
 export { GitVersioningService };
-

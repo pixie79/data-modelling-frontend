@@ -1,0 +1,61 @@
+version: "1.0.0"
+apiVersion: v3.1.0
+kind: DataContract
+id: js-mart-customers
+status: active
+name: customers
+domain: ecommerce
+tenant: jaffleshop
+
+description:
+  purpose: Customer dimension table with lifetime metrics and segmentation
+
+schema:
+  - name: customers
+    description: Customer dimension with aggregated metrics for analytics
+    physicalName: marts.customers
+    logicalType: object
+    properties:
+      - name: customer_id
+        description: Unique customer identifier
+        logicalType: integer
+        physicalType: INTEGER
+        required: true
+        primaryKey: true
+      - name: customer_name
+        description: Customer full name
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+      - name: first_order_date
+        description: Date of customer first order
+        logicalType: date
+        physicalType: DATE
+        required: false
+      - name: most_recent_order_date
+        description: Date of customer most recent order
+        logicalType: date
+        physicalType: DATE
+        required: false
+      - name: lifetime_order_count
+        description: Total number of orders placed
+        logicalType: integer
+        physicalType: INTEGER
+        required: false
+      - name: lifetime_order_value
+        description: Total value of all orders in dollars
+        logicalType: number
+        physicalType: DOUBLE
+        required: false
+
+customProperties:
+  - property: system_id
+    value: js-system-duckdb
+  - property: data_level
+    value: gold
+
+tags:
+  - mart
+  - customers
+  - dimension
+  - gold

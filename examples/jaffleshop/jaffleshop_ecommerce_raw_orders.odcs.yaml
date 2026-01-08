@@ -1,0 +1,65 @@
+version: "1.0.0"
+apiVersion: v3.1.0
+kind: DataContract
+id: js-raw-orders
+status: active
+name: raw_orders
+domain: ecommerce
+tenant: jaffleshop
+
+description:
+  purpose: Raw order data ingested from source systems
+
+schema:
+  - name: raw_orders
+    description: Raw order data from Jaffle Shop source systems
+    physicalName: raw.orders
+    logicalType: object
+    properties:
+      - name: id
+        description: Unique order identifier from source system
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+        primaryKey: true
+      - name: customer
+        description: Customer identifier (FK to raw_customers.id)
+        logicalType: integer
+        physicalType: INTEGER
+        required: true
+      - name: ordered_at
+        description: Timestamp when order was placed
+        logicalType: timestamp
+        physicalType: TIMESTAMP
+        required: true
+      - name: store_id
+        description: Store identifier (FK to raw_stores.id)
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+      - name: subtotal
+        description: Order subtotal in cents
+        logicalType: integer
+        physicalType: INTEGER
+        required: false
+      - name: tax_paid
+        description: Tax amount paid in cents
+        logicalType: integer
+        physicalType: INTEGER
+        required: false
+      - name: order_total
+        description: Total order amount in cents
+        logicalType: integer
+        physicalType: INTEGER
+        required: false
+
+customProperties:
+  - property: system_id
+    value: js-system-duckdb
+  - property: data_level
+    value: bronze
+
+tags:
+  - raw
+  - orders
+  - bronze

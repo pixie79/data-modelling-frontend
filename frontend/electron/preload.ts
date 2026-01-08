@@ -42,5 +42,76 @@ contextBridge.exposeInMainWorld('electronAPI', {
   closeApp: async (): Promise<void> => {
     return await ipcRenderer.invoke('close-app');
   },
-});
 
+  // ============================================================================
+  // DuckDB-related operations
+  // ============================================================================
+
+  /**
+   * Export database data to a native file
+   */
+  duckdbExport: async (options: {
+    data: ArrayBuffer | string;
+    defaultPath?: string;
+    format: 'json' | 'csv' | 'duckdb';
+  }): Promise<{ success: boolean; filePath?: string; canceled?: boolean; error?: string }> => {
+    return await ipcRenderer.invoke('duckdb:export', options);
+  },
+
+  /**
+   * Import database file from native filesystem
+   */
+  duckdbImport: async (options?: {
+    formats?: ('json' | 'csv' | 'duckdb')[];
+  }): Promise<{
+    success: boolean;
+    filePath?: string;
+    format?: 'json' | 'csv' | 'duckdb' | 'unknown';
+    content?: string;
+    size?: number;
+    canceled?: boolean;
+    error?: string;
+  }> => {
+    return await ipcRenderer.invoke('duckdb:import', options || {});
+  },
+
+  /**
+   * Get database file info
+   */
+  duckdbFileInfo: async (
+    filePath: string
+  ): Promise<{
+    success: boolean;
+    size?: number;
+    created?: string;
+    modified?: string;
+    isFile?: boolean;
+    error?: string;
+  }> => {
+    return await ipcRenderer.invoke('duckdb:file-info', filePath);
+  },
+
+  /**
+   * Check if database file exists
+   */
+  duckdbFileExists: async (filePath: string): Promise<boolean> => {
+    return await ipcRenderer.invoke('duckdb:file-exists', filePath);
+  },
+
+  /**
+   * Delete a database file
+   */
+  duckdbDeleteFile: async (filePath: string): Promise<{ success: boolean; error?: string }> => {
+    return await ipcRenderer.invoke('duckdb:delete-file', filePath);
+  },
+
+  /**
+   * Create a backup of a database file
+   */
+  duckdbBackup: async (options: {
+    sourcePath: string;
+    backupPath?: string;
+  }): Promise<{ success: boolean; backupPath?: string; error?: string }> => {
+    return await ipcRenderer.invoke('duckdb:backup', options);
+  },
+});

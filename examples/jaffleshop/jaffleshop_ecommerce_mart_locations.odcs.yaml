@@ -1,0 +1,51 @@
+version: "1.0.0"
+apiVersion: v3.1.0
+kind: DataContract
+id: js-mart-locations
+status: active
+name: locations
+domain: ecommerce
+tenant: jaffleshop
+
+description:
+  purpose: Location dimension table with store information
+
+schema:
+  - name: locations
+    description: Location dimension for analytics with store details
+    physicalName: marts.locations
+    logicalType: object
+    properties:
+      - name: location_id
+        description: Unique location identifier
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+        primaryKey: true
+      - name: location_name
+        description: Location display name
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+      - name: opened_date
+        description: Date location opened
+        logicalType: date
+        physicalType: DATE
+        required: false
+      - name: tax_rate
+        description: Location tax rate
+        logicalType: number
+        physicalType: DOUBLE
+        required: false
+
+customProperties:
+  - property: system_id
+    value: js-system-duckdb
+  - property: data_level
+    value: gold
+
+tags:
+  - mart
+  - locations
+  - dimension
+  - gold

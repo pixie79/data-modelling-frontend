@@ -31,9 +31,12 @@ import { WorkspaceSettings } from '@/components/workspace/WorkspaceSettings';
 import { VersionHistory } from '@/components/workspace/VersionHistory';
 import { ImportExportDialog } from '@/components/common/ImportExportDialog';
 import { ModelNavbar } from '@/components/navbar/ModelNavbar';
-import { electronFileService } from '@/services/storage/electronFileService';
-import { getPlatform } from '@/services/platform/platform';
-import { electronFileService as platformFileService } from '@/services/platform/electron';
+import { TagFilter } from '@/components/common/TagFilter';
+import { filterService } from '@/services/sdk/filterService';
+import { SharedResourcePicker } from '@/components/domain/SharedResourcePicker';
+import { DecisionPanel } from '@/components/decision/DecisionPanel';
+import { KnowledgePanel } from '@/components/knowledge/KnowledgePanel';
+import type { SharedResourceReference } from '@/types/domain';
 
 const ModelEditor: React.FC = () => {
   const { workspaceId, domainId } = useParams<{ workspaceId: string; domainId?: string }>();
@@ -41,6 +44,12 @@ const ModelEditor: React.FC = () => {
   const {
     selectedDomainId,
     selectedTableId,
+    tables,
+    computeAssets,
+    relationships,
+    systems,
+    currentView,
+    domains,
     fetchTables,
     fetchRelationships,
     loadDomainAssets,
@@ -69,324 +78,113 @@ const ModelEditor: React.FC = () => {
   const [showCreateTableDialog, setShowCreateTableDialog] = useState(false);
   const [showCreateSystemDialog, setShowCreateSystemDialog] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  // Load Domain handler for offline mode
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  // @ts-expect-error - Unused function kept for potential future use
-  const _handleLoadDomain = async () => {
-    if (getPlatform() !== 'electron') {
-      addToast({
-        type: 'error',
-        message: 'Load Domain is only available in Electron offline mode',
-      });
-      return;
-    }
+  const [tagFilter, setTagFilter] = useState<string[]>([]);
+  const [isFiltering, setIsFiltering] = useState(false);
+  const [showSharedResourcePicker, setShowSharedResourcePicker] = useState(false);
 
-    try {
-      // Show folder selection dialog
-      const result = await platformFileService.showOpenDialog({
-        properties: ['openDirectory'],
-        title: 'Select Domain Folder',
-      });
+  // Handle shared resource selection
+  const handleSharedResourcesSelected = (sharedResources: SharedResourceReference[]) => {
+    if (!selectedDomainId) return;
 
-      if (result.canceled || !result.filePaths || result.filePaths.length === 0) {
-        return;
-      }
+    const domain = useModelStore.getState().domains.find((d) => d.id === selectedDomainId);
+    if (!domain) return;
 
-      const domainPath = result.filePaths[0];
-      
-      // Import validation utilities
-      const { generateUUID, isValidUUID } = await import('@/utils/validation');
-      
-      if (!domainPath) {
-        setIsLoading(false);
-        return;
-      }
-      // Load domain folder
-      const domainData = await electronFileService.loadDomainFolder(domainPath);
-      
-      // Update model store with loaded data
-      const modelStore = useModelStore.getState();
-      
-      // Extract workspace path from domain path (parent directory)
-      const pathParts = domainPath.split(/[/\\]/);
-      const domainName = pathParts[pathParts.length - 1];
-      const workspacePath = pathParts.slice(0, -1).join('/');
-      
-      // Convert domain to Domain format expected by store
-      // Ensure domain ID is a valid UUID
-      const loadedDomainId = domainData.domain.id && isValidUUID(domainData.domain.id) 
-        ? domainData.domain.id 
-        : generateUUID();
-      
-      // Check if domain with same name already exists
-      const existingDomain = modelStore.domains.find(d => d.name === (domainData.domain.name || domainName));
-      
-      let domain;
-      if (existingDomain) {
-        // Merge with existing domain - update it instead of creating new
-        domain = {
-          ...existingDomain,
-          ...domainData.domain,
-          id: existingDomain.id, // Keep existing ID
-          name: domainData.domain.name || domainName || existingDomain.name,
-          description: domainData.domain.description || existingDomain.description,
-          last_modified_at: new Date().toISOString(),
-          folder_path: domainPath,
-          workspace_path: workspacePath,
-        };
-        modelStore.updateDomain(existingDomain.id, domain);
-        modelStore.setSelectedDomain(existingDomain.id);
-      } else {
-        // Create new domain
-        domain = {
-          id: loadedDomainId,
-          workspace_id: workspaceId || '',
-          name: domainData.domain.name || domainName || 'Loaded Domain',
-          description: domainData.domain.description,
-          created_at: domainData.domain.created_at || new Date().toISOString(),
-          last_modified_at: domainData.domain.last_modified_at || new Date().toISOString(),
-          folder_path: domainPath,
-          workspace_path: workspacePath,
-        };
-        modelStore.setDomains([...modelStore.domains, domain]);
-        modelStore.setSelectedDomain(domain.id);
-      }
-      
-      // Merge loaded assets with existing ones (replace by ID if exists, otherwise add)
-      if (domainData.tables.length > 0) {
-        const existingTables = modelStore.tables;
-        const mergedTables = [...existingTables];
-        domainData.tables.forEach(table => {
-          const index = mergedTables.findIndex(t => t.id === table.id);
-          if (index >= 0) {
-            mergedTables[index] = { ...mergedTables[index], ...table, primary_domain_id: domain.id };
-          } else {
-            mergedTables.push({ ...table, primary_domain_id: domain.id });
-          }
-        });
-        modelStore.setTables(mergedTables);
-      }
-      
-      if (domainData.products.length > 0) {
-        const existingProducts = modelStore.products;
-        const mergedProducts = [...existingProducts];
-        domainData.products.forEach(product => {
-          const index = mergedProducts.findIndex(p => p.id === product.id);
-          if (index >= 0) {
-            mergedProducts[index] = { ...mergedProducts[index], ...product, domain_id: domain.id };
-          } else {
-            mergedProducts.push({ ...product, domain_id: domain.id });
-          }
-        });
-        modelStore.setProducts(mergedProducts);
-      }
-      
-      if (domainData.assets.length > 0) {
-        const existingAssets = modelStore.computeAssets;
-        const mergedAssets = [...existingAssets];
-        domainData.assets.forEach(asset => {
-          const index = mergedAssets.findIndex(a => a.id === asset.id);
-          if (index >= 0) {
-            mergedAssets[index] = { ...mergedAssets[index], ...asset, domain_id: domain.id };
-          } else {
-            mergedAssets.push({ ...asset, domain_id: domain.id });
-          }
-        });
-        modelStore.setComputeAssets(mergedAssets);
-      }
-      
-      if (domainData.bpmnProcesses.length > 0) {
-        const existingProcesses = modelStore.bpmnProcesses;
-        const mergedProcesses = [...existingProcesses];
-        domainData.bpmnProcesses.forEach(process => {
-          const index = mergedProcesses.findIndex(p => p.id === process.id);
-          if (index >= 0) {
-            mergedProcesses[index] = { ...mergedProcesses[index], ...process, domain_id: domain.id };
-          } else {
-            mergedProcesses.push({ ...process, domain_id: domain.id });
-          }
-        });
-        modelStore.setBPMNProcesses(mergedProcesses);
-      }
-      
-      if (domainData.dmnDecisions.length > 0) {
-        const existingDecisions = modelStore.dmnDecisions;
-        const mergedDecisions = [...existingDecisions];
-        domainData.dmnDecisions.forEach(decision => {
-          const index = mergedDecisions.findIndex(d => d.id === decision.id);
-          if (index >= 0) {
-            mergedDecisions[index] = { ...mergedDecisions[index], ...decision, domain_id: domain.id };
-          } else {
-            mergedDecisions.push({ ...decision, domain_id: domain.id });
-          }
-        });
-        modelStore.setDMNDecisions(mergedDecisions);
-      }
-      
-      // Merge systems and relationships
-      if (domainData.systems.length > 0) {
-        const existingSystems = modelStore.systems;
-        const mergedSystems = [...existingSystems];
-        domainData.systems.forEach(system => {
-          const index = mergedSystems.findIndex(s => s.id === system.id);
-          if (index >= 0) {
-            mergedSystems[index] = { ...mergedSystems[index], ...system, domain_id: domain.id };
-          } else {
-            mergedSystems.push({ ...system, domain_id: domain.id });
-          }
-        });
-        modelStore.setSystems(mergedSystems);
-      }
-      
-      if (domainData.relationships.length > 0) {
-        const existingRelationships = modelStore.relationships;
-        const mergedRelationships = [...existingRelationships];
-        domainData.relationships.forEach(relationship => {
-          const index = mergedRelationships.findIndex(r => r.id === relationship.id);
-          if (index >= 0) {
-            mergedRelationships[index] = { ...mergedRelationships[index], ...relationship, domain_id: domain.id };
-          } else {
-            mergedRelationships.push({ ...relationship, domain_id: domain.id });
-          }
-        });
-        modelStore.setRelationships(mergedRelationships);
-      }
-      
-      addToast({
-        type: 'success',
-        message: `Loaded domain: ${domain.name}`,
-      });
-    } catch (err) {
-      console.error('Failed to load domain:', err);
-      addToast({
-        type: 'error',
-        message: `Failed to load domain: ${err instanceof Error ? err.message : 'Unknown error'}`,
-      });
-    }
+    // Update domain with new shared resources
+    const updatedSharedResources = sharedResources.map((sr) => ({
+      ...sr,
+      shared_at: new Date().toISOString(),
+    }));
+
+    useModelStore.getState().updateDomain(selectedDomainId, {
+      shared_resources: updatedSharedResources,
+    });
+
+    addToast({
+      type: 'success',
+      message: `Shared ${sharedResources.length} resource(s) from other domain(s)`,
+    });
+
+    // Trigger save
+    useWorkspaceStore.getState().setPendingChanges(true);
   };
 
-  // Save Domain handler for offline mode
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  // @ts-expect-error - Unused function kept for potential future use
-  const _handleSaveDomain = async () => {
-    if (getPlatform() !== 'electron') {
-      addToast({
-        type: 'error',
-        message: 'Save Domain is only available in Electron offline mode',
-      });
+  // Handle tag filter changes
+  const handleTagFilterChange = async (tags: string[]) => {
+    setTagFilter(tags);
+
+    if (tags.length === 0) {
+      setIsFiltering(false);
       return;
     }
 
-    if (!selectedDomainId || !workspaceId) {
-      addToast({
-        type: 'error',
-        message: 'Please select a domain and workspace first',
-      });
-      return;
-    }
+    setIsFiltering(true);
 
     try {
-      const modelStore = useModelStore.getState();
-      const domain = modelStore.domains.find((d) => d.id === selectedDomainId);
-      
-      if (!domain) {
-        addToast({
-          type: 'error',
-          message: 'Domain not found',
-        });
-        return;
-      }
-
-      // Show folder selection dialog
-      const result = await platformFileService.showOpenDialog({
-        properties: ['openDirectory'],
-        title: 'Select Domain Folder to Save',
-      });
-
-      if (result.canceled || !result.filePaths || result.filePaths.length === 0) {
-        return;
-      }
-
-      const domainPath = result.filePaths[0];
-      
-      // Get all domain assets
-      const domainTables = modelStore.tables.filter((t) => t.primary_domain_id === selectedDomainId);
-      const domainProducts = modelStore.products.filter((p) => p.domain_id === selectedDomainId);
-      const domainAssets = modelStore.computeAssets.filter((a) => a.domain_id === selectedDomainId);
-      const domainBpmnProcesses = modelStore.bpmnProcesses.filter((p) => p.domain_id === selectedDomainId);
-      const domainDmnDecisions = modelStore.dmnDecisions.filter((d) => d.domain_id === selectedDomainId);
-      const domainSystems = modelStore.systems.filter((s) => s.domain_id === selectedDomainId);
-      const domainRelationships = modelStore.relationships.filter((r) => r.domain_id === selectedDomainId);
-      
-      // Convert domain to DomainType format
-      const domainType = {
-        id: domain.id,
-        workspace_id: domain.workspace_id || '',
-        name: domain.name,
-        description: domain.description,
-        owner: domain.owner,
-        created_at: domain.created_at,
-        last_modified_at: domain.last_modified_at,
-      } as any;
-      
-      if (!domainPath) {
-        setIsLoading(false);
-        return;
-      }
-      // Extract workspace path from domain path (parent directory)
-      const pathParts = domainPath.split(/[/\\]/).filter(Boolean);
-      const workspacePath = pathParts.slice(0, -1).join('/');
-      
-      // Save domain folder
-      await electronFileService.saveDomainFolder(
-        domainPath,
-        domainType,
-        domainTables,
-        domainProducts,
-        domainAssets,
-        domainBpmnProcesses,
-        domainDmnDecisions,
-        domainSystems,
-        domainRelationships
+      const filtered = await filterService.filterByTags(
+        {
+          tables,
+          computeAssets,
+          relationships,
+          systems,
+        },
+        tags
       );
-      
-      // Save workspace.yaml with all domain IDs
-      if (workspacePath && workspaceId) {
-        const modelStore = useModelStore.getState();
-        const allDomains = modelStore.domains;
-        const workspaceMetadata = {
-          id: workspaceId,
-          name: workspaceId, // Use workspaceId as name if workspace name not available
-          created_at: new Date().toISOString(),
-          last_modified_at: new Date().toISOString(),
-          domains: allDomains.map(d => ({
-            id: d.id,
-            name: d.name,
-          })),
-        };
-        await electronFileService.saveWorkspaceMetadata(workspacePath, workspaceMetadata);
+
+      // Store original data before filtering if not already stored
+      const modelStore = useModelStore.getState();
+      if (!modelStore.originalTables) {
+        (modelStore as any).originalTables = tables;
+        (modelStore as any).originalComputeAssets = computeAssets;
+        (modelStore as any).originalRelationships = relationships;
+        (modelStore as any).originalSystems = systems;
       }
-      
-      addToast({
-        type: 'success',
-        message: `Saved domain: ${domain.name}`,
-      });
-    } catch (err) {
-      console.error('Failed to save domain:', err);
+
+      // Apply filtered data to store
+      setTables(filtered.tables);
+      setComputeAssets(filtered.computeAssets);
+      setRelationships(filtered.relationships);
+      setSystems(filtered.systems);
+    } catch (error) {
+      console.error('[ModelEditor] Error filtering by tags:', error);
       addToast({
         type: 'error',
-        message: `Failed to save domain: ${err instanceof Error ? err.message : 'Unknown error'}`,
+        message: 'Failed to apply tag filter',
       });
+    } finally {
+      setIsFiltering(false);
     }
   };
-  
+
+  // Restore original data when filter is cleared
+  useEffect(() => {
+    if (tagFilter.length === 0) {
+      const modelStore = useModelStore.getState();
+      const origTables = (modelStore as any).originalTables;
+      const origAssets = (modelStore as any).originalComputeAssets;
+      const origRelationships = (modelStore as any).originalRelationships;
+      const origSystems = (modelStore as any).originalSystems;
+
+      if (origTables) {
+        setTables(origTables);
+        setComputeAssets(origAssets);
+        setRelationships(origRelationships);
+        setSystems(origSystems);
+
+        // Clear stored originals
+        delete (modelStore as any).originalTables;
+        delete (modelStore as any).originalComputeAssets;
+        delete (modelStore as any).originalRelationships;
+        delete (modelStore as any).originalSystems;
+      }
+    }
+  }, [tagFilter.length, setTables, setComputeAssets, setRelationships, setSystems]);
+
   // Initialize collaboration
   useCollaboration({
     workspaceId: workspaceId ?? '',
     enabled: mode === 'online' && !!workspaceId,
   });
-  
+
   // Show conflict resolver when conflicts exist
   useEffect(() => {
     if (conflicts.length > 0) {
@@ -424,7 +222,7 @@ const ModelEditor: React.FC = () => {
     const handleBeforeUnload = async (e: BeforeUnloadEvent) => {
       const { handleBrowserRefresh } = useWorkspaceStore.getState();
       const { pendingChanges } = useWorkspaceStore.getState();
-      
+
       if (pendingChanges) {
         const result = await handleBrowserRefresh();
         if (result.hasLocalChanges || result.hasRemoteChanges) {
@@ -463,61 +261,89 @@ const ModelEditor: React.FC = () => {
           if (workspace) {
             // Set current workspace
             setCurrentWorkspace(workspace.id);
-            
+
             // Load all assets from workspace
             // Workspace loaded from file may have all assets stored separately
             const workspaceData = workspace as any;
-            
+
             // Load tables
             if (workspaceData.tables && Array.isArray(workspaceData.tables)) {
-              console.log(`[ModelEditor] Loading ${workspaceData.tables.length} table(s) from workspace`);
+              console.log(
+                `[ModelEditor] Loading ${workspaceData.tables.length} table(s) from workspace`
+              );
               setTables(workspaceData.tables);
             }
-            
+
             // Load relationships
             if (workspaceData.relationships && Array.isArray(workspaceData.relationships)) {
-              console.log(`[ModelEditor] Loading ${workspaceData.relationships.length} relationship(s) from workspace`);
+              console.log(
+                `[ModelEditor] Loading ${workspaceData.relationships.length} relationship(s) from workspace`
+              );
               setRelationships(workspaceData.relationships);
             }
-            
+
             // Load systems
             if (workspaceData.systems && Array.isArray(workspaceData.systems)) {
-              console.log(`[ModelEditor] Loading ${workspaceData.systems.length} system(s) from workspace`);
-              console.log(`[ModelEditor] Systems domain_ids:`, workspaceData.systems.map((s: any) => ({ id: s.id, name: s.name, domain_id: s.domain_id })));
-              console.log(`[ModelEditor] Workspace domains:`, workspace.domains?.map((d: any) => ({ id: d.id, name: d.name })));
+              console.log(
+                `[ModelEditor] Loading ${workspaceData.systems.length} system(s) from workspace`
+              );
+              console.log(
+                `[ModelEditor] Systems domain_ids:`,
+                workspaceData.systems.map((s: any) => ({
+                  id: s.id,
+                  name: s.name,
+                  domain_id: s.domain_id,
+                }))
+              );
+              console.log(
+                `[ModelEditor] Workspace domains:`,
+                workspace.domains?.map((d: any) => ({ id: d.id, name: d.name }))
+              );
               setSystems(workspaceData.systems);
             }
-            
+
             // Load products
             if (workspaceData.products && Array.isArray(workspaceData.products)) {
-              console.log(`[ModelEditor] Loading ${workspaceData.products.length} product(s) from workspace`);
+              console.log(
+                `[ModelEditor] Loading ${workspaceData.products.length} product(s) from workspace`
+              );
               setProducts(workspaceData.products);
             }
-            
+
             // Load assets
             if (workspaceData.assets && Array.isArray(workspaceData.assets)) {
-              console.log(`[ModelEditor] Loading ${workspaceData.assets.length} asset(s) from workspace`);
+              console.log(
+                `[ModelEditor] Loading ${workspaceData.assets.length} asset(s) from workspace`
+              );
               setComputeAssets(workspaceData.assets);
             }
-            
+
             // Load BPMN processes
             if (workspaceData.bpmnProcesses && Array.isArray(workspaceData.bpmnProcesses)) {
-              console.log(`[ModelEditor] Loading ${workspaceData.bpmnProcesses.length} BPMN process(es) from workspace`);
+              console.log(
+                `[ModelEditor] Loading ${workspaceData.bpmnProcesses.length} BPMN process(es) from workspace`
+              );
               setBPMNProcesses(workspaceData.bpmnProcesses);
             }
-            
+
             // Load DMN decisions
             if (workspaceData.dmnDecisions && Array.isArray(workspaceData.dmnDecisions)) {
-              console.log(`[ModelEditor] Loading ${workspaceData.dmnDecisions.length} DMN decision(s) from workspace`);
+              console.log(
+                `[ModelEditor] Loading ${workspaceData.dmnDecisions.length} DMN decision(s) from workspace`
+              );
               setDMNDecisions(workspaceData.dmnDecisions);
             }
-            
+
             // Set domains from workspace
             if (workspace.domains && workspace.domains.length > 0) {
-              console.log(`[ModelEditor] Loading ${workspace.domains.length} domain(s) from workspace`);
+              console.log(
+                `[ModelEditor] Loading ${workspace.domains.length} domain(s) from workspace:`,
+                workspace.domains.map((d: any) => ({ id: d.id, name: d.name }))
+              );
               setDomains(workspace.domains);
               const firstDomain = workspace.domains[0];
               if (firstDomain) {
+                console.log(`[ModelEditor] Setting selected domain to: ${firstDomain.id}`);
                 setSelectedDomain(firstDomain.id);
               }
             } else {
@@ -535,7 +361,7 @@ const ModelEditor: React.FC = () => {
               setDomains([defaultDomain]);
               setSelectedDomain(defaultDomain.id);
             }
-            
+
             addToast({
               type: 'success',
               message: `Loaded workspace: ${workspace.name || workspaceId}`,
@@ -576,10 +402,7 @@ const ModelEditor: React.FC = () => {
           await loadDomainAssets(workspaceId, selectedDomain);
         } else {
           // Fallback: fetch tables and relationships separately
-          await Promise.all([
-            fetchTables(selectedDomain),
-            fetchRelationships(selectedDomain),
-          ]);
+          await Promise.all([fetchTables(selectedDomain), fetchRelationships(selectedDomain)]);
         }
       } catch (err) {
         // In offline mode, API errors are expected
@@ -596,9 +419,15 @@ const ModelEditor: React.FC = () => {
     };
 
     loadWorkspace();
-  }, [workspaceId, domainId, fetchWorkspace, fetchTables, fetchRelationships, loadDomainAssets, setSelectedDomain]);
-
-
+  }, [
+    workspaceId,
+    domainId,
+    fetchWorkspace,
+    fetchTables,
+    fetchRelationships,
+    loadDomainAssets,
+    setSelectedDomain,
+  ]);
 
   if (isLoading) {
     return (
@@ -634,11 +463,15 @@ const ModelEditor: React.FC = () => {
       {/* Navbar */}
       <ModelNavbar
         onShowSettings={() => setShowWorkspaceSettings(!showWorkspaceSettings)}
-        onShowVersionHistory={mode === 'online' && workspaceId ? () => setShowVersionHistory(!showVersionHistory) : undefined}
+        onShowVersionHistory={
+          mode === 'online' && workspaceId
+            ? () => setShowVersionHistory(!showVersionHistory)
+            : undefined
+        }
         workspaceId={workspaceId}
         domainId={selectedDomainId}
       />
-      
+
       {/* Collaboration Status - moved below navbar */}
       {mode === 'online' && workspaceId && (
         <div className="bg-gray-50 border-b border-gray-200 px-4 py-1">
@@ -648,27 +481,94 @@ const ModelEditor: React.FC = () => {
           </div>
         </div>
       )}
-      
-      {/* Domain Selector */}
+
+      {/* Domain Selector and Tag Filter */}
       <div className="bg-gray-50 border-b border-gray-200 px-4 py-2">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
           <DomainSelector workspaceId={workspaceId ?? ''} />
+          <div className="flex-1">
+            <TagFilter
+              onFilterChange={handleTagFilterChange}
+              placeholder="Filter by tags (e.g., env:production, product:food)"
+            />
+          </div>
+          {selectedDomainId && (
+            <>
+              <button
+                onClick={() => {
+                  // Force a re-render by toggling the current view
+                  const currentView = useModelStore.getState().currentView;
+                  useModelStore.getState().setCurrentView(currentView);
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 whitespace-nowrap"
+                title="Refresh canvas and reload all resources"
+              >
+                <svg
+                  className="w-4 h-4 inline-block mr-1"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+                Refresh
+              </button>
+              <button
+                onClick={() => setShowSharedResourcePicker(true)}
+                className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 whitespace-nowrap"
+                title="Share resources from other domains"
+              >
+                Share Resources
+              </button>
+            </>
+          )}
         </div>
+        {isFiltering && <div className="mt-1 text-xs text-gray-500">Filtering resources...</div>}
+        {tagFilter.length > 0 && !isFiltering && (
+          <div className="mt-1 text-xs text-blue-600">
+            Showing {tables.length} table(s), {computeAssets.length} asset(s),{' '}
+            {relationships.length} relationship(s), {systems.length} system(s)
+          </div>
+        )}
       </div>
 
       {/* Domain Tabs */}
       <DomainTabs workspaceId={workspaceId ?? ''} />
-      
+
       {/* View Selector */}
       {selectedDomainId && <ViewSelector domainId={selectedDomainId} />}
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Canvas */}
+        {/* Canvas or Panel based on view mode */}
         <div className="flex-1 relative">
-          {selectedDomainId && workspaceId && (
-            <DomainCanvas workspaceId={workspaceId} domainId={selectedDomainId} />
+          {selectedDomainId && workspaceId && currentView === 'decisions' && (
+            <DecisionPanel
+              workspacePath={
+                domains.find((d) => d.id === selectedDomainId)?.workspace_path || workspaceId
+              }
+              domainId={selectedDomainId}
+            />
           )}
+          {selectedDomainId && workspaceId && currentView === 'knowledge' && (
+            <KnowledgePanel
+              workspacePath={
+                domains.find((d) => d.id === selectedDomainId)?.workspace_path || workspaceId
+              }
+              domainId={selectedDomainId}
+            />
+          )}
+          {selectedDomainId &&
+            workspaceId &&
+            currentView !== 'decisions' &&
+            currentView !== 'knowledge' && (
+              <DomainCanvas workspaceId={workspaceId} domainId={selectedDomainId} />
+            )}
         </div>
       </div>
 
@@ -692,7 +592,12 @@ const ModelEditor: React.FC = () => {
                 aria-label="Close"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             </div>
@@ -713,7 +618,12 @@ const ModelEditor: React.FC = () => {
                 aria-label="Close"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             </div>
@@ -743,12 +653,12 @@ const ModelEditor: React.FC = () => {
             y: Math.max(50, window.innerHeight / 2 - 300),
           }}
         >
-          <TableEditor 
-            tableId={selectedTableId} 
+          <TableEditor
+            tableId={selectedTableId}
             workspaceId={workspaceId ?? ''}
             onClose={async () => {
               // Small delay to ensure canvas updates before closing
-              await new Promise(resolve => setTimeout(resolve, 150));
+              await new Promise((resolve) => setTimeout(resolve, 150));
               setShowTableEditor(false);
               setSelectedTable(null);
             }}
@@ -811,6 +721,16 @@ const ModelEditor: React.FC = () => {
             // Optionally select the system
             useModelStore.getState().setSelectedSystem(systemId);
           }}
+        />
+      )}
+
+      {/* Shared Resource Picker Dialog */}
+      {selectedDomainId && (
+        <SharedResourcePicker
+          isOpen={showSharedResourcePicker}
+          onClose={() => setShowSharedResourcePicker(false)}
+          currentDomainId={selectedDomainId}
+          onResourcesSelected={handleSharedResourcesSelected}
         />
       )}
     </div>

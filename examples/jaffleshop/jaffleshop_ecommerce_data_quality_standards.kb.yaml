@@ -1,0 +1,126 @@
+id: js-kb-0002
+number: 2
+title: Data Quality Standards and Validation Rules
+type: reference
+status: published
+summary: >-
+  Reference documentation for data quality standards, validation rules,
+  and data contracts used across the Jaffleshop data platform.
+
+content: |
+  # Data Quality Standards and Validation Rules
+
+  ## Overview
+
+  This document defines the data quality standards and validation rules
+  enforced across the Jaffleshop data platform. All data contracts (ODCS)
+  must adhere to these standards.
+
+  ## Data Quality Dimensions
+
+  ### 1. Completeness
+
+  Required fields must not be null:
+  - Customer: `customer_id`, `customer_name`
+  - Order: `order_id`, `customer_id`, `ordered_at`
+  - Product: `product_id`, `product_name`, `product_price`
+
+  ### 2. Accuracy
+
+  Values must be within acceptable ranges:
+  - `order_total` must be >= 0
+  - `tax_paid` must be >= 0 and <= `order_total`
+  - `product_price` must be > 0
+
+  ### 3. Consistency
+
+  Referential integrity rules:
+  - `orders.customer_id` must exist in `customers.customer_id`
+  - `order_items.order_id` must exist in `orders.order_id`
+  - `order_items.product_id` must exist in `products.product_id`
+
+  ### 4. Timeliness
+
+  Data freshness requirements:
+  - Bronze layer: < 15 minutes from source
+  - Silver layer: < 1 hour from bronze
+  - Gold layer: < 4 hours from silver
+
+  ### 5. Uniqueness
+
+  Primary key constraints:
+  - All `*_id` columns must be unique within their table
+  - No duplicate order-product combinations in `order_items`
+
+  ## Validation Rule Catalog
+
+  ### Order Validation Rules
+
+  | Rule ID | Description | Severity |
+  |---------|-------------|----------|
+  | ORD-001 | Order total must equal sum of items | ERROR |
+  | ORD-002 | Order date cannot be in future | ERROR |
+  | ORD-003 | Tax rate must match location | WARNING |
+
+  ### Customer Validation Rules
+
+  | Rule ID | Description | Severity |
+  |---------|-------------|----------|
+  | CUS-001 | Customer name cannot be empty | ERROR |
+  | CUS-002 | First order date <= most recent order | ERROR |
+  | CUS-003 | Lifetime order count matches actual | WARNING |
+
+  ### Product Validation Rules
+
+  | Rule ID | Description | Severity |
+  |---------|-------------|----------|
+  | PRD-001 | Product price must be positive | ERROR |
+  | PRD-002 | Product type must be valid enum | ERROR |
+  | PRD-003 | is_food_item XOR is_drink_item | WARNING |
+
+  ## Data Contract SLAs
+
+  All ODCS data contracts include the following SLA requirements:
+
+  ```yaml
+  sla:
+    latency: 4h          # Maximum time from event to availability
+    uptime: 99.5%        # Target availability
+    update_frequency: 1h  # Minimum refresh frequency
+  ```
+
+  ## Quality Monitoring
+
+  Data quality metrics are tracked in the following categories:
+
+  1. **Row counts** - Expected vs actual row counts
+  2. **Null rates** - Percentage of nulls in required fields
+  3. **Value distributions** - Statistical anomaly detection
+  4. **Schema drift** - Detection of unexpected schema changes
+
+  ## Remediation Process
+
+  When data quality issues are detected:
+
+  1. Alert generated to data-quality-alerts@jaffleshop.example
+  2. Issue logged in data quality dashboard
+  3. Root cause analysis within 4 hours
+  4. Fix deployed within 24 hours for ERROR severity
+  5. Post-mortem for recurring issues
+
+domain_id: js-domain-ecommerce
+workspace_id: js-workspace
+authors:
+  - data-quality-team@jaffleshop.example
+reviewers:
+  - data-governance@jaffleshop.example
+related_articles:
+  - js-kb-0001
+tags:
+  - name: data-quality
+  - name: validation
+  - name: standards
+  - name: sla
+created_at: "2024-01-16T14:30:00Z"
+updated_at: "2024-01-16T14:30:00Z"
+published_at: "2024-01-16T14:30:00Z"

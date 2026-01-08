@@ -76,4 +76,8 @@ docker-compose.override.yml
 # Husky
 .husky/_/
 
-
+# DuckDB database files
+*.duckdb
+*.duckdb.wal
+*.duckdb-journal
+*.db

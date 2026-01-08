@@ -1,0 +1,213 @@
+/**
+ * Type definitions for MADR (Markdown Architectural Decision Records) Decision entity
+ * SDK 1.13.1+
+ */
+
+/**
+ * Enhanced Tag type supporting Simple, Pair, and List formats (SDK 1.13.1+)
+ */
+export type Tag =
+  | string // Simple: just a string value
+  | { key: string; value: string } // Pair: key-value pair
+  | { key: string; values: string[] }; // List: key with multiple values
+
+/**
+ * Decision status following MADR lifecycle
+ */
+export enum DecisionStatus {
+  Draft = 'draft',
+  Proposed = 'proposed',
+  Accepted = 'accepted',
+  Deprecated = 'deprecated',
+  Superseded = 'superseded',
+  Rejected = 'rejected',
+}
+
+/**
+ * Decision category for classification
+ */
+export enum DecisionCategory {
+  Architecture = 'architecture',
+  Technology = 'technology',
+  Process = 'process',
+  Security = 'security',
+  Data = 'data',
+  Integration = 'integration',
+}
+
+/**
+ * A decision option with pros and cons
+ */
+export interface DecisionOption {
+  title: string;
+  description: string;
+  pros: string[];
+  cons: string[];
+}
+
+/**
+ * Architecture Decision Record following MADR format
+ */
+export interface Decision {
+  id: string; // UUID
+  number: number; // Auto-generated decision number (e.g., 0001)
+  title: string; // Decision title (max 255 chars)
+  status: DecisionStatus;
+  category: DecisionCategory;
+  context: string; // Background and context for the decision
+  decision: string; // The actual decision made
+  consequences: string; // Positive and negative consequences
+  options: DecisionOption[]; // Considered alternatives
+  domain_id?: string; // UUID - optional domain association
+  workspace_id?: string; // UUID - workspace this decision belongs to
+  superseded_by?: string; // UUID - ID of decision that supersedes this one
+  supersedes?: string; // UUID - ID of decision this one supersedes
+  related_decisions?: string[]; // UUIDs of related decisions
+  related_knowledge?: string[]; // UUIDs of related knowledge articles
+  authors?: string[]; // List of authors
+  deciders?: string[]; // List of decision makers
+  consulted?: string[]; // List of people consulted (RACI)
+  informed?: string[]; // List of people informed (RACI)
+  tags?: Tag[];
+  custom_properties?: Record<string, unknown>;
+  created_at: string; // ISO timestamp
+  updated_at: string; // ISO timestamp
+  decided_at?: string; // ISO timestamp when decision was accepted/rejected
+}
+
+/**
+ * Decision index entry for tracking decisions
+ */
+export interface DecisionIndexEntry {
+  id: string; // UUID
+  number: number;
+  title: string;
+  status: DecisionStatus;
+  category: DecisionCategory;
+  domain_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Decision index for a workspace
+ */
+export interface DecisionIndex {
+  workspace_id: string;
+  next_number: number;
+  decisions: DecisionIndexEntry[];
+  last_updated: string; // ISO timestamp
+}
+
+/**
+ * Decision filter options
+ */
+export interface DecisionFilter {
+  status?: DecisionStatus[];
+  category?: DecisionCategory[];
+  domain_id?: string;
+  search?: string;
+  tags?: string[];
+}
+
+/**
+ * Valid status transitions for decisions
+ */
+export const VALID_STATUS_TRANSITIONS: Record<DecisionStatus, DecisionStatus[]> = {
+  [DecisionStatus.Draft]: [DecisionStatus.Proposed, DecisionStatus.Rejected],
+  [DecisionStatus.Proposed]: [
+    DecisionStatus.Accepted,
+    DecisionStatus.Rejected,
+    DecisionStatus.Draft,
+  ],
+  [DecisionStatus.Accepted]: [DecisionStatus.Deprecated, DecisionStatus.Superseded],
+  [DecisionStatus.Deprecated]: [],
+  [DecisionStatus.Superseded]: [],
+  [DecisionStatus.Rejected]: [DecisionStatus.Draft],
+};
+
+/**
+ * Check if a status transition is valid
+ */
+export function isValidStatusTransition(from: DecisionStatus, to: DecisionStatus): boolean {
+  return VALID_STATUS_TRANSITIONS[from].includes(to);
+}
+
+/**
+ * Get display label for decision status
+ */
+export function getDecisionStatusLabel(status: DecisionStatus): string {
+  const labels: Record<DecisionStatus, string> = {
+    [DecisionStatus.Draft]: 'Draft',
+    [DecisionStatus.Proposed]: 'Proposed',
+    [DecisionStatus.Accepted]: 'Accepted',
+    [DecisionStatus.Deprecated]: 'Deprecated',
+    [DecisionStatus.Superseded]: 'Superseded',
+    [DecisionStatus.Rejected]: 'Rejected',
+  };
+  return labels[status];
+}
+
+/**
+ * Get display label for decision category
+ */
+export function getDecisionCategoryLabel(category: DecisionCategory): string {
+  const labels: Record<DecisionCategory, string> = {
+    [DecisionCategory.Architecture]: 'Architecture',
+    [DecisionCategory.Technology]: 'Technology',
+    [DecisionCategory.Process]: 'Process',
+    [DecisionCategory.Security]: 'Security',
+    [DecisionCategory.Data]: 'Data',
+    [DecisionCategory.Integration]: 'Integration',
+  };
+  return labels[category];
+}
+
+/**
+ * Get color for decision status (for UI badges)
+ */
+export function getDecisionStatusColor(status: DecisionStatus): string {
+  const colors: Record<DecisionStatus, string> = {
+    [DecisionStatus.Draft]: 'gray',
+    [DecisionStatus.Proposed]: 'blue',
+    [DecisionStatus.Accepted]: 'green',
+    [DecisionStatus.Deprecated]: 'orange',
+    [DecisionStatus.Superseded]: 'purple',
+    [DecisionStatus.Rejected]: 'red',
+  };
+  return colors[status];
+}
+
+/**
+ * Get color for decision category (for UI badges)
+ */
+export function getDecisionCategoryColor(category: DecisionCategory): string {
+  const colors: Record<DecisionCategory, string> = {
+    [DecisionCategory.Architecture]: 'indigo',
+    [DecisionCategory.Technology]: 'cyan',
+    [DecisionCategory.Process]: 'teal',
+    [DecisionCategory.Security]: 'red',
+    [DecisionCategory.Data]: 'violet',
+    [DecisionCategory.Integration]: 'amber',
+  };
+  return colors[category];
+}
+
+/**
+ * Format decision number as padded string (e.g., "0001")
+ */
+export function formatDecisionNumber(num: number): string {
+  return num.toString().padStart(4, '0');
+}
+
+/**
+ * Generate decision filename from number and title
+ */
+export function generateDecisionFilename(number: number, title: string): string {
+  const slug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .substring(0, 50);
+  return `${formatDecisionNumber(number)}-${slug}.yaml`;
+}

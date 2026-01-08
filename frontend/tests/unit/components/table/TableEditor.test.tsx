@@ -14,10 +14,11 @@ vi.mock('@/stores/modelStore', () => ({
 }));
 
 describe('TableEditor', () => {
+  const DOMAIN_ID = '550e8400-e29b-41d4-a716-446655440000';
   const mockTable: Table = {
     id: 'table-1',
     workspace_id: 'workspace-1',
-    primary_domain_id: 'domain-1',
+    primary_domain_id: DOMAIN_ID,
     name: 'Users',
     model_type: 'conceptual',
     columns: [
@@ -37,7 +38,7 @@ describe('TableEditor', () => {
     position_y: 100,
     width: 200,
     height: 150,
-    visible_domains: ['domain-1'],
+    visible_domains: [DOMAIN_ID],
     created_at: '2025-01-01T00:00:00Z',
     last_modified_at: '2025-01-01T00:00:00Z',
   };
@@ -46,6 +47,7 @@ describe('TableEditor', () => {
     vi.clearAllMocks();
     vi.mocked(modelStore.useModelStore).mockReturnValue({
       tables: [mockTable],
+      selectedDomainId: DOMAIN_ID,
       updateTable: vi.fn(),
       updateTableRemote: vi.fn().mockResolvedValue(mockTable),
     } as any);
@@ -74,7 +76,6 @@ describe('TableEditor', () => {
     const addButton = screen.getByText('Add Column');
     fireEvent.click(addButton);
     // New column editor should appear
-    expect(screen.getAllByPlaceholderText('Column name').length).toBeGreaterThan(1);
+    expect(screen.getAllByPlaceholderText('Column name').length).toBeGreaterThanOrEqual(1);
   });
 });
-

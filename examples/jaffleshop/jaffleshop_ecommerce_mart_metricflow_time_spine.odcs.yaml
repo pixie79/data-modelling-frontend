@@ -1,0 +1,92 @@
+version: "1.0.0"
+apiVersion: v3.1.0
+kind: DataContract
+id: js-mart-time-spine
+status: active
+name: metricflow_time_spine
+domain: ecommerce
+tenant: jaffleshop
+
+description:
+  purpose: Time dimension table for MetricFlow time-series analytics
+
+schema:
+  - name: metricflow_time_spine
+    description: Date dimension for time-series analytics and MetricFlow
+    physicalName: marts.metricflow_time_spine
+    logicalType: object
+    properties:
+      - name: date_day
+        description: Calendar date (grain is daily)
+        logicalType: date
+        physicalType: DATE
+        required: true
+        primaryKey: true
+      - name: date_week
+        description: Start of week date
+        logicalType: date
+        physicalType: DATE
+        required: false
+      - name: date_month
+        description: Start of month date
+        logicalType: date
+        physicalType: DATE
+        required: false
+      - name: date_quarter
+        description: Start of quarter date
+        logicalType: date
+        physicalType: DATE
+        required: false
+      - name: date_year
+        description: Start of year date
+        logicalType: date
+        physicalType: DATE
+        required: false
+      - name: day_of_week
+        description: Day of week (1-7)
+        logicalType: integer
+        physicalType: INTEGER
+        required: false
+      - name: day_of_month
+        description: Day of month (1-31)
+        logicalType: integer
+        physicalType: INTEGER
+        required: false
+      - name: day_of_year
+        description: Day of year (1-366)
+        logicalType: integer
+        physicalType: INTEGER
+        required: false
+      - name: week_of_year
+        description: ISO week of year (1-53)
+        logicalType: integer
+        physicalType: INTEGER
+        required: false
+      - name: month_of_year
+        description: Month of year (1-12)
+        logicalType: integer
+        physicalType: INTEGER
+        required: false
+      - name: quarter_of_year
+        description: Quarter of year (1-4)
+        logicalType: integer
+        physicalType: INTEGER
+        required: false
+      - name: year_number
+        description: Calendar year
+        logicalType: integer
+        physicalType: INTEGER
+        required: false
+
+customProperties:
+  - property: system_id
+    value: js-system-duckdb
+  - property: data_level
+    value: gold
+
+tags:
+  - mart
+  - time
+  - dimension
+  - metricflow
+  - gold

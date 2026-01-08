@@ -1,0 +1,66 @@
+version: "1.0.0"
+apiVersion: v3.1.0
+kind: DataContract
+id: js-mart-order-items
+status: active
+name: order_items
+domain: ecommerce
+tenant: jaffleshop
+
+description:
+  purpose: Order line item fact table with product details
+
+schema:
+  - name: order_items
+    description: Order line item fact table linking orders to products
+    physicalName: marts.order_items
+    logicalType: object
+    properties:
+      - name: order_item_id
+        description: Unique order item identifier
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+        primaryKey: true
+      - name: order_id
+        description: Order identifier (FK to orders fact)
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+      - name: product_id
+        description: Product identifier (FK to products dimension)
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+      - name: product_price
+        description: Price at time of order
+        logicalType: number
+        physicalType: DOUBLE
+        required: false
+      - name: supply_cost
+        description: Total supply cost for item
+        logicalType: number
+        physicalType: DOUBLE
+        required: false
+      - name: is_food_item
+        description: Whether item is food
+        logicalType: boolean
+        physicalType: BOOLEAN
+        required: false
+      - name: is_drink_item
+        description: Whether item is drink
+        logicalType: boolean
+        physicalType: BOOLEAN
+        required: false
+
+customProperties:
+  - property: system_id
+    value: js-system-duckdb
+  - property: data_level
+    value: gold
+
+tags:
+  - mart
+  - order_items
+  - fact
+  - gold

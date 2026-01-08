@@ -22,7 +22,7 @@ export const UnlinkedTablesDialog: React.FC<UnlinkedTablesDialogProps> = ({
 }) => {
   const { tables, systems, updateSystem } = useModelStore();
   const { addToast } = useUIStore();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   const [_selectedTableId, _setSelectedTableId] = useState<string | null>(null);
   const [showCreateSystemDialog, setShowCreateSystemDialog] = useState(false);
   const [creatingSystemForTable, setCreatingSystemForTable] = useState<string | null>(null);
@@ -30,15 +30,11 @@ export const UnlinkedTablesDialog: React.FC<UnlinkedTablesDialogProps> = ({
   // Find unlinked tables (tables that don't appear in any system's table_ids)
   const unlinkedTables = useMemo(() => {
     const allTableIdsInSystems = new Set(
-      systems
-        .filter((s) => s.domain_id === domainId)
-        .flatMap((s) => s.table_ids || [])
+      systems.filter((s) => s.domain_id === domainId).flatMap((s) => s.table_ids || [])
     );
-    
+
     return tables.filter(
-      (t) =>
-        t.primary_domain_id === domainId &&
-        !allTableIdsInSystems.has(t.id)
+      (t) => t.primary_domain_id === domainId && !allTableIdsInSystems.has(t.id)
     );
   }, [tables, systems, domainId]);
 
@@ -84,31 +80,6 @@ export const UnlinkedTablesDialog: React.FC<UnlinkedTablesDialogProps> = ({
     setShowCreateSystemDialog(false);
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  // @ts-expect-error - Unused function kept for potential future use
-  const _handleMoveTable = (tableId: string, fromSystemId: string, toSystemId: string) => {
-    const fromSystem = systems.find((s) => s.id === fromSystemId);
-    const toSystem = systems.find((s) => s.id === toSystemId);
-    
-    if (!fromSystem || !toSystem) return;
-
-    // Remove from source system
-    const fromTableIds = (fromSystem.table_ids || []).filter((id) => id !== tableId);
-    updateSystem(fromSystemId, { table_ids: fromTableIds });
-
-    // Add to target system
-    const toTableIds = toSystem.table_ids || [];
-    if (!toTableIds.includes(tableId)) {
-      updateSystem(toSystemId, { table_ids: [...toTableIds, tableId] });
-    }
-
-    const tableName = tables.find((t) => t.id === tableId)?.name || 'table';
-    addToast({
-      type: 'success',
-      message: `Moved "${tableName}" from "${fromSystem.name}" to "${toSystem.name}"`,
-    });
-  };
-
   if (!isOpen) return null;
 
   return (
@@ -118,11 +89,10 @@ export const UnlinkedTablesDialog: React.FC<UnlinkedTablesDialogProps> = ({
           {/* Header */}
           <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">
-                Unlinked Tables
-              </h2>
+              <h2 className="text-xl font-semibold text-gray-900">Unlinked Tables</h2>
               <p className="text-sm text-gray-500 mt-1">
-                {unlinkedTables.length} table{unlinkedTables.length !== 1 ? 's' : ''} not linked to any system
+                {unlinkedTables.length} table{unlinkedTables.length !== 1 ? 's' : ''} not linked to
+                any system
               </p>
             </div>
             <button
@@ -131,7 +101,12 @@ export const UnlinkedTablesDialog: React.FC<UnlinkedTablesDialogProps> = ({
               title="Close"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>
@@ -252,4 +227,3 @@ export const UnlinkedTablesDialog: React.FC<UnlinkedTablesDialogProps> = ({
     </>
   );
 };
-

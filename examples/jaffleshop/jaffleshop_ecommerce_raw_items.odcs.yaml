@@ -1,0 +1,45 @@
+version: "1.0.0"
+apiVersion: v3.1.0
+kind: DataContract
+id: js-raw-items
+status: active
+name: raw_items
+domain: ecommerce
+tenant: jaffleshop
+
+description:
+  purpose: Raw order line items ingested from source systems
+
+schema:
+  - name: raw_items
+    description: Raw order line items from Jaffle Shop source systems
+    physicalName: raw.items
+    logicalType: object
+    properties:
+      - name: id
+        description: Unique item identifier from source system
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+        primaryKey: true
+      - name: order_id
+        description: Order identifier (FK to raw_orders.id)
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+      - name: sku
+        description: Product SKU (FK to raw_products.sku)
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+
+customProperties:
+  - property: system_id
+    value: js-system-duckdb
+  - property: data_level
+    value: bronze
+
+tags:
+  - raw
+  - items
+  - bronze

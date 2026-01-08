@@ -1,0 +1,65 @@
+version: "1.0.0"
+apiVersion: v3.1.0
+kind: DataContract
+id: js-stg-products
+status: active
+name: stg_products
+domain: ecommerce
+tenant: jaffleshop
+
+description:
+  purpose: Staged product catalog with standardized attributes
+
+schema:
+  - name: stg_products
+    description: Cleaned and standardized product catalog from raw layer
+    physicalName: staging.stg_products
+    logicalType: object
+    properties:
+      - name: product_id
+        description: Standardized product identifier (derived from SKU)
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+        primaryKey: true
+      - name: product_name
+        description: Product display name (cleaned)
+        logicalType: string
+        physicalType: VARCHAR
+        required: true
+      - name: product_type
+        description: Product category type
+        logicalType: string
+        physicalType: VARCHAR
+        required: false
+      - name: product_price
+        description: Product price in dollars
+        logicalType: number
+        physicalType: DOUBLE
+        required: false
+      - name: product_description
+        description: Product description text
+        logicalType: string
+        physicalType: VARCHAR
+        required: false
+      - name: is_food_item
+        description: Whether product is a food item
+        logicalType: boolean
+        physicalType: BOOLEAN
+        required: false
+      - name: is_drink_item
+        description: Whether product is a drink item
+        logicalType: boolean
+        physicalType: BOOLEAN
+        required: false
+
+customProperties:
+  - property: system_id
+    value: js-system-duckdb
+  - property: data_level
+    value: silver
+
+tags:
+  - staging
+  - products
+  - silver

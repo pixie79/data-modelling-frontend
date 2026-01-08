@@ -43,35 +43,12 @@ export const EditorModal: React.FC<EditorModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title={title}
-      size={size === 'full' ? 'xl' : size}
+      size={size === 'full' ? 'xxl' : size}
+      noPadding={true}
+      resizable={true}
     >
-      <div 
-        className={size === 'full' ? 'h-[calc(95vh-120px)]' : 'h-[600px]'} 
-        style={{ 
-          display: 'flex', 
-          flexDirection: 'column', 
-          minHeight: 0,
-          width: '100%',
-          margin: '-1.5rem', // Counteract DraggableModal's p-6 padding (24px = 1.5rem)
-          padding: 0,
-        }}
-      >
-        {type === 'bpmn' && (
-          <BPMNEditor
-            {...bpmnProps}
-            onSave={handleSave}
-            onClose={onClose}
-          />
-        )}
-        {type === 'dmn' && (
-          <DMNEditor
-            {...dmnProps}
-            onSave={handleSave}
-            onClose={onClose}
-          />
-        )}
-      </div>
+      {type === 'bpmn' && <BPMNEditor {...bpmnProps} onSave={handleSave} onClose={onClose} />}
+      {type === 'dmn' && <DMNEditor {...dmnProps} onSave={handleSave} onClose={onClose} />}
     </DraggableModal>
   );
 };
-

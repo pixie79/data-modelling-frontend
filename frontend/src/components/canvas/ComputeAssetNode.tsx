@@ -15,6 +15,7 @@ export interface ComputeAssetNodeData {
   onExport?: (assetId: string) => void;
   onBPMNClick?: (assetId: string) => void;
   onDMNClick?: (assetId: string) => void;
+  isShared?: boolean; // True if this is a shared resource from another domain
 }
 
 export interface ComputeAssetNodeProps {
@@ -62,7 +63,7 @@ const getAssetTypeIcon = (type: ComputeAsset['type']): string => {
 };
 
 export const ComputeAssetNode: React.FC<ComputeAssetNodeProps> = ({ data, selected }) => {
-  const { asset, onEdit, onDelete, onExport, onBPMNClick, onDMNClick } = data;
+  const { asset, onEdit, onDelete, onExport, onBPMNClick, onDMNClick, isShared = false } = data;
   const colorClass = getAssetTypeColor(asset.type);
   const typeLabel = getAssetTypeLabel(asset.type);
   const typeIcon = getAssetTypeIcon(asset.type);
@@ -72,8 +73,9 @@ export const ComputeAssetNode: React.FC<ComputeAssetNodeProps> = ({ data, select
   return (
     <div
       className={`
-        bg-white border-2 rounded-lg shadow-md min-w-[200px] max-w-[250px] relative group
-        ${selected ? 'border-blue-600 ring-2 ring-blue-200' : 'border-gray-300'}
+        bg-white rounded-lg shadow-md min-w-[200px] max-w-[250px] relative group
+        ${isShared ? 'border-2 border-dashed' : 'border-2 border-solid'}
+        ${selected ? 'border-blue-600 ring-2 ring-blue-200' : isShared ? 'border-gray-400' : 'border-gray-300'}
       `}
       role="group"
       aria-label={`${typeLabel} Asset: ${asset.name}`}
@@ -169,14 +171,14 @@ export const ComputeAssetNode: React.FC<ComputeAssetNodeProps> = ({ data, select
 
         {/* Type badge and model indicators */}
         <div className="mb-2 flex items-center gap-1 flex-wrap">
-          <span 
+          <span
             className={`inline-block px-2 py-0.5 text-xs font-medium rounded text-white ${colorClass}`}
             title={`Type: ${typeLabel}`}
           >
             {typeLabel}
           </span>
           {asset.status && (
-            <span 
+            <span
               className="inline-block px-2 py-0.5 text-xs font-medium rounded bg-gray-200 text-gray-700"
               title={`Status: ${asset.status}`}
             >
@@ -194,7 +196,12 @@ export const ComputeAssetNode: React.FC<ComputeAssetNodeProps> = ({ data, select
               title="Click to view BPMN process model"
             >
               <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                />
               </svg>
               BPMN
             </button>
@@ -210,7 +217,12 @@ export const ComputeAssetNode: React.FC<ComputeAssetNodeProps> = ({ data, select
               title="Click to view DMN decision model"
             >
               <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+                />
               </svg>
               DMN
             </button>
@@ -219,10 +231,7 @@ export const ComputeAssetNode: React.FC<ComputeAssetNodeProps> = ({ data, select
 
         {/* Description */}
         {asset.description && (
-          <div 
-            className="text-xs text-gray-500 line-clamp-2" 
-            title={asset.description}
-          >
+          <div className="text-xs text-gray-500 line-clamp-2" title={asset.description}>
             {asset.description}
           </div>
         )}
@@ -230,4 +239,3 @@ export const ComputeAssetNode: React.FC<ComputeAssetNodeProps> = ({ data, select
     </div>
   );
 };
-

@@ -1,0 +1,47 @@
+apiVersion: v1.0.0
+kind: DataProduct
+id: js-product-customer360
+status: active
+name: Customer 360
+version: "1.0.0"
+domain: ecommerce
+tenant: jaffleshop
+
+description:
+  purpose: Comprehensive customer analytics data product providing a unified view of customer behavior, lifetime value, and order history.
+  usage: Use this data product for customer analytics dashboards, marketing segmentation, and customer success reporting.
+  limitations: Customer PII is included - ensure proper access controls are in place. Metrics are updated daily.
+
+inputPorts:
+  - name: stg_customers
+    version: "1.0.0"
+    contractId: js-stg-customers
+  - name: stg_orders
+    version: "1.0.0"
+    contractId: js-stg-orders
+
+outputPorts:
+  - name: customers
+    version: "1.0.0"
+    contractId: js-mart-customers
+  - name: orders
+    version: "1.0.0"
+    contractId: js-mart-orders
+
+team:
+  name: Analytics Engineering
+
+support:
+  - channel: Data Team Slack
+    url: https://jaffleshop.slack.com/channels/data-team
+
+tags:
+  - customers
+  - analytics
+  - gold
+
+customProperties:
+  - property: refresh_frequency
+    value: daily
+  - property: data_classification
+    value: confidential

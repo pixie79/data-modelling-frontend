@@ -47,7 +47,6 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showBPMNEditor, setShowBPMNEditor] = useState(false);
   const [editingProcessId, setEditingProcessId] = useState<string | null>(null);
-  const [showSaveMenu, setShowSaveMenu] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showMoveResourcesDialog, setShowMoveResourcesDialog] = useState(false);
@@ -338,255 +337,6 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
     }
   };
 
-  const handleSaveDomain = async (domainId?: string) => {
-    const platform = getPlatform();
-
-    if (platform === 'browser') {
-      // Browser mode: Always prompt for directory access (like Electron)
-      try {
-        const { browserFileService } = await import('@/services/platform/browser');
-        const { localFileService } = await import('@/services/storage/localFileService');
-        const workspace = useWorkspaceStore.getState().workspaces.find((w) => w.id === workspaceId);
-
-        if (!workspace) {
-          addToast({
-            type: 'error',
-            message: 'No workspace selected',
-          });
-          return;
-        }
-
-        const targetDomainId = domainId || selectedDomainId;
-        if (!targetDomainId) {
-          addToast({
-            type: 'error',
-            message: 'No domain selected',
-          });
-          return;
-        }
-
-        const domain = domains.find((d) => d.id === targetDomainId);
-        if (!domain) {
-          addToast({
-            type: 'error',
-            message: 'Domain not found',
-          });
-          return;
-        }
-
-        setIsSaving(true);
-        setShowSaveMenu(false);
-
-        // Check for cached directory handle first, only prompt if not available
-        let directoryHandle: FileSystemDirectoryHandle | null | undefined =
-          browserFileService.getCachedDirectoryHandle(workspace.name || workspace.id);
-
-        if (!directoryHandle) {
-          // No cached handle - request directory access (prompt user)
-          directoryHandle = await browserFileService.requestDirectoryAccess(
-            workspace.name || workspace.id
-          );
-
-          if (!directoryHandle) {
-            // User cancelled - offer ZIP download instead
-            const useZip = window.confirm(
-              'Directory access was cancelled. Would you like to download a ZIP file instead?'
-            );
-
-            if (!useZip) {
-              setIsSaving(false);
-              return;
-            }
-          }
-        }
-
-        // Get domain assets
-        const domainTables = tables.filter((t) => t.primary_domain_id === domain.id);
-        const domainProducts = products.filter((p) => p.domain_id === domain.id);
-        const domainAssets = computeAssets.filter((a) => a.domain_id === domain.id);
-        const domainBpmn = bpmnProcesses.filter((p) => p.domain_id === domain.id);
-        const domainDmn = dmnDecisions.filter((d) => d.domain_id === domain.id);
-        const domainSystems = systems.filter((s) => s.domain_id === domain.id);
-        const domainRelationships = relationships.filter((r) => r.domain_id === domain.id);
-
-        // Save domain folder
-        await localFileService.saveDomainFolder(
-          workspace.name || workspace.id,
-          domain,
-          domainTables,
-          domainProducts,
-          domainAssets,
-          domainBpmn,
-          domainDmn,
-          domainSystems,
-          domainRelationships
-        );
-
-        // Save workspace.yaml if we have directory access
-        if (directoryHandle) {
-          const workspaceMetadata = {
-            id: workspace.id,
-            name: workspace.name || workspace.id,
-            created_at: workspace.created_at || new Date().toISOString(),
-            last_modified_at: new Date().toISOString(),
-            domains: domains.map((d) => ({ id: d.id, name: d.name })),
-          };
-          await localFileService.saveWorkspaceMetadata(
-            workspace.name || workspace.id,
-            workspaceMetadata
-          );
-        }
-
-        addToast({
-          type: 'success',
-          message: directoryHandle
-            ? `Saved domain: ${domain.name} to directory`
-            : `Downloaded domain: ${domain.name} as ZIP`,
-        });
-      } catch (err) {
-        console.error('Failed to save domain:', err);
-        addToast({
-          type: 'error',
-          message: `Failed to save domain: ${err instanceof Error ? err.message : 'Unknown error'}`,
-        });
-      } finally {
-        setIsSaving(false);
-      }
-      return;
-    }
-
-    if (platform !== 'electron') {
-      addToast({
-        type: 'error',
-        message: 'Save Domain is only available in offline mode',
-      });
-      return;
-    }
-
-    const targetDomainId = domainId || selectedDomainId;
-    if (!targetDomainId || !workspaceId) {
-      addToast({
-        type: 'error',
-        message: 'Please select a domain and workspace first',
-      });
-      return;
-    }
-
-    setIsSaving(true);
-    setShowSaveMenu(false);
-
-    try {
-      const domain = domains.find((d) => d.id === targetDomainId);
-
-      if (!domain) {
-        addToast({
-          type: 'error',
-          message: 'Domain not found',
-        });
-        return;
-      }
-
-      // Show folder selection dialog
-      const result = await platformFileService.showOpenDialog({
-        properties: ['openDirectory'],
-        title: 'Select Domain Folder to Save',
-      });
-
-      if (result.canceled || !result.filePaths || result.filePaths.length === 0) {
-        setIsSaving(false);
-        return;
-      }
-
-      const selectedPath = result.filePaths[0];
-
-      // Get all domain assets
-      const domainTables = tables.filter((t) => t.primary_domain_id === targetDomainId);
-      const domainProducts = products.filter((p) => p.domain_id === targetDomainId);
-      const domainAssets = computeAssets.filter((a) => a.domain_id === targetDomainId);
-      const domainBpmnProcesses = bpmnProcesses.filter((p) => p.domain_id === targetDomainId);
-      const domainDmnDecisions = dmnDecisions.filter((d) => d.domain_id === targetDomainId);
-      const domainSystems = systems.filter((s) => s.domain_id === targetDomainId);
-      const domainRelationships = relationships.filter((r) => r.domain_id === targetDomainId);
-
-      // Convert domain to DomainType format
-      const domainType = {
-        id: domain.id,
-        workspace_id: domain.workspace_id || '',
-        name: domain.name,
-        description: domain.description,
-        owner: domain.owner,
-        created_at: domain.created_at,
-        last_modified_at: domain.last_modified_at,
-      } as any;
-
-      // Determine workspace path and domain path
-      // If user selects a folder that ends with domain name, use parent as workspace
-      // Otherwise, use selected path as workspace (will create subfolder)
-      if (!selectedPath) {
-        addToast({ type: 'error', message: 'No path selected' });
-        setIsLoading(false);
-        return;
-      }
-      const pathParts = selectedPath.split(/[/\\]/).filter(Boolean);
-      const lastPart = pathParts[pathParts.length - 1];
-      const workspacePath =
-        lastPart === domain.name && pathParts.length > 1
-          ? pathParts.slice(0, -1).join('/')
-          : selectedPath;
-
-      const domainPath =
-        lastPart === domain.name && pathParts.length > 1
-          ? selectedPath
-          : `${selectedPath}/${domain.name}`;
-
-      // Save domain folder (saveDomainFolder expects domainPath, not workspacePath)
-      await electronFileService.saveDomainFolder(
-        domainPath,
-        domainType,
-        domainTables,
-        domainProducts,
-        domainAssets,
-        domainBpmnProcesses,
-        domainDmnDecisions,
-        domainSystems,
-        domainRelationships
-      );
-
-      // Update domain with folder paths
-      updateDomain(domain.id, {
-        workspace_path: workspacePath,
-        folder_path: domainPath,
-      });
-
-      // Save workspace.yaml with all domain IDs
-      const allDomains = domains;
-      const workspaceMetadata = {
-        id: workspaceId,
-        name: workspaceId, // Use workspaceId as name if workspace name not available
-        created_at: new Date().toISOString(),
-        last_modified_at: new Date().toISOString(),
-        domains: allDomains.map((d) => ({
-          id: d.id,
-          name: d.name,
-        })),
-      };
-      await electronFileService.saveWorkspaceMetadata(workspacePath, workspaceMetadata);
-
-      addToast({
-        type: 'success',
-        message: `Saved domain: ${domain.name}`,
-      });
-    } catch (err) {
-      console.error('Failed to save domain:', err);
-      addToast({
-        type: 'error',
-        message: `Failed to save domain: ${err instanceof Error ? err.message : 'Unknown error'}`,
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   const handleSaveAllDomains = async () => {
     const platform = getPlatform();
     const workspace = useWorkspaceStore.getState().workspaces.find((w) => w.id === workspaceId);
@@ -600,7 +350,6 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
     }
 
     setIsSaving(true);
-    setShowSaveMenu(false);
 
     try {
       if (platform === 'browser') {
@@ -785,64 +534,15 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
             >
               {isLoading ? 'Loading...' : 'Load Domain'}
             </button>
-            <div className="relative">
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => handleSaveDomain()}
-                  disabled={isSaving || !selectedDomainId}
-                  className="px-3 py-1 text-sm font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  aria-label="Save Domain"
-                  title="Save current domain"
-                >
-                  {isSaving ? 'Saving...' : 'Save Domain'}
-                </button>
-                {domains.length > 1 && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowSaveMenu(!showSaveMenu);
-                    }}
-                    disabled={isSaving}
-                    className="px-2 py-1 text-sm font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    aria-label="Save options"
-                    title="Save options"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
-                  </button>
-                )}
-              </div>
-
-              {/* Dropdown menu for save options */}
-              {showSaveMenu && domains.length > 1 && (
-                <>
-                  <div className="fixed inset-0 z-10" onClick={() => setShowSaveMenu(false)} />
-                  <div className="absolute right-0 mt-1 w-56 bg-white rounded-md shadow-lg border border-gray-200 z-20">
-                    <button
-                      onClick={() => handleSaveDomain()}
-                      disabled={isSaving || !selectedDomainId}
-                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Save Current Domain (
-                      {domains.find((d) => d.id === selectedDomainId)?.name || 'None'})
-                    </button>
-                    <button
-                      onClick={handleSaveAllDomains}
-                      disabled={isSaving}
-                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-t border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Save All Domains ({domains.length})
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
+            <button
+              onClick={handleSaveAllDomains}
+              disabled={isSaving}
+              className="px-3 py-1 text-sm font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Save Workspace"
+              title="Save workspace (V2 format)"
+            >
+              {isSaving ? 'Saving...' : 'Save Workspace'}
+            </button>
           </div>
         )}
 

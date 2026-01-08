@@ -220,10 +220,12 @@ export const useModelStore = create<ModelState>((set, get) => ({
     }));
     useWorkspaceStore.getState().setPendingChanges(true);
   },
-  updateSystem: (systemId, updates) =>
+  updateSystem: (systemId, updates) => {
     set((state) => ({
       systems: state.systems.map((s) => (s.id === systemId ? { ...s, ...updates } : s)),
-    })),
+    }));
+    useWorkspaceStore.getState().setPendingChanges(true);
+  },
   removeSystem: (systemId) => {
     set((state) => ({
       systems: state.systems.filter((s) => s.id !== systemId),
@@ -238,7 +240,7 @@ export const useModelStore = create<ModelState>((set, get) => ({
     // Mark workspace as having pending changes
     useWorkspaceStore.getState().setPendingChanges(true);
   },
-  updateTable: (tableId: string, updates: Partial<Table>) =>
+  updateTable: (tableId: string, updates: Partial<Table>) => {
     set((state) => {
       const updatedTables = state.tables.map((t) => {
         if (t.id === tableId) {
@@ -257,7 +259,9 @@ export const useModelStore = create<ModelState>((set, get) => ({
         return t;
       });
       return { tables: updatedTables };
-    }),
+    });
+    useWorkspaceStore.getState().setPendingChanges(true);
+  },
   updateColumn: (tableId: string, columnId: string, updates: Partial<Column>) =>
     set((state) => ({
       tables: state.tables.map((t) =>
@@ -340,10 +344,12 @@ export const useModelStore = create<ModelState>((set, get) => ({
     }));
     useWorkspaceStore.getState().setPendingChanges(true);
   },
-  updateComputeAsset: (assetId, updates) =>
+  updateComputeAsset: (assetId, updates) => {
     set((state) => ({
       computeAssets: state.computeAssets.map((a) => (a.id === assetId ? { ...a, ...updates } : a)),
-    })),
+    }));
+    useWorkspaceStore.getState().setPendingChanges(true);
+  },
   removeComputeAsset: (assetId) => {
     set((state) => ({
       computeAssets: state.computeAssets.filter((a) => a.id !== assetId),

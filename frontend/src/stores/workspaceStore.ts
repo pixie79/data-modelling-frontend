@@ -42,13 +42,13 @@ interface WorkspaceState {
   createWorkspace: (request: CreateWorkspaceRequest) => Promise<Workspace>;
   updateWorkspaceRemote: (workspaceId: string, updates: Partial<Workspace>) => Promise<Workspace>;
   deleteWorkspaceRemote: (workspaceId: string) => Promise<void>;
-  
+
   // Auto-save
   autoSave: () => Promise<void>;
   manualSave: () => Promise<void>; // Manual save (same as autoSave but always shows feedback)
   startAutoSave: () => void;
   stopAutoSave: () => void;
-  
+
   // Browser refresh handling
   handleBrowserRefresh: () => Promise<{ hasLocalChanges: boolean; hasRemoteChanges: boolean }>;
 }
@@ -76,12 +76,15 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           })),
         updateWorkspace: (workspaceId, updates) =>
           set((state) => ({
-            workspaces: state.workspaces.map((w) => (w.id === workspaceId ? { ...w, ...updates } : w)),
+            workspaces: state.workspaces.map((w) =>
+              w.id === workspaceId ? { ...w, ...updates } : w
+            ),
           })),
         removeWorkspace: (workspaceId) =>
           set((state) => ({
             workspaces: state.workspaces.filter((w) => w.id !== workspaceId),
-            currentWorkspaceId: state.currentWorkspaceId === workspaceId ? null : state.currentWorkspaceId,
+            currentWorkspaceId:
+              state.currentWorkspaceId === workspaceId ? null : state.currentWorkspaceId,
           })),
         setLoading: (isLoading) => set({ isLoading }),
         setError: (error) => set({ error }),
@@ -118,14 +121,14 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             // Use the API endpoint: GET /workspace/profiles
             // This returns email/domain combinations (profiles)
             const profiles = await workspaceService.listProfiles();
-            
+
             // Ensure profiles is an array
             if (!profiles || !Array.isArray(profiles)) {
               console.warn('Invalid profiles response:', profiles);
               set({ workspaces: [], isLoading: false });
               return;
             }
-            
+
             // Convert profiles to workspace objects
             const workspaces: Workspace[] = profiles.flatMap((profile) => {
               // Ensure profile has required fields
@@ -133,7 +136,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
                 console.warn('Invalid profile structure:', profile);
                 return [];
               }
-              
+
               return profile.domains.map((domain) => ({
                 id: `${profile.email}:${domain}`,
                 name: `${profile.email} - ${domain}`,
@@ -142,12 +145,14 @@ export const useWorkspaceStore = create<WorkspaceState>()(
                 last_modified_at: new Date().toISOString(),
               }));
             });
-            
+
             set({ workspaces, isLoading: false });
           } catch (error) {
             // If endpoint doesn't exist (404), return empty array instead of error
             if (axios.isAxiosError(error) && error.response?.status === 404) {
-              console.warn('/workspace/profiles endpoint not available - workspace management not supported');
+              console.warn(
+                '/workspace/profiles endpoint not available - workspace management not supported'
+              );
               set({ workspaces: [], isLoading: false });
             } else {
               set({
@@ -201,17 +206,17 @@ export const useWorkspaceStore = create<WorkspaceState>()(
               // In offline mode, create workspace with default domain
               const modelStoreModule = await import('@/stores/modelStore');
               const { generateUUID, isValidUUID } = await import('@/utils/validation');
-              
+
               // Generate workspace ID first
               const newWorkspaceId = generateUUID();
-              
+
               // Create default domain with proper workspace_id
               // Ensure domain ID is always a valid UUID
               const domainId = generateUUID();
               if (!isValidUUID(domainId)) {
                 throw new Error(`Failed to generate valid UUID for domain: ${domainId}`);
               }
-              
+
               const defaultDomain = {
                 id: domainId, // Domain ID must be a valid UUID
                 workspace_id: newWorkspaceId, // Use the workspace ID, not a new UUID
@@ -220,13 +225,13 @@ export const useWorkspaceStore = create<WorkspaceState>()(
                 created_at: new Date().toISOString(),
                 last_modified_at: new Date().toISOString(),
               };
-              
+
               // Validate domain ID before creating workspace
               if (!isValidUUID(defaultDomain.id)) {
                 console.error(`[WorkspaceStore] Invalid domain ID created: ${defaultDomain.id}`);
                 throw new Error(`Invalid domain ID: ${defaultDomain.id}`);
               }
-              
+
               const newWorkspace: Workspace = {
                 id: newWorkspaceId,
                 name: request.name || 'Untitled Workspace',
@@ -235,41 +240,49 @@ export const useWorkspaceStore = create<WorkspaceState>()(
                 last_modified_at: new Date().toISOString(),
                 domains: [defaultDomain],
               };
-              
+
               // Validate workspace domain ID before setting
-              if (newWorkspace.domains && newWorkspace.domains[0] && !isValidUUID(newWorkspace.domains[0].id)) {
-                console.error(`[WorkspaceStore] Invalid domain ID in workspace: ${newWorkspace.domains[0].id}`);
+              if (
+                newWorkspace.domains &&
+                newWorkspace.domains[0] &&
+                !isValidUUID(newWorkspace.domains[0].id)
+              ) {
+                console.error(
+                  `[WorkspaceStore] Invalid domain ID in workspace: ${newWorkspace.domains[0].id}`
+                );
                 throw new Error(`Invalid domain ID in workspace: ${newWorkspace.domains[0].id}`);
               }
-              
+
               modelStoreModule.useModelStore.getState().setDomains([defaultDomain]);
               set((state) => ({
                 workspaces: [...state.workspaces, newWorkspace],
                 currentWorkspaceId: newWorkspace.id,
                 isLoading: false,
               }));
-              
-              console.log(`[WorkspaceStore] Created workspace with domain ID: ${defaultDomain.id} (isValidUUID: ${isValidUUID(defaultDomain.id)})`);
+
+              console.log(
+                `[WorkspaceStore] Created workspace with domain ID: ${defaultDomain.id} (isValidUUID: ${isValidUUID(defaultDomain.id)})`
+              );
               return newWorkspace;
             }
 
             // API expects email and domain (not name and type)
             // Get user email from auth service or workspace info
             let userEmail: string | null = null;
-            
+
             // Try to get email from auth service first
             try {
               const authServiceModule = await import('@/services/api/authService');
               const user = await authServiceModule.authService.getCurrentUser();
               console.log('[WorkspaceStore] Creating workspace - user from auth:', user);
-              
+
               if (user && user.email) {
                 userEmail = user.email;
               }
             } catch (authError) {
               console.warn('[WorkspaceStore] Failed to get user from auth service:', authError);
             }
-            
+
             // If no email from auth, try to get it from workspace info
             if (!userEmail) {
               try {
@@ -279,12 +292,16 @@ export const useWorkspaceStore = create<WorkspaceState>()(
                   userEmail = workspaceInfo.email;
                 }
               } catch (infoError) {
-                console.warn('[WorkspaceStore] Failed to get email from workspace info:', infoError);
+                console.warn(
+                  '[WorkspaceStore] Failed to get email from workspace info:',
+                  infoError
+                );
               }
             }
-            
+
             if (!userEmail) {
-              const errorMsg = 'User email not available. Please ensure you are authenticated and try again.';
+              const errorMsg =
+                'User email not available. Please ensure you are authenticated and try again.';
               console.error('[WorkspaceStore]', errorMsg);
               set({
                 error: errorMsg,
@@ -296,8 +313,13 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             // Use the workspace name as the domain name
             // The API creates a workspace for email/domain combination
             const domain = request.name.toLowerCase().replace(/[^a-z0-9-]/g, '-');
-            console.log('[WorkspaceStore] Creating workspace with email:', userEmail, 'domain:', domain);
-            
+            console.log(
+              '[WorkspaceStore] Creating workspace with email:',
+              userEmail,
+              'domain:',
+              domain
+            );
+
             let result;
             try {
               result = await workspaceService.createWorkspace(userEmail, domain);
@@ -306,15 +328,18 @@ export const useWorkspaceStore = create<WorkspaceState>()(
               console.error('[WorkspaceStore] API error creating workspace:', apiError);
               // Re-throw with more context
               if (axios.isAxiosError(apiError)) {
-                const apiErrorMessage = apiError.response?.data?.error || 
-                                        apiError.response?.data?.message || 
-                                        apiError.message || 
-                                        'API error creating workspace';
-                throw new Error(`API error: ${apiErrorMessage} (Status: ${apiError.response?.status})`);
+                const apiErrorMessage =
+                  apiError.response?.data?.error ||
+                  apiError.response?.data?.message ||
+                  apiError.message ||
+                  'API error creating workspace';
+                throw new Error(
+                  `API error: ${apiErrorMessage} (Status: ${apiError.response?.status})`
+                );
               }
               throw apiError;
             }
-            
+
             // Create workspace object from API response
             const workspace: Workspace = {
               id: `${result.email}:${result.domain}`,
@@ -323,14 +348,15 @@ export const useWorkspaceStore = create<WorkspaceState>()(
               created_at: new Date().toISOString(),
               last_modified_at: new Date().toISOString(),
             };
-            
+
             set((state) => ({
               workspaces: [...state.workspaces, workspace],
               isLoading: false,
             }));
             return workspace;
           } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Failed to create workspace';
+            const errorMessage =
+              error instanceof Error ? error.message : 'Failed to create workspace';
             console.error('[WorkspaceStore] Workspace creation failed:', errorMessage, error);
             set({
               error: errorMessage,
@@ -344,7 +370,9 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           // Workspace updates are not supported by the API (email-based workspaces)
           // Use local state update instead
           set((state) => ({
-            workspaces: state.workspaces.map((w) => (w.id === workspaceId ? { ...w, ...updates } : w)),
+            workspaces: state.workspaces.map((w) =>
+              w.id === workspaceId ? { ...w, ...updates } : w
+            ),
           }));
           return updates as Workspace;
         },
@@ -364,17 +392,19 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             // Remove from local state
             set((state) => ({
               workspaces: state.workspaces.filter((w) => w.id !== workspaceId),
-              currentWorkspaceId: state.currentWorkspaceId === workspaceId ? null : state.currentWorkspaceId,
+              currentWorkspaceId:
+                state.currentWorkspaceId === workspaceId ? null : state.currentWorkspaceId,
             }));
             return;
           }
-          
+
           // Online mode - use API
           // Workspace deletion is not supported by the API (email-based workspaces)
           // Use local state update instead
           set((state) => ({
             workspaces: state.workspaces.filter((w) => w.id !== workspaceId),
-            currentWorkspaceId: state.currentWorkspaceId === workspaceId ? null : state.currentWorkspaceId,
+            currentWorkspaceId:
+              state.currentWorkspaceId === workspaceId ? null : state.currentWorkspaceId,
           }));
         },
 
@@ -393,143 +423,102 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           try {
             const mode = await useSDKModeStore.getState().getMode();
             const uiStoreModule = await import('@/stores/uiStore');
-            
+
             if (mode === 'offline') {
               // Save domains to their folders in offline mode
               const modelStoreModule = await import('@/stores/modelStore');
-              const { tables, relationships, domains, products, computeAssets, bpmnProcesses, dmnDecisions, systems } = modelStoreModule.useModelStore.getState();
-              
+              const {
+                tables,
+                relationships,
+                domains,
+                products,
+                computeAssets,
+                bpmnProcesses,
+                dmnDecisions,
+                systems,
+              } = modelStoreModule.useModelStore.getState();
+
               if (getPlatform() === 'electron') {
-                const electronFileServiceModule = await import('@/services/storage/electronFileService');
+                const electronFileServiceModule =
+                  await import('@/services/storage/electronFileService');
                 const electronPlatformModule = await import('@/services/platform/electron');
-                
-                // Save each domain to its folder
-                let allDomainsSaved = true;
+                const decisionStoreModule = await import('@/stores/decisionStore');
+                const knowledgeStoreModule = await import('@/stores/knowledgeStore');
+
+                // Determine workspace path from first domain or prompt
                 let workspacePath: string | null = null;
-                
+
+                // Try to get workspace path from existing domains
                 for (const domain of domains) {
-                  // Determine domain folder path
-                  let domainPath: string | null = null;
-                  
-                  if (domain.folder_path) {
-                    // Use stored folder path
-                    domainPath = domain.folder_path;
-                  } else if (domain.workspace_path) {
-                    // Use workspace path + domain name
-                    domainPath = `${domain.workspace_path}/${domain.name}`;
-                  } else {
-                    // Need to prompt for workspace path (only once)
-                    if (!workspacePath) {
-                      // Workspace path needed but not set
-                      const result = await electronPlatformModule.electronFileService.showOpenDialog({
-                        properties: ['openDirectory'],
-                        title: 'Select Workspace Folder for Auto-Save',
-                      });
-                      
-                      if (result.canceled || !result.filePaths || result.filePaths.length === 0) {
-                        // User cancelled - skip auto-save for this cycle
-                        allDomainsSaved = false;
-                        break;
-                      }
-                      
-                      workspacePath = result.filePaths[0] || null;
-                      
-                      // Update all domains with workspace path
-                      if (workspacePath) {
-                        for (const d of domains) {
-                          if (!d.workspace_path) {
-                            modelStoreModule.useModelStore.getState().updateDomain(d.id, {
-                              workspace_path: workspacePath,
-                              folder_path: `${workspacePath}/${d.name}`,
-                            });
-                          }
-                        }
-                      }
-                    }
-                    
-                    if (workspacePath) {
-                      domainPath = `${workspacePath}/${domain.name}`;
-                    }
+                  if (domain.workspace_path) {
+                    workspacePath = domain.workspace_path;
+                    break;
                   }
-                  
-                  if (domainPath) {
-                    try {
-                      // Get all domain assets
-                      const domainTables = tables.filter((t) => t.primary_domain_id === domain.id);
-                      const domainProducts = products.filter((p) => p.domain_id === domain.id);
-                      const domainAssets = computeAssets.filter((a) => a.domain_id === domain.id);
-                      const domainBpmnProcesses = bpmnProcesses.filter((p) => p.domain_id === domain.id);
-                      const domainDmnDecisions = dmnDecisions.filter((d) => d.domain_id === domain.id);
-                      const domainSystems = systems.filter((s) => s.domain_id === domain.id);
-                      const domainRelationships = relationships.filter((r) => r.domain_id === domain.id);
-                      
-                      // Convert domain to DomainType format
-                      const domainType = {
-                        id: domain.id,
-                        workspace_id: domain.workspace_id || '',
-                        name: domain.name,
-                        description: domain.description,
-                        owner: domain.owner,
-                        created_at: domain.created_at,
-                        last_modified_at: new Date().toISOString(),
-                      } as any;
-                      
-                      // Save domain folder
-                      await electronFileServiceModule.electronFileService.saveDomainFolder(
-                        domainPath,
-                        domainType,
-                        domainTables,
-                        domainProducts,
-                        domainAssets,
-                        domainBpmnProcesses,
-                        domainDmnDecisions,
-                        domainSystems,
-                        domainRelationships
-                      );
-                    } catch (error) {
-                      console.error(`Failed to auto-save domain ${domain.name}:`, error);
-                      allDomainsSaved = false;
-                    }
+                }
+
+                // If no workspace path, prompt for one
+                if (!workspacePath) {
+                  const result = await electronPlatformModule.electronFileService.showOpenDialog({
+                    properties: ['openDirectory'],
+                    title: 'Select Workspace Folder for Auto-Save',
+                  });
+
+                  if (result.canceled || !result.filePaths || result.filePaths.length === 0) {
+                    // User cancelled - skip auto-save for this cycle
+                    return;
                   }
-                  
-                  // Save workspace.yaml with all domain IDs after saving all domains
-                  if (allDomainsSaved && workspacePath && workspace.id) {
-                    try {
-                      const workspaceMetadata = {
-                        id: workspace.id,
-                        name: workspace.name || workspace.id,
-                        created_at: workspace.created_at || new Date().toISOString(),
-                        last_modified_at: new Date().toISOString(),
-                        domains: domains.map(d => ({
-                          id: d.id,
-                          name: d.name,
-                        })),
-                      };
-                      await electronFileServiceModule.electronFileService.saveWorkspaceMetadata(workspacePath, workspaceMetadata);
-                    } catch (error) {
-                      console.error(`Failed to save workspace.yaml:`, error);
-                      // Don't fail auto-save if workspace.yaml save fails
+
+                  workspacePath = result.filePaths[0] || null;
+
+                  // Update all domains with workspace path
+                  if (workspacePath) {
+                    for (const d of domains) {
+                      if (!d.workspace_path) {
+                        modelStoreModule.useModelStore.getState().updateDomain(d.id, {
+                          workspace_path: workspacePath,
+                        });
+                      }
                     }
                   }
                 }
-                
-                if (allDomainsSaved && domains.length > 0) {
-                  set({ pendingChanges: false, lastSavedAt: new Date().toISOString() });
-                  // Silent auto-save - don't show toast to avoid interrupting user
-                } else if (domains.length === 0) {
-                  // No domains to save - just mark as saved
-                  set({ pendingChanges: false, lastSavedAt: new Date().toISOString() });
+
+                if (workspacePath) {
+                  try {
+                    // Get KB articles and decision records
+                    const { articles } = knowledgeStoreModule.useKnowledgeStore.getState();
+                    const { decisions } = decisionStoreModule.useDecisionStore.getState();
+
+                    // Save workspace in V2 format (flat files)
+                    await electronFileServiceModule.electronFileService.saveWorkspaceV2(
+                      workspacePath,
+                      workspace,
+                      domains,
+                      tables,
+                      systems,
+                      relationships,
+                      products,
+                      computeAssets,
+                      bpmnProcesses,
+                      dmnDecisions,
+                      articles,
+                      decisions
+                    );
+
+                    set({ pendingChanges: false, lastSavedAt: new Date().toISOString() });
+                    // Silent auto-save - don't show toast to avoid interrupting user
+                  } catch (error) {
+                    console.error('Failed to auto-save workspace:', error);
+                  }
                 }
               } else {
                 // Browser: Use IndexedDB for auto-save
                 try {
                   const { indexedDBStorage } = await import('@/services/storage/indexedDBStorage');
-                  const { localFileService } = await import('@/services/storage/localFileService');
                   const { useModelStore } = await import('@/stores/modelStore');
-                  
+
                   // Get compute assets from model store
                   const { computeAssets } = useModelStore.getState();
-                  
+
                   // Save workspace state to IndexedDB
                   await indexedDBStorage.saveWorkspace(
                     workspace.id,
@@ -546,19 +535,26 @@ export const useWorkspaceStore = create<WorkspaceState>()(
                       dmnDecisions,
                     }
                   );
-                  
+
                   // Try to save domain folders to disk if directory handle is cached
                   // This allows auto-save to persist to the same location selected during manual save
                   const { browserFileService } = await import('@/services/platform/browser');
-                  const directoryHandle = browserFileService.getCachedDirectoryHandle(workspace.name || workspace.id);
-                  
+                  const directoryHandle = browserFileService.getCachedDirectoryHandle(
+                    workspace.name || workspace.id
+                  );
+
                   if (directoryHandle) {
                     try {
                       // Verify directory handle is still valid by checking permissions
                       // Note: queryPermission may not be available in all browsers
                       let permissionStatus: PermissionState = 'prompt';
-                      if ('queryPermission' in directoryHandle && typeof directoryHandle.queryPermission === 'function') {
-                        permissionStatus = await (directoryHandle as any).queryPermission({ mode: 'readwrite' });
+                      if (
+                        'queryPermission' in directoryHandle &&
+                        typeof directoryHandle.queryPermission === 'function'
+                      ) {
+                        permissionStatus = await (directoryHandle as any).queryPermission({
+                          mode: 'readwrite',
+                        });
                       } else {
                         // Try to access the directory to check permissions
                         try {
@@ -568,73 +564,82 @@ export const useWorkspaceStore = create<WorkspaceState>()(
                           permissionStatus = 'prompt';
                         }
                       }
-                      
+
                       if (permissionStatus === 'granted') {
-                        // Save each domain folder using File System Access API
-                        for (const domain of domains) {
-                          const domainTables = tables.filter(t => t.primary_domain_id === domain.id);
-                          const domainProducts = products.filter(p => p.domain_id === domain.id);
-                          const domainAssets = computeAssets.filter((a: any) => a.domain_id === domain.id);
-                          const domainBpmn = bpmnProcesses.filter(p => p.domain_id === domain.id);
-                          const domainDmn = dmnDecisions.filter(d => d.domain_id === domain.id);
-                          const domainSystems = systems.filter(s => s.domain_id === domain.id);
-                          const domainRelationships = relationships.filter(r => r.domain_id === domain.id);
-                          
-                          await localFileService.saveDomainFolder(
-                            workspace.name || workspace.id,
-                            domain,
-                            domainTables,
-                            domainProducts,
-                            domainAssets,
-                            domainBpmn,
-                            domainDmn,
-                            domainSystems,
-                            domainRelationships
-                          );
-                        }
-                        
-                        // Save workspace.yaml
-                        const workspaceMetadata = {
-                          id: workspace.id,
-                          name: workspace.name || workspace.id,
-                          created_at: workspace.created_at || new Date().toISOString(),
-                          last_modified_at: new Date().toISOString(),
-                          domains: domains.map(d => ({ id: d.id, name: d.name })),
-                        };
-                        await localFileService.saveWorkspaceMetadata(workspace.name || workspace.id, workspaceMetadata);
-                        
-                        console.log('[WorkspaceStore] Auto-saved to disk (directory handle cached)');
+                        // Save workspace in V2 flat file format
+                        const { WorkspaceV2Saver } =
+                          await import('@/services/storage/workspaceV2Saver');
+                        const decisionStoreModule = await import('@/stores/decisionStore');
+                        const knowledgeStoreModule = await import('@/stores/knowledgeStore');
+
+                        const { articles } = knowledgeStoreModule.useKnowledgeStore.getState();
+                        const { decisions } = decisionStoreModule.useDecisionStore.getState();
+
+                        // Generate V2 files
+                        const files = await WorkspaceV2Saver.generateFiles(
+                          workspace,
+                          domains,
+                          tables,
+                          systems,
+                          relationships,
+                          products,
+                          computeAssets,
+                          bpmnProcesses,
+                          dmnDecisions,
+                          articles,
+                          decisions
+                        );
+
+                        // Save using File System Access API
+                        await WorkspaceV2Saver.saveWithFileSystemAPI(files, directoryHandle);
+
+                        console.log(
+                          '[WorkspaceStore] Auto-saved to disk in V2 format (directory handle cached)'
+                        );
                       } else if (permissionStatus === 'prompt') {
                         // Permission was revoked - request again
-                        console.log('[WorkspaceStore] Directory permission revoked, requesting again...');
-                        const newHandle = await browserFileService.requestDirectoryAccess(workspace.name || workspace.id);
+                        console.log(
+                          '[WorkspaceStore] Directory permission revoked, requesting again...'
+                        );
+                        const newHandle = await browserFileService.requestDirectoryAccess(
+                          workspace.name || workspace.id
+                        );
                         if (newHandle) {
                           // Retry save with new handle
                           // Note: This will be saved in the next auto-save cycle
-                          console.log('[WorkspaceStore] Directory access re-granted, will save in next cycle');
+                          console.log(
+                            '[WorkspaceStore] Directory access re-granted, will save in next cycle'
+                          );
                         }
                       } else {
                         // Permission denied - clear cached handle
-                        console.warn('[WorkspaceStore] Directory permission denied, clearing cached handle');
+                        console.warn(
+                          '[WorkspaceStore] Directory permission denied, clearing cached handle'
+                        );
                         // Note: We can't directly clear the cache from here, but it will be handled on next manual save
                       }
                     } catch (error) {
                       // Handle stale directory handle errors
-                      console.warn('[WorkspaceStore] Failed to save to disk during auto-save:', error);
+                      console.warn(
+                        '[WorkspaceStore] Failed to save to disk during auto-save:',
+                        error
+                      );
                       // Continue - IndexedDB save already succeeded
                     }
                   } else {
                     // No cached directory handle - auto-save only to IndexedDB
                     // User needs to manually save first to grant directory access
-                    console.log('[WorkspaceStore] No cached directory handle - auto-save to IndexedDB only');
+                    console.log(
+                      '[WorkspaceStore] No cached directory handle - auto-save to IndexedDB only'
+                    );
                   }
-                  
+
                   set({ pendingChanges: false, lastSavedAt: new Date().toISOString() });
                   console.log('[WorkspaceStore] Auto-saved to IndexedDB');
                 } catch (error) {
                   console.error('[WorkspaceStore] Failed to auto-save to IndexedDB:', error);
                   // Still mark as saved to avoid repeated attempts
-                set({ pendingChanges: false, lastSavedAt: new Date().toISOString() });
+                  set({ pendingChanges: false, lastSavedAt: new Date().toISOString() });
                 }
               }
             } else {
@@ -688,28 +693,40 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           const mode = await useSDKModeStore.getState().getMode();
           const platform = getPlatform();
           const uiStoreModule = await import('@/stores/uiStore');
-          
+
           if (mode === 'offline' && platform === 'browser') {
             // Browser mode: Check for cached directory handle first, only prompt if not available
             try {
               const { browserFileService } = await import('@/services/platform/browser');
               const { localFileService } = await import('@/services/storage/localFileService');
               const modelStoreModule = await import('@/stores/modelStore');
-              const { tables, relationships, domains, products, computeAssets, bpmnProcesses, dmnDecisions, systems } = modelStoreModule.useModelStore.getState();
-              
+              const {
+                tables,
+                relationships,
+                domains,
+                products,
+                computeAssets,
+                bpmnProcesses,
+                dmnDecisions,
+                systems,
+              } = modelStoreModule.useModelStore.getState();
+
               // Check for cached directory handle first
-              let directoryHandle: FileSystemDirectoryHandle | null | undefined = browserFileService.getCachedDirectoryHandle(workspace.name || workspace.id);
-              
+              let directoryHandle: FileSystemDirectoryHandle | null | undefined =
+                browserFileService.getCachedDirectoryHandle(workspace.name || workspace.id);
+
               if (!directoryHandle) {
                 // No cached handle - request directory access (prompt user)
-                directoryHandle = await browserFileService.requestDirectoryAccess(workspace.name || workspace.id);
-                
+                directoryHandle = await browserFileService.requestDirectoryAccess(
+                  workspace.name || workspace.id
+                );
+
                 if (!directoryHandle) {
                   // User cancelled - offer ZIP download instead
                   const useZip = window.confirm(
                     'Directory access was cancelled. Would you like to download a ZIP file with all domains instead?'
                   );
-                  
+
                   if (!useZip) {
                     return;
                   }
@@ -721,13 +738,13 @@ export const useWorkspaceStore = create<WorkspaceState>()(
 
               // Save each domain
               for (const domain of domains) {
-                const domainTables = tables.filter(t => t.primary_domain_id === domain.id);
-                const domainProducts = products.filter(p => p.domain_id === domain.id);
-                const domainAssets = computeAssets.filter(a => a.domain_id === domain.id);
-                const domainBpmn = bpmnProcesses.filter(p => p.domain_id === domain.id);
-                const domainDmn = dmnDecisions.filter(d => d.domain_id === domain.id);
-                const domainSystems = systems.filter(s => s.domain_id === domain.id);
-                const domainRelationships = relationships.filter(r => r.domain_id === domain.id);
+                const domainTables = tables.filter((t) => t.primary_domain_id === domain.id);
+                const domainProducts = products.filter((p) => p.domain_id === domain.id);
+                const domainAssets = computeAssets.filter((a) => a.domain_id === domain.id);
+                const domainBpmn = bpmnProcesses.filter((p) => p.domain_id === domain.id);
+                const domainDmn = dmnDecisions.filter((d) => d.domain_id === domain.id);
+                const domainSystems = systems.filter((s) => s.domain_id === domain.id);
+                const domainRelationships = relationships.filter((r) => r.domain_id === domain.id);
 
                 await localFileService.saveDomainFolder(
                   workspace.name || workspace.id,
@@ -749,13 +766,16 @@ export const useWorkspaceStore = create<WorkspaceState>()(
                   name: workspace.name || workspace.id,
                   created_at: workspace.created_at || new Date().toISOString(),
                   last_modified_at: new Date().toISOString(),
-                  domains: domains.map(d => ({ id: d.id, name: d.name })),
+                  domains: domains.map((d) => ({ id: d.id, name: d.name })),
                 };
-                await localFileService.saveWorkspaceMetadata(workspace.name || workspace.id, workspaceMetadata);
+                await localFileService.saveWorkspaceMetadata(
+                  workspace.name || workspace.id,
+                  workspaceMetadata
+                );
               }
 
               set({ pendingChanges: false, lastSavedAt: new Date().toISOString() });
-              
+
               uiStoreModule.useUIStore.getState().addToast({
                 type: 'success',
                 message: directoryHandle
@@ -771,22 +791,22 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             }
           } else {
             // Electron mode or online mode: Use existing autoSave logic
-          // Force pendingChanges to true to ensure save happens
-          set({ pendingChanges: true });
-          
-          // Call autoSave which will handle the actual save
-          await get().autoSave();
-          
+            // Force pendingChanges to true to ensure save happens
+            set({ pendingChanges: true });
+
+            // Call autoSave which will handle the actual save
+            await get().autoSave();
+
             if (mode === 'offline' && platform === 'electron') {
-            uiStoreModule.useUIStore.getState().addToast({
-              type: 'success',
-              message: 'Domains saved successfully',
-            });
-          } else if (mode === 'online') {
-            uiStoreModule.useUIStore.getState().addToast({
-              type: 'success',
-              message: 'Workspace synced to server',
-            });
+              uiStoreModule.useUIStore.getState().addToast({
+                type: 'success',
+                message: 'Domains saved successfully',
+              });
+            } else if (mode === 'online') {
+              uiStoreModule.useUIStore.getState().addToast({
+                type: 'success',
+                message: 'Workspace synced to server',
+              });
             }
           }
         },
@@ -814,7 +834,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         // Workspace switching with state save/load
         switchWorkspace: async (workspaceId: string) => {
           const state = get();
-          
+
           // Save current workspace state if there are pending changes
           if (state.pendingChanges && state.currentWorkspaceId) {
             await state.autoSave();
@@ -834,7 +854,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         handleBrowserRefresh: async () => {
           const state = get();
           const mode = await useSDKModeStore.getState().getMode();
-          
+
           const hasLocalChanges = state.pendingChanges;
           let hasRemoteChanges = false;
 
@@ -842,8 +862,10 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             try {
               // Check if remote workspace has been modified
               await workspaceService.getWorkspaceInfo();
-              const localWorkspace = state.workspaces.find((w) => w.id === state.currentWorkspaceId);
-              
+              const localWorkspace = state.workspaces.find(
+                (w) => w.id === state.currentWorkspaceId
+              );
+
               if (localWorkspace) {
                 // Remote workspace info doesn't have last_modified_at, so assume no remote changes
                 // In a real implementation, we'd fetch the full workspace to compare timestamps
@@ -876,22 +898,24 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           console.error('[WorkspaceStore] Error rehydrating from storage:', error);
           return;
         }
-        
+
         // Normalize domain IDs when loading from persisted state
         // This ensures old workspaces with non-UUID domain IDs are migrated to UUIDs
         if (state?.workspaces && Array.isArray(state.workspaces)) {
           const { generateUUID, isValidUUID } = await import('@/utils/validation');
           let needsUpdate = false;
-          
+
           const normalizedWorkspaces = state.workspaces.map((workspace) => {
             if (!workspace.domains || !Array.isArray(workspace.domains)) {
               return workspace;
             }
-            
+
             const normalizedDomains = workspace.domains.map((domain) => {
               // If domain ID is not a valid UUID, generate a new one
               if (!domain.id || !isValidUUID(domain.id)) {
-                console.warn(`[WorkspaceStore] Normalizing invalid domain ID "${domain.id}" to UUID for domain "${domain.name}"`);
+                console.warn(
+                  `[WorkspaceStore] Normalizing invalid domain ID "${domain.id}" to UUID for domain "${domain.name}"`
+                );
                 needsUpdate = true;
                 return {
                   ...domain,
@@ -900,13 +924,13 @@ export const useWorkspaceStore = create<WorkspaceState>()(
               }
               return domain;
             });
-            
+
             return {
               ...workspace,
               domains: normalizedDomains,
             };
           });
-          
+
           // If any domains were normalized, update the state
           if (needsUpdate) {
             // Update state with normalized workspaces

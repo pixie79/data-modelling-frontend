@@ -586,7 +586,10 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
           // 1. Tables from current domain that belong to this system
           // 2. Foreign tables (explicitly shared with target_system_id)
           // DO NOT include tables from shared systems
-          systemTables = visibleTables.filter((table) => system.table_ids?.includes(table.id));
+          // In Systems View, show ALL tables from the system (not filtered by data level)
+          systemTables = tables.filter(
+            (table) => table.primary_domain_id === domainId && system.table_ids?.includes(table.id)
+          );
 
           // Add foreign tables (from other domains) that explicitly target this system
           const foreignTables =

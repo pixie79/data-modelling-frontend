@@ -589,116 +589,12 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
 
   const handleSaveAllDomains = async () => {
     const platform = getPlatform();
+    const workspace = useWorkspaceStore.getState().workspaces.find((w) => w.id === workspaceId);
 
-    if (platform === 'browser') {
-      // Browser mode: Always prompt for directory access (like Electron)
-      try {
-        const { browserFileService } = await import('@/services/platform/browser');
-        const { localFileService } = await import('@/services/storage/localFileService');
-        const workspace = useWorkspaceStore.getState().workspaces.find((w) => w.id === workspaceId);
-
-        if (!workspace) {
-          addToast({
-            type: 'error',
-            message: 'No workspace selected',
-          });
-          return;
-        }
-
-        setIsSaving(true);
-        setShowSaveMenu(false);
-
-        // Check for cached directory handle first, only prompt if not available
-        let directoryHandle: FileSystemDirectoryHandle | null | undefined =
-          browserFileService.getCachedDirectoryHandle(workspace.name || workspace.id);
-
-        if (!directoryHandle) {
-          // No cached handle - request directory access (prompt user)
-          directoryHandle = await browserFileService.requestDirectoryAccess(
-            workspace.name || workspace.id
-          );
-
-          if (!directoryHandle) {
-            // User cancelled - offer ZIP download instead
-            const useZip = window.confirm(
-              'Directory access was cancelled. Would you like to download a ZIP file with all domains instead?'
-            );
-
-            if (!useZip) {
-              setIsSaving(false);
-              return;
-            }
-          }
-        }
-
-        // Save each domain
-        for (const domain of domains) {
-          const domainTables = tables.filter((t) => t.primary_domain_id === domain.id);
-          const domainProducts = products.filter((p) => p.domain_id === domain.id);
-          const domainAssets = computeAssets.filter((a) => a.domain_id === domain.id);
-          const domainBpmn = bpmnProcesses.filter((p) => p.domain_id === domain.id);
-          const domainDmn = dmnDecisions.filter((d) => d.domain_id === domain.id);
-          const domainSystems = systems.filter((s) => s.domain_id === domain.id);
-          const domainRelationships = relationships.filter((r) => r.domain_id === domain.id);
-
-          await localFileService.saveDomainFolder(
-            workspace.name || workspace.id,
-            domain,
-            domainTables,
-            domainProducts,
-            domainAssets,
-            domainBpmn,
-            domainDmn,
-            domainSystems,
-            domainRelationships
-          );
-        }
-
-        // Save workspace.yaml if we have directory access
-        if (directoryHandle) {
-          const workspaceMetadata = {
-            id: workspace.id,
-            name: workspace.name || workspace.id,
-            created_at: workspace.created_at || new Date().toISOString(),
-            last_modified_at: new Date().toISOString(),
-            domains: domains.map((d) => ({ id: d.id, name: d.name })),
-          };
-          await localFileService.saveWorkspaceMetadata(
-            workspace.name || workspace.id,
-            workspaceMetadata
-          );
-        }
-
-        addToast({
-          type: 'success',
-          message: directoryHandle
-            ? `Saved all ${domains.length} domain(s) to directory`
-            : `Downloaded all ${domains.length} domain(s) as ZIP files`,
-        });
-      } catch (err) {
-        console.error('Failed to save all domains:', err);
-        addToast({
-          type: 'error',
-          message: `Failed to save all domains: ${err instanceof Error ? err.message : 'Unknown error'}`,
-        });
-      } finally {
-        setIsSaving(false);
-      }
-      return;
-    }
-
-    if (platform !== 'electron') {
+    if (!workspace) {
       addToast({
         type: 'error',
-        message: 'Save All Domains is only available in offline mode',
-      });
-      return;
-    }
-
-    if (!workspaceId) {
-      addToast({
-        type: 'error',
-        message: 'Workspace ID is required',
+        message: 'No workspace selected',
       });
       return;
     }
@@ -707,82 +603,68 @@ export const DomainTabs: React.FC<DomainTabsProps> = ({ workspaceId }) => {
     setShowSaveMenu(false);
 
     try {
-      // Show folder selection dialog for workspace root
-      const result = await platformFileService.showOpenDialog({
-        properties: ['openDirectory'],
-        title: 'Select Workspace Folder to Save All Domains',
-      });
+      if (platform === 'browser') {
+        // Browser mode: Use V2 flat file format
+        const { localFileService } = await import('@/services/storage/localFileService');
 
-      if (result.canceled || !result.filePaths || result.filePaths.length === 0) {
-        setIsSaving(false);
-        return;
-      }
-
-      const workspacePath = result.filePaths[0];
-
-      // Save each domain to its own subfolder
-      for (const domain of domains) {
-        const domainPath = `${workspacePath}/${domain.name}`;
-
-        // Get all domain assets
-        const domainTables = tables.filter((t) => t.primary_domain_id === domain.id);
-        const domainProducts = products.filter((p) => p.domain_id === domain.id);
-        const domainAssets = computeAssets.filter((a) => a.domain_id === domain.id);
-        const domainBpmnProcesses = bpmnProcesses.filter((p) => p.domain_id === domain.id);
-        const domainDmnDecisions = dmnDecisions.filter((d) => d.domain_id === domain.id);
-        const domainSystems = systems.filter((s) => s.domain_id === domain.id);
-        const domainRelationships = relationships.filter((r) => r.domain_id === domain.id);
-
-        // Convert domain to DomainType format
-        const domainType = {
-          id: domain.id,
-          workspace_id: domain.workspace_id || '',
-          name: domain.name,
-          description: domain.description,
-          owner: domain.owner,
-          created_at: domain.created_at,
-          last_modified_at: domain.last_modified_at,
-        } as any;
-
-        // Save domain folder
-        await electronFileService.saveDomainFolder(
-          domainPath,
-          domainType,
-          domainTables,
-          domainProducts,
-          domainAssets,
-          domainBpmnProcesses,
-          domainDmnDecisions,
-          domainSystems,
-          domainRelationships
+        // Save workspace in V2 format (flat files with workspace.yaml + resource files)
+        await localFileService.saveWorkspaceV2(
+          workspace,
+          domains,
+          tables,
+          systems,
+          relationships,
+          products,
+          computeAssets,
+          bpmnProcesses,
+          dmnDecisions,
+          articles,
+          decisions
         );
 
-        // Update domain with folder paths
-        useModelStore.getState().updateDomain(domain.id, {
-          workspace_path: workspacePath,
-          folder_path: domainPath,
+        addToast({
+          type: 'success',
+          message: `Saved workspace "${workspace.name}" with ${domains.length} domain(s) in V2 format`,
+        });
+      } else if (platform === 'electron') {
+        // Electron mode: Use V2 flat file format with folder selection
+        const result = await platformFileService.showOpenDialog({
+          properties: ['openDirectory'],
+          title: 'Select Folder to Save Workspace',
+        });
+
+        const workspacePath = result.filePaths?.[0];
+        if (result.canceled || !workspacePath) {
+          setIsSaving(false);
+          return;
+        }
+
+        // Use electronFileService to save in V2 format
+        await electronFileService.saveWorkspaceV2(
+          workspacePath,
+          workspace,
+          domains,
+          tables,
+          systems,
+          relationships,
+          products,
+          computeAssets,
+          bpmnProcesses,
+          dmnDecisions,
+          articles,
+          decisions
+        );
+
+        addToast({
+          type: 'success',
+          message: `Saved workspace "${workspace.name}" with ${domains.length} domain(s) to ${workspacePath}`,
+        });
+      } else {
+        addToast({
+          type: 'error',
+          message: 'Save is only available in browser or Electron mode',
         });
       }
-
-      // Save workspace.yaml with all domain IDs after saving all domains
-      if (workspacePath && workspaceId) {
-        const workspaceMetadata = {
-          id: workspaceId,
-          name: workspaceId, // Use workspaceId as name if workspace name not available
-          created_at: new Date().toISOString(),
-          last_modified_at: new Date().toISOString(),
-          domains: domains.map((d) => ({
-            id: d.id,
-            name: d.name,
-          })),
-        };
-        await electronFileService.saveWorkspaceMetadata(workspacePath, workspaceMetadata);
-      }
-
-      addToast({
-        type: 'success',
-        message: `Saved all ${domains.length} domain(s)`,
-      });
     } catch (err) {
       console.error('Failed to save all domains:', err);
       addToast({

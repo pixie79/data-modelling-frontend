@@ -1299,10 +1299,13 @@ class LocalFileService {
     domains: DomainType[],
     allTables: Table[],
     allSystems: System[],
+    allRelationships: Relationship[],
     allProducts: DataProduct[],
     allAssets: ComputeAsset[],
     allBpmnProcesses: BPMNProcess[],
-    allDmnDecisions: DMNDecision[]
+    allDmnDecisions: DMNDecision[],
+    allKnowledgeArticles: import('@/types/knowledge').KnowledgeArticle[] = [],
+    allDecisionRecords: import('@/types/decision').Decision[] = []
   ): Promise<void> {
     console.log('[LocalFileService] Saving workspace in V2 format:', workspace.name);
 
@@ -1312,10 +1315,13 @@ class LocalFileService {
       domains,
       allTables,
       allSystems,
+      allRelationships,
       allProducts,
       allAssets,
       allBpmnProcesses,
-      allDmnDecisions
+      allDmnDecisions,
+      allKnowledgeArticles,
+      allDecisionRecords
     );
 
     const workspaceName = FileMigration.sanitizeFileName(workspace.name);

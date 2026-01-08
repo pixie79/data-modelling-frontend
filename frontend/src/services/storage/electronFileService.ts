@@ -1321,10 +1321,13 @@ class ElectronFileService {
     domains: DomainType[],
     allTables: Table[],
     allSystems: System[],
+    allRelationships: Relationship[],
     allProducts: DataProduct[],
     allAssets: ComputeAsset[],
     allBpmnProcesses: BPMNProcess[],
-    allDmnDecisions: DMNDecision[]
+    allDmnDecisions: DMNDecision[],
+    allKnowledgeArticles: import('@/types/knowledge').KnowledgeArticle[] = [],
+    allDecisionRecords: import('@/types/decision').Decision[] = []
   ): Promise<void> {
     if (getPlatform() !== 'electron') {
       throw new Error('Electron file service can only be used in Electron environment');
@@ -1336,10 +1339,13 @@ class ElectronFileService {
       domains,
       allTables,
       allSystems,
+      allRelationships,
       allProducts,
       allAssets,
       allBpmnProcesses,
-      allDmnDecisions
+      allDmnDecisions,
+      allKnowledgeArticles,
+      allDecisionRecords
     );
 
     // Write files to disk

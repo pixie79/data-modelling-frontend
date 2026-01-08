@@ -284,6 +284,24 @@ const Home: React.FC = () => {
         modelStore.setDMNDecisions((workspace as any).dmnDecisions);
       }
 
+      // Set knowledge articles
+      if ((workspace as any).knowledgeArticles) {
+        console.log(
+          `[Home] Setting ${(workspace as any).knowledgeArticles.length} knowledge article(s) in knowledge store`
+        );
+        const { useKnowledgeStore } = await import('@/stores/knowledgeStore');
+        useKnowledgeStore.getState().setArticles((workspace as any).knowledgeArticles);
+      }
+
+      // Set decision records (ADRs)
+      if ((workspace as any).decisionRecords) {
+        console.log(
+          `[Home] Setting ${(workspace as any).decisionRecords.length} decision record(s) in decision store`
+        );
+        const { useDecisionStore } = await import('@/stores/decisionStore');
+        useDecisionStore.getState().setDecisions((workspace as any).decisionRecords);
+      }
+
       console.log(`[Home] Final model store state:`, {
         domains: modelStore.domains.length,
         tables: modelStore.tables.length,

@@ -271,6 +271,11 @@ export class WorkspaceV2Saver {
             ...(s.table_ids && s.table_ids.length > 0 && { table_ids: s.table_ids }),
             ...(s.asset_ids && s.asset_ids.length > 0 && { asset_ids: s.asset_ids }),
           })),
+          // Include view-specific positions for nodes (tables, systems, assets) per canvas view
+          ...(domain.view_positions &&
+            Object.keys(domain.view_positions).length > 0 && {
+              view_positions: domain.view_positions,
+            }),
         };
       }),
       // Include all relationships at workspace level
@@ -288,6 +293,9 @@ export class WorkspaceV2Saver {
               : 'many_to_many',
         notes: rel.description,
         color: rel.color,
+        // Connection point handles for edge positioning on canvas
+        ...(rel.source_handle && { source_handle: rel.source_handle }),
+        ...(rel.target_handle && { target_handle: rel.target_handle }),
       })),
     };
   }

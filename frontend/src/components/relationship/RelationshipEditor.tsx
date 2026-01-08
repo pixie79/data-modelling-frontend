@@ -45,7 +45,26 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
   const [description, setDescription] = useState('');
   const [color, setColor] = useState<string>('#000000');
   const [drawioEdgeId, setDrawioEdgeId] = useState<string>('');
+  const [sourceHandle, setSourceHandle] = useState<string>('');
+  const [targetHandle, setTargetHandle] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
+
+  // Available connection handle options (matching handles defined in CanvasNode/SystemNode/ComputeAssetNode)
+  const handleOptions = [
+    { value: '', label: 'Auto (default)' },
+    { value: 'top-left', label: 'Top Left' },
+    { value: 'top-center', label: 'Top Center' },
+    { value: 'top-right', label: 'Top Right' },
+    { value: 'right-top', label: 'Right Top' },
+    { value: 'right-center', label: 'Right Center' },
+    { value: 'right-bottom', label: 'Right Bottom' },
+    { value: 'bottom-right', label: 'Bottom Right' },
+    { value: 'bottom-center', label: 'Bottom Center' },
+    { value: 'bottom-left', label: 'Bottom Left' },
+    { value: 'left-bottom', label: 'Left Bottom' },
+    { value: 'left-center', label: 'Left Center' },
+    { value: 'left-top', label: 'Left Top' },
+  ];
 
   // Load relationship data when dialog opens
   useEffect(() => {
@@ -59,6 +78,8 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
       setDescription(relationship.description || '');
       setColor(relationship.color || '#000000');
       setDrawioEdgeId(relationship.drawio_edge_id || '');
+      setSourceHandle(relationship.source_handle || '');
+      setTargetHandle(relationship.target_handle || '');
     }
   }, [relationship, isOpen, relationships]);
 
@@ -144,6 +165,8 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
         target_cardinality: targetCardinality,
         source_key: isTableToTable && sourceKey ? sourceKey : undefined,
         target_key: isTableToTable && targetKey ? targetKey : undefined,
+        source_handle: sourceHandle || undefined,
+        target_handle: targetHandle || undefined,
         label: label.trim() || undefined,
         description: description.trim() || undefined,
         color: color !== '#000000' ? color : undefined,
@@ -342,45 +365,9 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
             </div>
           </div>
 
-          {/* Relationship Type and Cardinality (only for table-to-table) */}
+          {/* Cardinality (only for table-to-table) */}
           {isTableToTable && (
             <>
-              {/* Relationship Type */}
-              <div>
-                <label
-                  htmlFor="relationship-type"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Relationship Type
-                </label>
-                <select
-                  id="relationship-type"
-                  value={relationshipType}
-                  onChange={(e) => {
-                    const newType = e.target.value as RelationshipType;
-                    setRelationshipType(newType);
-
-                    // Auto-update cardinalities based on type
-                    if (newType === 'one-to-one') {
-                      setSourceCardinality('1');
-                      setTargetCardinality('1');
-                    } else if (newType === 'one-to-many') {
-                      setSourceCardinality('1');
-                      setTargetCardinality('N');
-                    } else if (newType === 'many-to-many') {
-                      setSourceCardinality('N');
-                      setTargetCardinality('N');
-                    }
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="one-to-one">One-to-One</option>
-                  <option value="one-to-many">One-to-Many</option>
-                  <option value="many-to-many">Many-to-Many</option>
-                </select>
-              </div>
-
-              {/* Cardinality */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label
@@ -495,6 +482,53 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
               </div>
             </>
           )}
+
+          {/* Connection Points */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label
+                htmlFor="source-handle"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Source Connection Point
+              </label>
+              <select
+                id="source-handle"
+                value={sourceHandle}
+                onChange={(e) => setSourceHandle(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {handleOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label
+                htmlFor="target-handle"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Target Connection Point
+              </label>
+              <select
+                id="target-handle"
+                value={targetHandle}
+                onChange={(e) => setTargetHandle(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {handleOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <p className="text-xs text-gray-500 -mt-2">
+            Choose where the relationship line connects on each node
+          </p>
 
           {/* Label */}
           <div>

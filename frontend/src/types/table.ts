@@ -69,10 +69,14 @@ export interface Table {
   model_type: ModelType;
   columns: Column[];
   compoundKeys?: CompoundKey[]; // Array of compound keys (primary or unique)
-  position_x: number; // canvas position
-  position_y: number; // canvas position
+  position_x: number; // canvas position (default/operational view)
+  position_y: number; // canvas position (default/operational view)
   width: number; // canvas size, default 200
   height: number; // canvas size, default 150
+  // Per-view positions: allows tables to have different positions on different canvas views
+  view_positions?: {
+    [viewName: string]: { x: number; y: number };
+  };
   visible_domains: string[]; // array of domain UUIDs
   data_level?: 'operational' | 'bronze' | 'silver' | 'gold'; // Data quality tier (derived from dm_level tag)
   is_owned_by_domain: boolean; // True if owned by current domain (for cross-domain viewing)

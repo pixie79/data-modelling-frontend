@@ -125,7 +125,20 @@ export function useCanvas(_workspaceId: string, domainId: string): UseCanvasRetu
       // In offline mode, local state update is sufficient
       // Position will be saved when workspace is saved
     },
-    [domainId, domains, currentView, tables, computeAssets, systems, updateTable, updateTableRemote, updateComputeAsset, updateSystem, updateDomain, mode]
+    [
+      domainId,
+      domains,
+      currentView,
+      tables,
+      computeAssets,
+      systems,
+      updateTable,
+      updateTableRemote,
+      updateComputeAsset,
+      updateSystem,
+      updateDomain,
+      mode,
+    ]
   );
 
   const onEdgeClick = useCallback(
@@ -134,7 +147,9 @@ export function useCanvas(_workspaceId: string, domainId: string): UseCanvasRetu
       if (event.detail === 2) {
         setSelectedRelationship(edge.id);
         // Trigger edit dialog - this will be handled by DomainCanvas
-        window.dispatchEvent(new CustomEvent('edit-relationship', { detail: { relationshipId: edge.id } }));
+        window.dispatchEvent(
+          new CustomEvent('edit-relationship', { detail: { relationshipId: edge.id } })
+        );
       } else {
         setSelectedRelationship(edge.id);
       }
@@ -150,28 +165,49 @@ export function useCanvas(_workspaceId: string, domainId: string): UseCanvasRetu
         return;
       }
 
-      const { currentView, addRelationship, tables, systems, computeAssets, relationships } = useModelStore.getState();
-      console.log('[useCanvas] Found tables:', tables.length, 'systems:', systems.length, 'assets:', computeAssets.length, 'relationships:', relationships.length);
+      const { currentView, addRelationship, tables, systems, computeAssets, relationships } =
+        useModelStore.getState();
+      console.log(
+        '[useCanvas] Found tables:',
+        tables.length,
+        'systems:',
+        systems.length,
+        'assets:',
+        computeAssets.length,
+        'relationships:',
+        relationships.length
+      );
 
       // Determine source and target types by checking which store they belong to
       const sourceTable = tables.find((t) => t.id === connection.source);
       const sourceSystem = systems.find((s) => s.id === connection.source);
       const sourceAsset = computeAssets.find((a) => a.id === connection.source);
-      
+
       const targetTable = tables.find((t) => t.id === connection.target);
       const targetSystem = systems.find((s) => s.id === connection.target);
       const targetAsset = computeAssets.find((a) => a.id === connection.target);
 
-      const sourceType: 'table' | 'system' | 'compute-asset' = 
-        sourceTable ? 'table' : sourceSystem ? 'system' : sourceAsset ? 'compute-asset' : 'table';
-      const targetType: 'table' | 'system' | 'compute-asset' = 
-        targetTable ? 'table' : targetSystem ? 'system' : targetAsset ? 'compute-asset' : 'table';
+      const sourceType: 'table' | 'system' | 'compute-asset' = sourceTable
+        ? 'table'
+        : sourceSystem
+          ? 'system'
+          : sourceAsset
+            ? 'compute-asset'
+            : 'table';
+      const targetType: 'table' | 'system' | 'compute-asset' = targetTable
+        ? 'table'
+        : targetSystem
+          ? 'system'
+          : targetAsset
+            ? 'compute-asset'
+            : 'table';
 
       // For table-to-table relationships, check for circular dependency warning
       if (sourceType === 'table' && targetType === 'table') {
         const warning = checkCircularRelationshipWarning(
-          relationships.filter((r): r is Relationship & { source_table_id: string; target_table_id: string } => 
-            Boolean(r.source_table_id && r.target_table_id)
+          relationships.filter(
+            (r): r is Relationship & { source_table_id: string; target_table_id: string } =>
+              Boolean(r.source_table_id && r.target_table_id)
           ),
           connection.source,
           connection.target
@@ -189,12 +225,13 @@ export function useCanvas(_workspaceId: string, domainId: string): UseCanvasRetu
 
       // Create relationship locally (offline mode)
       try {
-        const workspaceId = sourceTable?.workspace_id || sourceSystem?.domain_id || sourceAsset?.domain_id || '';
-        
+        const workspaceId =
+          sourceTable?.workspace_id || sourceSystem?.domain_id || sourceAsset?.domain_id || '';
+
         // For table-to-table relationships, use Crow's Foot notation (cardinality)
         // For other relationships, use simple links (no cardinality)
         const isTableToTable = sourceType === 'table' && targetType === 'table';
-        
+
         // Check for existing relationship between these two tables (for table-to-table only)
         if (isTableToTable) {
           const existingRelationship = relationships.find(
@@ -205,7 +242,7 @@ export function useCanvas(_workspaceId: string, domainId: string): UseCanvasRetu
               rel.target_id === connection.target &&
               rel.domain_id === domainId
           );
-          
+
           if (existingRelationship) {
             addToast({
               type: 'error',
@@ -219,7 +256,7 @@ export function useCanvas(_workspaceId: string, domainId: string): UseCanvasRetu
             return;
           }
         }
-        
+
         // Always use UUIDs for relationship IDs
         const { generateUUID } = await import('@/utils/validation');
         const relationship: import('@/types/relationship').Relationship = {
@@ -236,7 +273,13 @@ export function useCanvas(_workspaceId: string, domainId: string): UseCanvasRetu
           type: isTableToTable ? 'one-to-many' : 'one-to-one', // Default to one-to-many for tables, one-to-one for others
           source_cardinality: isTableToTable ? '1' : '1',
           target_cardinality: isTableToTable ? 'N' : '1',
-          model_type: currentView === 'operational' || currentView === 'analytical' ? 'logical' : 'conceptual',
+          // Capture connection handle positions (strip 'src-' prefix if present for source handles)
+          source_handle: connection.sourceHandle?.replace(/^src-/, '') || undefined,
+          target_handle: connection.targetHandle || undefined,
+          model_type:
+            currentView === 'operational' || currentView === 'analytical'
+              ? 'logical'
+              : 'conceptual',
           is_circular: false,
           created_at: new Date().toISOString(),
           last_modified_at: new Date().toISOString(),
@@ -256,7 +299,10 @@ export function useCanvas(_workspaceId: string, domainId: string): UseCanvasRetu
               target_cardinality: relationship.target_cardinality,
             });
           } catch (apiError) {
-            console.warn('Failed to create relationship via API, but relationship created locally:', apiError);
+            console.warn(
+              'Failed to create relationship via API, but relationship created locally:',
+              apiError
+            );
             // Relationship already added locally, so we continue
           }
         }
@@ -283,4 +329,3 @@ export function useCanvas(_workspaceId: string, domainId: string): UseCanvasRetu
     onConnect,
   };
 }
-

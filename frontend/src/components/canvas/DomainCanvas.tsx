@@ -888,11 +888,20 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
         const useCardinalityEdge =
           isTableToTable && (currentView === 'operational' || currentView === 'analytical');
 
+        // Source handles have 'src-' prefix in the node definition
+        const sourceHandle = relationship.source_handle
+          ? `src-${relationship.source_handle}`
+          : undefined;
+        // Target handles don't have a prefix
+        const targetHandle = relationship.target_handle || undefined;
+
         return {
           id: relationship.id,
           type: useCardinalityEdge ? 'cardinality' : 'default', // Use default edge for non-table relationships
           source: sourceId,
           target: targetId,
+          sourceHandle, // Use stored handle or let ReactFlow choose
+          targetHandle, // Use stored handle or let ReactFlow choose
           data: { relationship, isCrossDomain },
           selected: selectedRelationshipId === relationship.id,
           animated: false,

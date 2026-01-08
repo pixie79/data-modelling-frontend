@@ -1334,7 +1334,20 @@ class ODCSService {
     }
 
     // Apply ODCL table-level metadata if provided
-    let finalDescription = item.description || item.info?.description;
+    // IMPORTANT: In ODCS format, description can be an object like { purpose: "..." }
+    // We need to extract the string value to avoid React error #31
+    let finalDescription: string | undefined;
+    if (typeof item.description === 'string') {
+      finalDescription = item.description;
+    } else if (item.description && typeof item.description === 'object') {
+      // Extract purpose field from ODCS description object
+      finalDescription = item.description.purpose || JSON.stringify(item.description);
+    } else if (item.info?.description) {
+      finalDescription =
+        typeof item.info.description === 'string'
+          ? item.info.description
+          : item.info.description?.purpose || JSON.stringify(item.info.description);
+    }
     if (odclTableMetadata) {
       // Map ODCL info fields
       if (odclTableMetadata.odcl_title && !item.alias) {
@@ -1342,7 +1355,9 @@ class ODCSService {
       }
       // Use ODCL info.description if table doesn't have its own description
       if (!finalDescription && odclInfo?.odcl_info?.description) {
-        finalDescription = odclInfo.odcl_info.description as string;
+        const odclDesc = odclInfo.odcl_info.description;
+        finalDescription =
+          typeof odclDesc === 'string' ? odclDesc : odclDesc?.purpose || JSON.stringify(odclDesc);
       }
       if (odclTableMetadata.version) {
         metadata.version = odclTableMetadata.version;

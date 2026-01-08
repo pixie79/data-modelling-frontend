@@ -444,6 +444,8 @@ export class WorkspaceV2Loader {
       assets: assets.map((a) => a.id),
       processes: processes.map((p) => p.id),
       decisions: decisions.map((d) => d.id),
+      // Load view-specific positions for canvas nodes (tables, systems, assets)
+      view_positions: (domainSpec as any).view_positions,
     };
 
     return {
@@ -528,6 +530,8 @@ export class WorkspaceV2Loader {
       assets: assets.map((a) => a.id),
       processes: processes.map((p) => p.id),
       decisions: decisions.map((d) => d.id),
+      // Load view-specific positions for canvas nodes (tables, systems, assets)
+      view_positions: (domainSpec as any).view_positions,
     };
 
     return {
@@ -882,6 +886,9 @@ export class WorkspaceV2Loader {
         target_cardinality: targetCardinality,
         description: spec.notes,
         color: spec.color,
+        // Connection point handles for edge positioning on canvas
+        source_handle: (spec as any).source_handle,
+        target_handle: (spec as any).target_handle,
         model_type: 'physical' as const,
         is_circular: false,
         created_at: new Date().toISOString(),

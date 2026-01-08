@@ -35,6 +35,8 @@ export interface Relationship {
   target_cardinality: Cardinality; // '0', '1', or 'N' (only for table-to-table relationships)
   source_key?: string; // UUID of source key (column ID for single column PK, compound key ID for compound keys) - only for table-to-table relationships
   target_key?: string; // UUID of target key (column ID for single column PK, compound key ID for compound keys) - only for table-to-table relationships
+  source_handle?: string; // ReactFlow handle ID for source connection point (e.g., 'right-center', 'top-left')
+  target_handle?: string; // ReactFlow handle ID for target connection point (e.g., 'left-center', 'bottom-right')
   label?: string; // optional relationship label
   description?: string; // optional description or notes about the relationship
   color?: string; // optional color for the relationship line (hex color, e.g., "#ff0000")

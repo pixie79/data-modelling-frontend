@@ -435,17 +435,24 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
                   htmlFor="source-cardinality"
                   className="block text-sm font-medium text-gray-700 mb-2"
                 >
-                  Source Cardinality ({sourceName})
+                  Source Participation ({sourceName})
                 </label>
                 <select
                   id="source-cardinality"
-                  value={sourceCardinality}
-                  onChange={(e) => setSourceCardinality(e.target.value as Cardinality)}
+                  value={sourceCardinality === '0' ? '0' : '1'}
+                  onChange={(e) => {
+                    const isOptional = e.target.value === '0';
+                    // Preserve 'N' if relationship type is many-to-many or many-to-one
+                    if (relationshipType === 'many-to-many') {
+                      setSourceCardinality(isOptional ? '0' : 'N');
+                    } else {
+                      setSourceCardinality(isOptional ? '0' : '1');
+                    }
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="0">0 (Optional)</option>
-                  <option value="1">1 (Required)</option>
-                  <option value="N">N (Many)</option>
+                  <option value="0">Optional</option>
+                  <option value="1">Required</option>
                 </select>
               </div>
               <div>
@@ -453,17 +460,24 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
                   htmlFor="target-cardinality"
                   className="block text-sm font-medium text-gray-700 mb-2"
                 >
-                  Target Cardinality ({targetName})
+                  Target Participation ({targetName})
                 </label>
                 <select
                   id="target-cardinality"
-                  value={targetCardinality}
-                  onChange={(e) => setTargetCardinality(e.target.value as Cardinality)}
+                  value={targetCardinality === '0' ? '0' : '1'}
+                  onChange={(e) => {
+                    const isOptional = e.target.value === '0';
+                    // Preserve 'N' if relationship type is one-to-many or many-to-many
+                    if (relationshipType === 'one-to-many' || relationshipType === 'many-to-many') {
+                      setTargetCardinality(isOptional ? '0' : 'N');
+                    } else {
+                      setTargetCardinality(isOptional ? '0' : '1');
+                    }
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="0">0 (Optional)</option>
-                  <option value="1">1 (Required)</option>
-                  <option value="N">N (Many)</option>
+                  <option value="0">Optional</option>
+                  <option value="1">Required</option>
                 </select>
               </div>
             </div>
@@ -570,16 +584,13 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
         {/* Actions - Fixed at bottom */}
         <div className="flex justify-between items-center gap-2 pt-4 mt-4 border-t border-gray-200 flex-shrink-0">
           <div className="flex gap-2 flex-1">
-            {/* Only show Reverse Direction for non-table-to-table relationships */}
-            {!isTableToTable && (
-              <button
-                onClick={handleReverse}
-                className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors w-full"
-                title="Reverse the direction of this relationship (swap source and target)"
-              >
-                Reverse Direction
-              </button>
-            )}
+            <button
+              onClick={handleReverse}
+              className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors w-full"
+              title="Reverse the direction of this relationship (swap source and target)"
+            >
+              Reverse Direction
+            </button>
             <button
               onClick={handleDelete}
               className="px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100 transition-colors w-full"

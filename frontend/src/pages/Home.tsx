@@ -167,6 +167,10 @@ const Home: React.FC = () => {
 
       // Set domains
       if ((workspace as any).domains) {
+        console.log(
+          `[Home] Setting ${(workspace as any).domains.length} domain(s) in model store:`,
+          (workspace as any).domains.map((d: any) => ({ id: d.id, name: d.name }))
+        );
         modelStore.setDomains((workspace as any).domains);
       }
 
@@ -315,7 +319,9 @@ const Home: React.FC = () => {
 
       // Select first domain if available
       if ((workspace as any).domains && (workspace as any).domains.length > 0) {
-        modelStore.setSelectedDomain((workspace as any).domains[0].id);
+        const firstDomainId = (workspace as any).domains[0].id;
+        console.log(`[Home] Setting selected domain to: ${firstDomainId}`);
+        modelStore.setSelectedDomain(firstDomainId);
       }
 
       // Check for legacy structure using migration utilities

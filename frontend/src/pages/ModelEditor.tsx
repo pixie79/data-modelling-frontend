@@ -337,11 +337,13 @@ const ModelEditor: React.FC = () => {
             // Set domains from workspace
             if (workspace.domains && workspace.domains.length > 0) {
               console.log(
-                `[ModelEditor] Loading ${workspace.domains.length} domain(s) from workspace`
+                `[ModelEditor] Loading ${workspace.domains.length} domain(s) from workspace:`,
+                workspace.domains.map((d: any) => ({ id: d.id, name: d.name }))
               );
               setDomains(workspace.domains);
               const firstDomain = workspace.domains[0];
               if (firstDomain) {
+                console.log(`[ModelEditor] Setting selected domain to: ${firstDomain.id}`);
                 setSelectedDomain(firstDomain.id);
               }
             } else {

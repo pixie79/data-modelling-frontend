@@ -15,8 +15,8 @@ A domain-centric data modelling application built with React and Electron. Creat
 - **Import/Export**: Support for ODCS, SQL, AVRO, JSON Schema, and Protobuf formats
 - **Cross-Platform**: Electron desktop app (macOS, Windows, Linux)
 - **Domain-Centric**: Organize data models by business domains with systems, tables, relationships, BPMN processes, and DMN decisions
-- **Decision Logs** (SDK 1.13.1+): MADR-format Architecture Decision Records with status workflow
-- **Knowledge Base** (SDK 1.13.1+): Documentation articles with types (Guide, Tutorial, Reference, etc.)
+- **Decision Logs** (SDK 1.13.3+): MADR-format Architecture Decision Records with status workflow
+- **Knowledge Base** (SDK 1.13.3+): Documentation articles with types (Guide, Tutorial, Reference, etc.)
 - **DuckDB-WASM** (v2.1.0+): In-browser SQL database with OPFS persistence for advanced querying and analytics
 
 ## Prerequisites

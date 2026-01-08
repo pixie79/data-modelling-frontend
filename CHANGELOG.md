@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.1] - 2026-01-08
+
+### Fixed
+- **SDK Version**: Upgraded to data-modelling-sdk 1.13.3 for knowledge base and decision record support
+- **BPMN Name Extraction**: Improved XML parsing with multiple fallback methods (getElementsByTagNameNS, getElementsByTagName, regex) for reliable process name extraction
+- **Knowledge Base Loading**: Added fallback YAML parser for `.kb.yaml` files when SDK methods unavailable
+- **Decision Records Loading**: Added fallback YAML parser for `.adr.yaml` files when SDK methods unavailable
+- **Workspace Loading**: Fixed knowledge articles and decision records not populating their respective stores when loading workspace from folder
+
+### Added
+- **Jaffleshop Example**: Complete example workspace demonstrating:
+  - 19 ODCS data contracts across bronze/silver/gold medallion layers
+  - 2 ODPS data products
+  - 3 BPMN processes (Raw Ingestion, Staging Transform, Mart Build)
+  - 3 Knowledge Base articles (Architecture Overview, Data Quality Standards, MetricFlow Guide)
+  - 3 Architecture Decision Records (DuckDB Lakehouse, Medallion Architecture, ODCS Contracts)
+  - 15 table relationships forming star schema
+  - System linking via customProperties metadata
+- **Debug Logging**: Added domain ID logging for troubleshooting table/domain associations
+
 ## [2.1.0] - 2026-01-08
 
 ### Added

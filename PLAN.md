@@ -52,7 +52,7 @@ This document outlines the implementation of **DuckDB-WASM with OPFS (Origin Pri
 | Component | Technology | Version | Purpose |
 |-----------|------------|---------|---------|
 | In-Browser Database | `@duckdb/duckdb-wasm` | 1.29.0 (DuckDB 1.4.3) | SQL engine in WebAssembly |
-| SDK WASM | `data-modelling-sdk` | 1.13.4 | YAML parsing, validation |
+| SDK WASM | `data-modelling-sdk` | 1.13.5 | YAML parsing, validation |
 | Persistent Storage | OPFS | Browser API | Browser-native file storage |
 | State Management | Zustand | 5.0.9 | React state with DuckDB integration |
 | Query Interface | SQL | - | Standard SQL for all operations |
@@ -636,7 +636,7 @@ function StorageStatusBanner() {
 | Package | Version | Notes |
 |---------|---------|-------|
 | `@duckdb/duckdb-wasm` | 1.29.0 | DuckDB 1.4.3 core |
-| `data-modelling-sdk` (WASM) | 1.13.4 | YAML parsing, validation |
+| `data-modelling-sdk` (WASM) | 1.13.5 | YAML parsing, validation |
 
 ### WASM Bundle Size
 

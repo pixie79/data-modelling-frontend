@@ -12,7 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **V2 Save Format**: Save button now uses V2 flat file format instead of V1 folder-based format
 
 ### Changed
-- **SDK Version**: Upgraded to data-modelling-sdk 1.13.4
+- **SDK Version**: Upgraded to data-modelling-sdk 1.13.5
+  - Fixed ODCS `id` field preservation issue where contract UUIDs were lost during `TableData` construction
+  - Added ODCS v3.1.0 contract-level field preservation: `id`, `apiVersion`, `version`, `status`, `kind`, `domain`, `dataProduct`, `tenant`, `description`, `servers`, `team`, `support`, `roles`, `slaProperties`, `quality`, `price`, `tags`, `customProperties`, `authoritativeDefinitions`, `contractCreatedTs`, `odcsMetadata`
+  - SystemReference now includes optional `table_ids` and `asset_ids` UUID arrays for explicit system mapping
 
 ## [2.1.1] - 2026-01-08
 

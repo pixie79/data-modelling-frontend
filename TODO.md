@@ -17,7 +17,7 @@ This document contains all implementation tasks for integrating DuckDB-WASM with
 | Component | Version | Purpose |
 |-----------|---------|---------|
 | `@duckdb/duckdb-wasm` | 1.29.0 (DuckDB 1.4.3) | In-browser SQL database |
-| `data-modelling-sdk` | 1.13.4 | YAML parsing, validation |
+| `data-modelling-sdk` | 1.13.5 | YAML parsing, validation |
 
 ### Installation
 
@@ -43,7 +43,7 @@ npm run dev
 
 # Open browser console - should see:
 # [DuckDB] Initialized with OPFS support (DuckDB 1.4.3)
-# [SDK] Loaded data-modelling-sdk 1.13.4
+# [SDK] Loaded data-modelling-sdk 1.13.5
 ```
 
 ---
@@ -60,11 +60,11 @@ npm run dev
   - Verify: Check `node_modules/@duckdb/duckdb-wasm/package.json` shows correct version
   - Test: Log DuckDB version on initialization
 
-- [x] **T0-002**: Verify and update SDK WASM to version 1.13.4 ✅
+- [x] **T0-002**: Verify and update SDK WASM to version 1.13.5 ✅
   - File: `frontend/scripts/build-wasm.sh`
-  - Update: `SDK_VERSION="1.13.4"`
+  - Update: `SDK_VERSION="1.13.5"`
   - Run: `npm run build:wasm`
-  - Verify: Check `public/wasm/` contains 1.13.4 binaries
+  - Verify: Check `public/wasm/` contains 1.13.5 binaries
   - Test: Check `sdkLoader.ts` detects correct version
 
 - [x] **T0-003**: Audit DuckDB-WASM exported bindings ✅
@@ -74,9 +74,9 @@ npm run dev
   - Verify Arrow IPC support
   - Create: `frontend/docs/DUCKDB_BINDINGS.md`
 
-- [x] **T0-004**: Audit SDK WASM 1.13.4 exported bindings ✅
+- [x] **T0-004**: Audit SDK WASM 1.13.5 exported bindings ✅
   - Run: Load SDK and log all available methods
-  - Check for new 1.13.4 methods vs 1.13.1
+  - Check for new 1.13.5 methods vs 1.13.1
   - Verify ODCS/ODCL parsing methods
   - Verify Decision/Knowledge methods (if added)
   - Update: `frontend/src/services/sdk/sdkLoader.ts` interface
@@ -107,7 +107,7 @@ npm run dev
 
 - [x] `npm run verify:versions` passes with no errors ✅
 - [x] DuckDB-WASM 1.29.0 (DuckDB 1.4.3) installed and verified ✅
-- [x] SDK WASM 1.13.4 built and available in public/wasm/ ✅
+- [x] SDK WASM 1.13.5 built and available in public/wasm/ ✅
 - [x] Cloudflare build configuration updated with correct versions ✅
 - [x] Documentation exists for both WASM module bindings ✅
 

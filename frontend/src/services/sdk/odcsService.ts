@@ -94,6 +94,7 @@ class ODCSService {
           // Log table structure to verify quality rules are included
           if (result.tables && result.tables.length > 0) {
             console.log('[ODCSService] First table structure:', {
+              id: result.tables[0].id,
               name: result.tables[0].name,
               columnsCount: result.tables[0].columns?.length,
               hasQualityRules: !!result.tables[0].quality_rules,
@@ -101,6 +102,8 @@ class ODCSService {
               firstColumnSample: result.tables[0].columns?.[0],
             });
           }
+          // Also log the root-level id from ODCS file
+          console.log('[ODCSService] Result root-level id:', result.id);
 
           // SDK 1.8.4+: Normalize tables to ensure quality rules are in expected format
           // The SDK returns 'quality' array on columns, but UI expects 'quality_rules'

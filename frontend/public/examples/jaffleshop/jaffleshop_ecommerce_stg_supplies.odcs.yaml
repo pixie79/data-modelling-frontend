@@ -1,4 +1,4 @@
-version: "1.0.0"
+version: '1.0.0'
 apiVersion: v3.1.0
 kind: DataContract
 id: e54b55db-e643-4558-8314-7b2b3c2231ea

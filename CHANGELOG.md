@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.3] - 2026-01-08
+
+### Added
+- **Bundled Example Workspaces**: Jaffleshop example workspace now appears in the Home page workspace list
+  - Complete e-commerce data platform with medallion architecture (bronze/silver/gold)
+  - 19 ODCS data contracts, 2 ODPS data products, 3 BPMN processes
+  - 3 Knowledge articles, 3 Architecture decision records
+  - Examples automatically refresh when a new app version is deployed
+- **App Version Injection**: Added `__APP_VERSION__` build-time constant via Vite define
+
+### Changed
+- **Workspace Loader**: Added `loadFromStringFiles` method to WorkspaceV2Loader for loading workspaces from pre-loaded string content (used by bundled examples)
+- **Project Structure**: Moved Jaffleshop example from `/examples/` to `/frontend/public/examples/` for bundling with the app
+
 ## [2.1.2] - 2026-01-08
 
 ### Fixed

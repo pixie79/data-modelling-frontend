@@ -1,23 +1,23 @@
-version: "1.0.0"
+version: '1.0.0'
 apiVersion: v3.1.0
 kind: DataContract
-id: 9931fece-ad3b-46ad-8872-10ae4327501a
+id: 2d2cd506-372f-48a0-a880-a7399d8208a5
 status: active
-name: stg_locations
+name: locations
 domain: ecommerce
 tenant: jaffleshop
 
 description:
-  purpose: Staged store location data with standardized attributes
+  purpose: Location dimension table with store information
 
 schema:
-  - name: stg_locations
-    description: Cleaned and standardized location data from raw stores
-    physicalName: staging.stg_locations
+  - name: locations
+    description: Location dimension for analytics with store details
+    physicalName: marts.locations
     logicalType: object
     properties:
       - name: location_id
-        description: Standardized location identifier
+        description: Unique location identifier
         logicalType: string
         physicalType: VARCHAR
         required: true
@@ -33,7 +33,7 @@ schema:
         physicalType: DATE
         required: false
       - name: tax_rate
-        description: Location tax rate as decimal
+        description: Location tax rate
         logicalType: number
         physicalType: DOUBLE
         required: false
@@ -43,6 +43,7 @@ customProperties:
     value: ad789620-a825-4bc4-afd7-429db96a6359
 
 tags:
-  - staging
+  - mart
   - locations
-  - dm_level:Silver
+  - dimension
+  - dm_level:Gold

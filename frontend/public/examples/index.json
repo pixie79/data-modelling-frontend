@@ -1,0 +1,52 @@
+{
+  "examples": [
+    {
+      "id": "jaffleshop",
+      "name": "Jaffleshop",
+      "description": "Complete e-commerce data platform example with medallion architecture (bronze/silver/gold), BPMN processes, knowledge articles, and architecture decision records.",
+      "folder": "jaffleshop",
+      "workspaceFile": "jaffleshop.workspace.yaml",
+      "files": [
+        "jaffleshop.workspace.yaml",
+        "jaffleshop_ecommerce_adr001_duckdb_lakehouse.adr.yaml",
+        "jaffleshop_ecommerce_adr002_medallion_architecture.adr.yaml",
+        "jaffleshop_ecommerce_adr003_odcs_contracts.adr.yaml",
+        "jaffleshop_ecommerce_customer360.odps.yaml",
+        "jaffleshop_ecommerce_data_architecture_overview.kb.yaml",
+        "jaffleshop_ecommerce_data_quality_standards.kb.yaml",
+        "jaffleshop_ecommerce_mart_build.bpmn",
+        "jaffleshop_ecommerce_mart_customers.odcs.yaml",
+        "jaffleshop_ecommerce_mart_locations.odcs.yaml",
+        "jaffleshop_ecommerce_mart_metricflow_time_spine.odcs.yaml",
+        "jaffleshop_ecommerce_mart_order_items.odcs.yaml",
+        "jaffleshop_ecommerce_mart_orders.odcs.yaml",
+        "jaffleshop_ecommerce_mart_products.odcs.yaml",
+        "jaffleshop_ecommerce_mart_supplies.odcs.yaml",
+        "jaffleshop_ecommerce_metricflow_guide.kb.yaml",
+        "jaffleshop_ecommerce_raw_customers.odcs.yaml",
+        "jaffleshop_ecommerce_raw_ingestion.bpmn",
+        "jaffleshop_ecommerce_raw_items.odcs.yaml",
+        "jaffleshop_ecommerce_raw_orders.odcs.yaml",
+        "jaffleshop_ecommerce_raw_products.odcs.yaml",
+        "jaffleshop_ecommerce_raw_stores.odcs.yaml",
+        "jaffleshop_ecommerce_raw_supplies.odcs.yaml",
+        "jaffleshop_ecommerce_sales_analytics.odps.yaml",
+        "jaffleshop_ecommerce_staging_transform.bpmn",
+        "jaffleshop_ecommerce_stg_customers.odcs.yaml",
+        "jaffleshop_ecommerce_stg_locations.odcs.yaml",
+        "jaffleshop_ecommerce_stg_order_items.odcs.yaml",
+        "jaffleshop_ecommerce_stg_orders.odcs.yaml",
+        "jaffleshop_ecommerce_stg_products.odcs.yaml",
+        "jaffleshop_ecommerce_stg_supplies.odcs.yaml"
+      ],
+      "features": [
+        "19 ODCS data contracts",
+        "2 ODPS data products",
+        "3 BPMN processes",
+        "3 Knowledge articles",
+        "3 Architecture decision records",
+        "Star schema relationships"
+      ]
+    }
+  ]
+}

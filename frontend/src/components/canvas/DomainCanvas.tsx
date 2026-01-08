@@ -503,12 +503,18 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
   // Get systems for current domain
   const domainSystems = useMemo(() => {
     const filtered = systems.filter((s) => s.domain_id === domainId);
-    console.log(`[DomainCanvas] Filtering systems for domain ${domainId}:`, {
-      totalSystems: systems.length,
-      filteredCount: filtered.length,
-      systems: systems.map((s) => ({ id: s.id, name: s.name, domain_id: s.domain_id })),
-      filtered: filtered.map((s) => ({ id: s.id, name: s.name, domain_id: s.domain_id })),
-    });
+    // Debug: Log detailed info if no systems match
+    if (systems.length > 0 && filtered.length === 0) {
+      console.warn(`[DomainCanvas] No systems match domain ${domainId}!`, {
+        totalSystems: systems.length,
+        systemDomainIds: systems.map((s) => ({
+          name: s.name,
+          domain_id: s.domain_id,
+          table_ids_count: (s.table_ids || []).length,
+        })),
+        expectedDomainId: domainId,
+      });
+    }
     return filtered;
   }, [systems, domainId]);
 

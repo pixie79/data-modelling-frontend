@@ -141,8 +141,24 @@ class DuckDBService implements IDuckDBService {
         this.config.debug ? duckdb.LogLevel.DEBUG : duckdb.LogLevel.WARNING
       );
 
-      // Create worker from the selected bundle
-      const worker = new Worker(selectedBundle.mainWorker!);
+      // Create worker - handle CDN URLs which can't be loaded directly due to CORS
+      const workerUrl = selectedBundle.mainWorker!;
+      let worker: Worker;
+
+      if (this.config.useCDN && workerUrl.startsWith('http')) {
+        // For CDN URLs, we need to create a blob worker that imports the script
+        // This works around the same-origin policy for Web Workers
+        this.log(`Creating blob worker wrapper for CDN: ${workerUrl}`);
+        const workerScript = `importScripts('${workerUrl}');`;
+        const blob = new Blob([workerScript], { type: 'application/javascript' });
+        const blobUrl = URL.createObjectURL(blob);
+        worker = new Worker(blobUrl);
+        // Clean up blob URL after worker is created (worker has already loaded it)
+        URL.revokeObjectURL(blobUrl);
+      } else {
+        // Local files can be loaded directly
+        worker = new Worker(workerUrl);
+      }
 
       // Create AsyncDuckDB instance
       this.db = new duckdb.AsyncDuckDB(logger, worker);

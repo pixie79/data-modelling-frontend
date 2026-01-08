@@ -221,8 +221,8 @@ if (!('encodeInto' in cachedTextEncoder)) {
 
 let WASM_VECTOR_LEN = 0;
 
-function wasm_bindgen__convert__closures________invoke__h9df7878001327b6f(arg0, arg1, arg2) {
-  wasm.wasm_bindgen__convert__closures________invoke__h9df7878001327b6f(arg0, arg1, arg2);
+function wasm_bindgen__convert__closures________invoke__h88f474df8bbbc020(arg0, arg1, arg2) {
+  wasm.wasm_bindgen__convert__closures________invoke__h88f474df8bbbc020(arg0, arg1, arg2);
 }
 
 function wasm_bindgen__convert__closures_____invoke__h3aa4f50d9cb64e36(arg0, arg1, arg2) {
@@ -240,6 +240,49 @@ const __wbindgen_enum_IdbTransactionMode = [
   'readwriteflush',
   'cleanup',
 ];
+
+/**
+ * Add an article to a knowledge index.
+ *
+ * # Arguments
+ *
+ * * `index_json` - JSON string containing KnowledgeIndex
+ * * `article_json` - JSON string containing KnowledgeArticle
+ * * `filename` - Filename for the article YAML file
+ *
+ * # Returns
+ *
+ * JSON string containing updated KnowledgeIndex, or JsValue error
+ * @param {string} index_json
+ * @param {string} article_json
+ * @param {string} filename
+ * @returns {string}
+ */
+export function add_article_to_knowledge_index(index_json, article_json, filename) {
+  let deferred5_0;
+  let deferred5_1;
+  try {
+    const ptr0 = passStringToWasm0(index_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(article_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passStringToWasm0(filename, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ret = wasm.add_article_to_knowledge_index(ptr0, len0, ptr1, len1, ptr2, len2);
+    var ptr4 = ret[0];
+    var len4 = ret[1];
+    if (ret[3]) {
+      ptr4 = 0;
+      len4 = 0;
+      throw takeFromExternrefTable0(ret[2]);
+    }
+    deferred5_0 = ptr4;
+    deferred5_1 = len4;
+    return getStringFromWasm0(ptr4, len4);
+  } finally {
+    wasm.__wbindgen_free(deferred5_0, deferred5_1, 1);
+  }
+}
 
 /**
  * Add a CADS node to a domain in a DataModel.
@@ -269,6 +312,49 @@ export function add_cads_node_to_domain(workspace_json, domain_id, node_json) {
     const ptr2 = passStringToWasm0(node_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
     const len2 = WASM_VECTOR_LEN;
     const ret = wasm.add_cads_node_to_domain(ptr0, len0, ptr1, len1, ptr2, len2);
+    var ptr4 = ret[0];
+    var len4 = ret[1];
+    if (ret[3]) {
+      ptr4 = 0;
+      len4 = 0;
+      throw takeFromExternrefTable0(ret[2]);
+    }
+    deferred5_0 = ptr4;
+    deferred5_1 = len4;
+    return getStringFromWasm0(ptr4, len4);
+  } finally {
+    wasm.__wbindgen_free(deferred5_0, deferred5_1, 1);
+  }
+}
+
+/**
+ * Add a decision to an index.
+ *
+ * # Arguments
+ *
+ * * `index_json` - JSON string containing DecisionIndex
+ * * `decision_json` - JSON string containing Decision
+ * * `filename` - Filename for the decision YAML file
+ *
+ * # Returns
+ *
+ * JSON string containing updated DecisionIndex, or JsValue error
+ * @param {string} index_json
+ * @param {string} decision_json
+ * @param {string} filename
+ * @returns {string}
+ */
+export function add_decision_to_index(index_json, decision_json, filename) {
+  let deferred5_0;
+  let deferred5_1;
+  try {
+    const ptr0 = passStringToWasm0(index_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(decision_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passStringToWasm0(filename, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ret = wasm.add_decision_to_index(ptr0, len0, ptr1, len1, ptr2, len2);
     var ptr4 = ret[0];
     var len4 = ret[1];
     if (ret[3]) {
@@ -689,6 +775,79 @@ export function convert_to_odcs(input, format) {
 }
 
 /**
+ * Create a new decision with required fields.
+ *
+ * # Arguments
+ *
+ * * `number` - Decision number (ADR-0001, ADR-0002, etc.)
+ * * `title` - Short title describing the decision
+ * * `context` - Problem statement and context
+ * * `decision` - The decision that was made
+ *
+ * # Returns
+ *
+ * JSON string containing Decision, or JsValue error
+ * @param {number} number
+ * @param {string} title
+ * @param {string} context
+ * @param {string} decision
+ * @returns {string}
+ */
+export function create_decision(number, title, context, decision) {
+  let deferred5_0;
+  let deferred5_1;
+  try {
+    const ptr0 = passStringToWasm0(title, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(context, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passStringToWasm0(decision, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ret = wasm.create_decision(number, ptr0, len0, ptr1, len1, ptr2, len2);
+    var ptr4 = ret[0];
+    var len4 = ret[1];
+    if (ret[3]) {
+      ptr4 = 0;
+      len4 = 0;
+      throw takeFromExternrefTable0(ret[2]);
+    }
+    deferred5_0 = ptr4;
+    deferred5_1 = len4;
+    return getStringFromWasm0(ptr4, len4);
+  } finally {
+    wasm.__wbindgen_free(deferred5_0, deferred5_1, 1);
+  }
+}
+
+/**
+ * Create a new empty decision index.
+ *
+ * # Returns
+ *
+ * JSON string containing DecisionIndex, or JsValue error
+ * @returns {string}
+ */
+export function create_decision_index() {
+  let deferred2_0;
+  let deferred2_1;
+  try {
+    const ret = wasm.create_decision_index();
+    var ptr1 = ret[0];
+    var len1 = ret[1];
+    if (ret[3]) {
+      ptr1 = 0;
+      len1 = 0;
+      throw takeFromExternrefTable0(ret[2]);
+    }
+    deferred2_0 = ptr1;
+    deferred2_1 = len1;
+    return getStringFromWasm0(ptr1, len1);
+  } finally {
+    wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+  }
+}
+
+/**
  * Create a new business domain.
  *
  * # Arguments
@@ -759,6 +918,93 @@ export function create_domain_config(name, workspace_id) {
     return getStringFromWasm0(ptr3, len3);
   } finally {
     wasm.__wbindgen_free(deferred4_0, deferred4_1, 1);
+  }
+}
+
+/**
+ * Create a new knowledge article with required fields.
+ *
+ * # Arguments
+ *
+ * * `number` - Article number (1, 2, 3, etc. - will be formatted as KB-0001)
+ * * `title` - Article title
+ * * `summary` - Brief summary of the article
+ * * `content` - Full article content in Markdown
+ * * `author` - Article author (email or name)
+ *
+ * # Returns
+ *
+ * JSON string containing KnowledgeArticle, or JsValue error
+ * @param {number} number
+ * @param {string} title
+ * @param {string} summary
+ * @param {string} content
+ * @param {string} author
+ * @returns {string}
+ */
+export function create_knowledge_article(number, title, summary, content, author) {
+  let deferred6_0;
+  let deferred6_1;
+  try {
+    const ptr0 = passStringToWasm0(title, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(summary, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passStringToWasm0(content, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passStringToWasm0(author, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.create_knowledge_article(
+      number,
+      ptr0,
+      len0,
+      ptr1,
+      len1,
+      ptr2,
+      len2,
+      ptr3,
+      len3
+    );
+    var ptr5 = ret[0];
+    var len5 = ret[1];
+    if (ret[3]) {
+      ptr5 = 0;
+      len5 = 0;
+      throw takeFromExternrefTable0(ret[2]);
+    }
+    deferred6_0 = ptr5;
+    deferred6_1 = len5;
+    return getStringFromWasm0(ptr5, len5);
+  } finally {
+    wasm.__wbindgen_free(deferred6_0, deferred6_1, 1);
+  }
+}
+
+/**
+ * Create a new empty knowledge index.
+ *
+ * # Returns
+ *
+ * JSON string containing KnowledgeIndex, or JsValue error
+ * @returns {string}
+ */
+export function create_knowledge_index() {
+  let deferred2_0;
+  let deferred2_1;
+  try {
+    const ret = wasm.create_knowledge_index();
+    var ptr1 = ret[0];
+    var len1 = ret[1];
+    if (ret[3]) {
+      ptr1 = 0;
+      len1 = 0;
+      throw takeFromExternrefTable0(ret[2]);
+    }
+    deferred2_0 = ptr1;
+    deferred2_1 = len1;
+    return getStringFromWasm0(ptr1, len1);
+  } finally {
+    wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
   }
 }
 
@@ -849,6 +1095,111 @@ export function detect_naming_conflicts(existing_tables_json, new_tables_json) {
 }
 
 /**
+ * Export a decisions index to YAML format.
+ *
+ * # Arguments
+ *
+ * * `index_json` - JSON string containing DecisionIndex
+ *
+ * # Returns
+ *
+ * DecisionIndex YAML format string, or JsValue error
+ * @param {string} index_json
+ * @returns {string}
+ */
+export function export_decision_index_to_yaml(index_json) {
+  let deferred3_0;
+  let deferred3_1;
+  try {
+    const ptr0 = passStringToWasm0(index_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.export_decision_index_to_yaml(ptr0, len0);
+    var ptr2 = ret[0];
+    var len2 = ret[1];
+    if (ret[3]) {
+      ptr2 = 0;
+      len2 = 0;
+      throw takeFromExternrefTable0(ret[2]);
+    }
+    deferred3_0 = ptr2;
+    deferred3_1 = len2;
+    return getStringFromWasm0(ptr2, len2);
+  } finally {
+    wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+  }
+}
+
+/**
+ * Export a decision to Markdown format (MADR template).
+ *
+ * # Arguments
+ *
+ * * `decision_json` - JSON string containing Decision
+ *
+ * # Returns
+ *
+ * Decision Markdown string, or JsValue error
+ * @param {string} decision_json
+ * @returns {string}
+ */
+export function export_decision_to_markdown(decision_json) {
+  let deferred3_0;
+  let deferred3_1;
+  try {
+    const ptr0 = passStringToWasm0(decision_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.export_decision_to_markdown(ptr0, len0);
+    var ptr2 = ret[0];
+    var len2 = ret[1];
+    if (ret[3]) {
+      ptr2 = 0;
+      len2 = 0;
+      throw takeFromExternrefTable0(ret[2]);
+    }
+    deferred3_0 = ptr2;
+    deferred3_1 = len2;
+    return getStringFromWasm0(ptr2, len2);
+  } finally {
+    wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+  }
+}
+
+/**
+ * Export a decision to YAML format.
+ *
+ * # Arguments
+ *
+ * * `decision_json` - JSON string containing Decision
+ *
+ * # Returns
+ *
+ * Decision YAML format string, or JsValue error
+ * @param {string} decision_json
+ * @returns {string}
+ */
+export function export_decision_to_yaml(decision_json) {
+  let deferred3_0;
+  let deferred3_1;
+  try {
+    const ptr0 = passStringToWasm0(decision_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.export_decision_to_yaml(ptr0, len0);
+    var ptr2 = ret[0];
+    var len2 = ret[1];
+    if (ret[3]) {
+      ptr2 = 0;
+      len2 = 0;
+      throw takeFromExternrefTable0(ret[2]);
+    }
+    deferred3_0 = ptr2;
+    deferred3_1 = len2;
+    return getStringFromWasm0(ptr2, len2);
+  } finally {
+    wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+  }
+}
+
+/**
  * Export a domain config to YAML format.
  *
  * # Arguments
@@ -868,6 +1219,111 @@ export function export_domain_config_to_yaml(config_json) {
     const ptr0 = passStringToWasm0(config_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
     const len0 = WASM_VECTOR_LEN;
     const ret = wasm.export_domain_config_to_yaml(ptr0, len0);
+    var ptr2 = ret[0];
+    var len2 = ret[1];
+    if (ret[3]) {
+      ptr2 = 0;
+      len2 = 0;
+      throw takeFromExternrefTable0(ret[2]);
+    }
+    deferred3_0 = ptr2;
+    deferred3_1 = len2;
+    return getStringFromWasm0(ptr2, len2);
+  } finally {
+    wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+  }
+}
+
+/**
+ * Export a knowledge index to YAML format.
+ *
+ * # Arguments
+ *
+ * * `index_json` - JSON string containing KnowledgeIndex
+ *
+ * # Returns
+ *
+ * KnowledgeIndex YAML format string, or JsValue error
+ * @param {string} index_json
+ * @returns {string}
+ */
+export function export_knowledge_index_to_yaml(index_json) {
+  let deferred3_0;
+  let deferred3_1;
+  try {
+    const ptr0 = passStringToWasm0(index_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.export_knowledge_index_to_yaml(ptr0, len0);
+    var ptr2 = ret[0];
+    var len2 = ret[1];
+    if (ret[3]) {
+      ptr2 = 0;
+      len2 = 0;
+      throw takeFromExternrefTable0(ret[2]);
+    }
+    deferred3_0 = ptr2;
+    deferred3_1 = len2;
+    return getStringFromWasm0(ptr2, len2);
+  } finally {
+    wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+  }
+}
+
+/**
+ * Export a knowledge article to Markdown format.
+ *
+ * # Arguments
+ *
+ * * `article_json` - JSON string containing KnowledgeArticle
+ *
+ * # Returns
+ *
+ * KnowledgeArticle Markdown string, or JsValue error
+ * @param {string} article_json
+ * @returns {string}
+ */
+export function export_knowledge_to_markdown(article_json) {
+  let deferred3_0;
+  let deferred3_1;
+  try {
+    const ptr0 = passStringToWasm0(article_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.export_knowledge_to_markdown(ptr0, len0);
+    var ptr2 = ret[0];
+    var len2 = ret[1];
+    if (ret[3]) {
+      ptr2 = 0;
+      len2 = 0;
+      throw takeFromExternrefTable0(ret[2]);
+    }
+    deferred3_0 = ptr2;
+    deferred3_1 = len2;
+    return getStringFromWasm0(ptr2, len2);
+  } finally {
+    wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+  }
+}
+
+/**
+ * Export a knowledge article to YAML format.
+ *
+ * # Arguments
+ *
+ * * `article_json` - JSON string containing KnowledgeArticle
+ *
+ * # Returns
+ *
+ * KnowledgeArticle YAML format string, or JsValue error
+ * @param {string} article_json
+ * @returns {string}
+ */
+export function export_knowledge_to_yaml(article_json) {
+  let deferred3_0;
+  let deferred3_1;
+  try {
+    const ptr0 = passStringToWasm0(article_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.export_knowledge_to_yaml(ptr0, len0);
     var ptr2 = ret[0];
     var len2 = ret[1];
     if (ret[3]) {
@@ -1966,6 +2422,76 @@ export function migrate_dataflow_to_domain(dataflow_yaml, domain_name) {
 }
 
 /**
+ * Parse a decisions index YAML file and return a structured representation.
+ *
+ * # Arguments
+ *
+ * * `yaml_content` - Decisions index YAML content as a string (decisions.yaml)
+ *
+ * # Returns
+ *
+ * JSON string containing DecisionIndex, or JsValue error
+ * @param {string} yaml_content
+ * @returns {string}
+ */
+export function parse_decision_index_yaml(yaml_content) {
+  let deferred3_0;
+  let deferred3_1;
+  try {
+    const ptr0 = passStringToWasm0(yaml_content, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.parse_decision_index_yaml(ptr0, len0);
+    var ptr2 = ret[0];
+    var len2 = ret[1];
+    if (ret[3]) {
+      ptr2 = 0;
+      len2 = 0;
+      throw takeFromExternrefTable0(ret[2]);
+    }
+    deferred3_0 = ptr2;
+    deferred3_1 = len2;
+    return getStringFromWasm0(ptr2, len2);
+  } finally {
+    wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+  }
+}
+
+/**
+ * Parse a decision YAML file and return a structured representation.
+ *
+ * # Arguments
+ *
+ * * `yaml_content` - Decision YAML content as a string (.madr.yaml)
+ *
+ * # Returns
+ *
+ * JSON string containing Decision, or JsValue error
+ * @param {string} yaml_content
+ * @returns {string}
+ */
+export function parse_decision_yaml(yaml_content) {
+  let deferred3_0;
+  let deferred3_1;
+  try {
+    const ptr0 = passStringToWasm0(yaml_content, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.parse_decision_yaml(ptr0, len0);
+    var ptr2 = ret[0];
+    var len2 = ret[1];
+    if (ret[3]) {
+      ptr2 = 0;
+      len2 = 0;
+      throw takeFromExternrefTable0(ret[2]);
+    }
+    deferred3_0 = ptr2;
+    deferred3_1 = len2;
+    return getStringFromWasm0(ptr2, len2);
+  } finally {
+    wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+  }
+}
+
+/**
  * Parse domain config YAML content and return a structured representation.
  *
  * # Arguments
@@ -1985,6 +2511,76 @@ export function parse_domain_config_yaml(yaml_content) {
     const ptr0 = passStringToWasm0(yaml_content, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
     const len0 = WASM_VECTOR_LEN;
     const ret = wasm.parse_domain_config_yaml(ptr0, len0);
+    var ptr2 = ret[0];
+    var len2 = ret[1];
+    if (ret[3]) {
+      ptr2 = 0;
+      len2 = 0;
+      throw takeFromExternrefTable0(ret[2]);
+    }
+    deferred3_0 = ptr2;
+    deferred3_1 = len2;
+    return getStringFromWasm0(ptr2, len2);
+  } finally {
+    wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+  }
+}
+
+/**
+ * Parse a knowledge index YAML file and return a structured representation.
+ *
+ * # Arguments
+ *
+ * * `yaml_content` - Knowledge index YAML content as a string (knowledge.yaml)
+ *
+ * # Returns
+ *
+ * JSON string containing KnowledgeIndex, or JsValue error
+ * @param {string} yaml_content
+ * @returns {string}
+ */
+export function parse_knowledge_index_yaml(yaml_content) {
+  let deferred3_0;
+  let deferred3_1;
+  try {
+    const ptr0 = passStringToWasm0(yaml_content, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.parse_knowledge_index_yaml(ptr0, len0);
+    var ptr2 = ret[0];
+    var len2 = ret[1];
+    if (ret[3]) {
+      ptr2 = 0;
+      len2 = 0;
+      throw takeFromExternrefTable0(ret[2]);
+    }
+    deferred3_0 = ptr2;
+    deferred3_1 = len2;
+    return getStringFromWasm0(ptr2, len2);
+  } finally {
+    wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+  }
+}
+
+/**
+ * Parse a knowledge article YAML file and return a structured representation.
+ *
+ * # Arguments
+ *
+ * * `yaml_content` - Knowledge article YAML content as a string (.kb.yaml)
+ *
+ * # Returns
+ *
+ * JSON string containing KnowledgeArticle, or JsValue error
+ * @param {string} yaml_content
+ * @returns {string}
+ */
+export function parse_knowledge_yaml(yaml_content) {
+  let deferred3_0;
+  let deferred3_1;
+  try {
+    const ptr0 = passStringToWasm0(yaml_content, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.parse_knowledge_yaml(ptr0, len0);
     var ptr2 = ret[0];
     var len2 = ret[1];
     if (ret[3]) {
@@ -2361,6 +2957,45 @@ export function save_model(db_name, store_name, workspace_path, model_json) {
   const len3 = WASM_VECTOR_LEN;
   const ret = wasm.save_model(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
   return ret;
+}
+
+/**
+ * Search knowledge articles by title, summary, or content.
+ *
+ * # Arguments
+ *
+ * * `articles_json` - JSON string containing array of KnowledgeArticle
+ * * `query` - Search query string (case-insensitive)
+ *
+ * # Returns
+ *
+ * JSON string containing array of matching KnowledgeArticle, or JsValue error
+ * @param {string} articles_json
+ * @param {string} query
+ * @returns {string}
+ */
+export function search_knowledge_articles(articles_json, query) {
+  let deferred4_0;
+  let deferred4_1;
+  try {
+    const ptr0 = passStringToWasm0(articles_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(query, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.search_knowledge_articles(ptr0, len0, ptr1, len1);
+    var ptr3 = ret[0];
+    var len3 = ret[1];
+    if (ret[3]) {
+      ptr3 = 0;
+      len3 = 0;
+      throw takeFromExternrefTable0(ret[2]);
+    }
+    deferred4_0 = ptr3;
+    deferred4_1 = len3;
+    return getStringFromWasm0(ptr3, len3);
+  } finally {
+    wasm.__wbindgen_free(deferred4_0, deferred4_1, 1);
+  }
 }
 
 /**
@@ -3020,23 +3655,23 @@ function __wbg_get_imports() {
       return ret;
     }, arguments);
   };
+  imports.wbg.__wbindgen_cast_1af63eebcda956bc = function (arg0, arg1) {
+    // Cast intrinsic for `Closure(Closure { dtor_idx: 475, function: Function { arguments: [Ref(NamedExternref("IDBVersionChangeEvent"))], shim_idx: 476, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+    const ret = makeMutClosure(
+      arg0,
+      arg1,
+      wasm.wasm_bindgen__closure__destroy__h7a03584dd9f375ea,
+      wasm_bindgen__convert__closures________invoke__h88f474df8bbbc020
+    );
+    return ret;
+  };
   imports.wbg.__wbindgen_cast_2241b6af4c4b2941 = function (arg0, arg1) {
     // Cast intrinsic for `Ref(String) -> Externref`.
     const ret = getStringFromWasm0(arg0, arg1);
     return ret;
   };
-  imports.wbg.__wbindgen_cast_3da92dc1cdcb3e00 = function (arg0, arg1) {
-    // Cast intrinsic for `Closure(Closure { dtor_idx: 112, function: Function { arguments: [Ref(NamedExternref("IDBVersionChangeEvent"))], shim_idx: 113, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
-    const ret = makeMutClosure(
-      arg0,
-      arg1,
-      wasm.wasm_bindgen__closure__destroy__h02c1026866e56e90,
-      wasm_bindgen__convert__closures________invoke__h9df7878001327b6f
-    );
-    return ret;
-  };
-  imports.wbg.__wbindgen_cast_549a70017b889585 = function (arg0, arg1) {
-    // Cast intrinsic for `Closure(Closure { dtor_idx: 601, function: Function { arguments: [Externref], shim_idx: 602, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+  imports.wbg.__wbindgen_cast_3d295003f458b237 = function (arg0, arg1) {
+    // Cast intrinsic for `Closure(Closure { dtor_idx: 598, function: Function { arguments: [Externref], shim_idx: 599, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
     const ret = makeMutClosure(
       arg0,
       arg1,

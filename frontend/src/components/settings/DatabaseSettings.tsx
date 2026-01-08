@@ -9,11 +9,40 @@ import type { DatabaseConfig } from '@/types/database';
 import { DatabaseBackend, getDatabaseBackendLabel, validateDatabaseConfig } from '@/types/database';
 import { databaseConfigService } from '@/services/storage/databaseConfigService';
 import { sdkLoader } from '@/services/sdk/sdkLoader';
+import { useDuckDBContextSafe } from '@/contexts/DuckDBContext';
+import { StorageMode } from '@/types/duckdb';
 
 export interface DatabaseSettingsProps {
   workspacePath: string;
   className?: string;
   onConfigChange?: (config: DatabaseConfig) => void;
+}
+
+/**
+ * Format bytes to human-readable string
+ */
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+/**
+ * Get storage mode label
+ */
+function getStorageModeLabel(mode: StorageMode | null): string {
+  switch (mode) {
+    case StorageMode.OPFS:
+      return 'OPFS (Persistent)';
+    case StorageMode.Memory:
+      return 'In-Memory (Volatile)';
+    case StorageMode.IndexedDB:
+      return 'IndexedDB';
+    default:
+      return 'Not initialized';
+  }
 }
 
 export const DatabaseSettings: React.FC<DatabaseSettingsProps> = ({
@@ -27,6 +56,9 @@ export const DatabaseSettings: React.FC<DatabaseSettingsProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
   const [sdkSupported, setSdkSupported] = useState(false);
+
+  // DuckDB-WASM context (may be null if not wrapped in provider)
+  const duckdbContext = useDuckDBContextSafe();
 
   // Load configuration on mount
   useEffect(() => {
@@ -121,6 +153,126 @@ export const DatabaseSettings: React.FC<DatabaseSettingsProps> = ({
       {error && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
           {error}
+        </div>
+      )}
+
+      {/* Browser Storage Status (DuckDB-WASM) */}
+      {duckdbContext && (
+        <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+            <svg
+              className="w-5 h-5 text-blue-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"
+              />
+            </svg>
+            Browser Storage (DuckDB-WASM)
+          </h4>
+
+          <div className="space-y-3">
+            {/* Status */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Status</span>
+              <span
+                className={`text-sm font-medium ${duckdbContext.isReady ? 'text-green-600' : duckdbContext.isInitializing ? 'text-yellow-600' : 'text-gray-500'}`}
+              >
+                {duckdbContext.isReady
+                  ? 'Ready'
+                  : duckdbContext.isInitializing
+                    ? 'Initializing...'
+                    : 'Not initialized'}
+              </span>
+            </div>
+
+            {/* Storage Mode */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Storage Mode</span>
+              <span className="text-sm font-medium text-gray-900">
+                {getStorageModeLabel(duckdbContext.storageMode)}
+              </span>
+            </div>
+
+            {/* OPFS Status */}
+            {duckdbContext.capabilities && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">OPFS Support</span>
+                <span
+                  className={`text-sm font-medium ${duckdbContext.capabilities.opfs ? 'text-green-600' : 'text-red-600'}`}
+                >
+                  {duckdbContext.capabilities.opfs ? 'Supported' : 'Not supported'}
+                </span>
+              </div>
+            )}
+
+            {/* Cross-Origin Isolation */}
+            {duckdbContext.capabilities && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Cross-Origin Isolated</span>
+                <span
+                  className={`text-sm font-medium ${duckdbContext.capabilities.crossOriginIsolated ? 'text-green-600' : 'text-yellow-600'}`}
+                >
+                  {duckdbContext.capabilities.crossOriginIsolated ? 'Yes' : 'No'}
+                </span>
+              </div>
+            )}
+
+            {/* Storage Quota */}
+            {duckdbContext.quotaInfo && (
+              <div className="mt-3 pt-3 border-t border-gray-200">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-gray-600">Storage Used</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    {formatBytes(duckdbContext.quotaInfo.usage)} /{' '}
+                    {formatBytes(duckdbContext.quotaInfo.quota)}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className={`h-2 rounded-full ${duckdbContext.quotaInfo.usagePercent > 90 ? 'bg-red-500' : duckdbContext.quotaInfo.usagePercent > 70 ? 'bg-yellow-500' : 'bg-blue-500'}`}
+                    style={{ width: `${Math.min(duckdbContext.quotaInfo.usagePercent, 100)}%` }}
+                  />
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {duckdbContext.quotaInfo.usagePercent.toFixed(1)}% used
+                </div>
+              </div>
+            )}
+
+            {/* Warnings */}
+            {duckdbContext.capabilities?.warnings &&
+              duckdbContext.capabilities.warnings.length > 0 && (
+                <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-700">
+                  <strong>Warnings:</strong>
+                  <ul className="list-disc list-inside mt-1">
+                    {duckdbContext.capabilities.warnings.map((warning, i) => (
+                      <li key={i}>{warning}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+            {/* Error */}
+            {duckdbContext.error && (
+              <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
+                <strong>Error:</strong> {duckdbContext.error.message}
+              </div>
+            )}
+
+            {/* Storage mode warning */}
+            {duckdbContext.storageMode === StorageMode.Memory && (
+              <div className="mt-3 p-2 bg-orange-50 border border-orange-200 rounded text-xs text-orange-700">
+                <strong>Warning:</strong> Using in-memory storage. Data will be lost when you close
+                or refresh the browser.
+              </div>
+            )}
+          </div>
         </div>
       )}
 

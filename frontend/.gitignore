@@ -46,5 +46,8 @@ lerna-debug.log*
 # public/wasm/*.js
 # public/wasm/*.ts
 
-
-
+# DuckDB database files
+*.duckdb
+*.duckdb.wal
+*.duckdb-journal
+*.db

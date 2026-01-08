@@ -1,3 +1,37 @@
 name = "data-modelling-frontend"
-compatibility_date = "2024-01-01"
+compatibility_date = "2024-12-01"
 pages_build_output_dir = "frontend/dist"
+
+# Build command configuration
+# Uses custom build script that handles WASM SDK download and DuckDB-WASM setup
+[build]
+command = "cd frontend && ./cloudflare-build.sh"
+
+# Environment variables for the build
+[vars]
+WASM_SDK_VERSION = "1.13.2"
+
+# Headers for WASM files (required for proper MIME types and cross-origin isolation)
+[[headers]]
+for = "/wasm/*"
+[headers.values]
+Content-Type = "application/wasm"
+Cross-Origin-Embedder-Policy = "require-corp"
+Cross-Origin-Opener-Policy = "same-origin"
+
+[[headers]]
+for = "/duckdb/*"
+[headers.values]
+Content-Type = "application/wasm"
+Cross-Origin-Embedder-Policy = "require-corp"
+Cross-Origin-Opener-Policy = "same-origin"
+
+[[headers]]
+for = "/*.wasm"
+[headers.values]
+Content-Type = "application/wasm"
+
+[[headers]]
+for = "/*.worker.js"
+[headers.values]
+Content-Type = "application/javascript"

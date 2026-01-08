@@ -6,7 +6,8 @@ import path from 'path';
 // Use absolute paths for web/Docker, relative paths for Electron
 // VITE_BASE_PATH can be set to './' for Electron builds, '/' for web builds
 // Check if we're building for Electron by checking if VITE_ELECTRON_BUILD is set
-const basePath = process.env.VITE_BASE_PATH || (process.env.VITE_ELECTRON_BUILD === 'true' ? './' : '/');
+const basePath =
+  process.env.VITE_BASE_PATH || (process.env.VITE_ELECTRON_BUILD === 'true' ? './' : '/');
 
 export default defineConfig({
   base: basePath,
@@ -17,10 +18,14 @@ export default defineConfig({
     },
   },
   // Content Security Policy for bpmn-js/dmn-js inline styles
+  // Cross-Origin headers required for SharedArrayBuffer (DuckDB-WASM performance)
   server: {
     port: 5173,
     headers: {
-      'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:;",
+      'Content-Security-Policy':
+        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; worker-src 'self' blob:;",
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Embedder-Policy': 'require-corp',
     },
     proxy: {
       '/api': {
@@ -43,9 +48,16 @@ export default defineConfig({
         // Preserve WASM files in the build at the root wasm/ directory
         // This ensures they're accessible via ./wasm/ from dist/index.html
         assetFileNames: (assetInfo) => {
-          // Keep WASM files and their JS loaders in wasm/ directory (no hash for easier path resolution)
-          if (assetInfo.name && (assetInfo.name.endsWith('.wasm') || assetInfo.name.includes('data_modelling_sdk'))) {
+          // Keep SDK WASM files in wasm/ directory (no hash for easier path resolution)
+          if (
+            assetInfo.name &&
+            (assetInfo.name.endsWith('.wasm') || assetInfo.name.includes('data_modelling_sdk'))
+          ) {
             return 'wasm/[name][extname]';
+          }
+          // Keep DuckDB WASM files in duckdb/ directory
+          if (assetInfo.name && assetInfo.name.includes('duckdb')) {
+            return 'duckdb/[name][extname]';
           }
           return 'assets/[name]-[hash][extname]';
         },
@@ -53,28 +65,29 @@ export default defineConfig({
     },
   },
   // Optimize WASM handling
+  // Exclude DuckDB-WASM from pre-bundling (it needs to load WASM files dynamically)
   optimizeDeps: {
-    exclude: ['data-modelling-sdk'],
+    exclude: ['data-modelling-sdk', '@duckdb/duckdb-wasm'],
   },
   test: {
     globals: true,
     environment: 'jsdom',
     setupFiles: './tests/setup.ts',
     exclude: [
-          '**/node_modules/**',
-          '**/dist/**',
-          '**/build/**',
-          '**/e2e/**', // Exclude E2E tests (Playwright)
-          '**/*.e2e.test.ts',
-          '**/*.e2e.test.tsx',
-          '**/tests/unit/services/api/**', // Exclude API tests (not relevant for offline mode)
-          '**/tests/integration/sync.test.ts', // Exclude sync tests (API-dependent)
-          '**/tests/unit/hooks/useWebSocket.test.ts', // Exclude WebSocket tests (API-dependent)
-          '**/tests/unit/hooks/useCollaboration.test.ts', // Exclude collaboration tests (API-dependent)
-          '**/tests/unit/services/websocket/**', // Exclude WebSocket service tests (API-dependent)
-          '**/tests/unit/services/sync/**', // Exclude sync service tests (API-dependent)
-          '**/tests/integration/collaboration.test.ts', // Exclude collaboration integration tests (API-dependent)
-        ],
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/build/**',
+      '**/e2e/**', // Exclude E2E tests (Playwright)
+      '**/*.e2e.test.ts',
+      '**/*.e2e.test.tsx',
+      '**/tests/unit/services/api/**', // Exclude API tests (not relevant for offline mode)
+      '**/tests/integration/sync.test.ts', // Exclude sync tests (API-dependent)
+      '**/tests/unit/hooks/useWebSocket.test.ts', // Exclude WebSocket tests (API-dependent)
+      '**/tests/unit/hooks/useCollaboration.test.ts', // Exclude collaboration tests (API-dependent)
+      '**/tests/unit/services/websocket/**', // Exclude WebSocket service tests (API-dependent)
+      '**/tests/unit/services/sync/**', // Exclude sync service tests (API-dependent)
+      '**/tests/integration/collaboration.test.ts', // Exclude collaboration integration tests (API-dependent)
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
@@ -96,4 +109,3 @@ export default defineConfig({
     },
   },
 });
-

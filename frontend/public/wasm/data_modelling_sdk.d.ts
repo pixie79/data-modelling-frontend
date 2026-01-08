@@ -2,6 +2,25 @@
 /* eslint-disable */
 
 /**
+ * Add an article to a knowledge index.
+ *
+ * # Arguments
+ *
+ * * `index_json` - JSON string containing KnowledgeIndex
+ * * `article_json` - JSON string containing KnowledgeArticle
+ * * `filename` - Filename for the article YAML file
+ *
+ * # Returns
+ *
+ * JSON string containing updated KnowledgeIndex, or JsValue error
+ */
+export function add_article_to_knowledge_index(
+  index_json: string,
+  article_json: string,
+  filename: string
+): string;
+
+/**
  * Add a CADS node to a domain in a DataModel.
  *
  * # Arguments
@@ -18,6 +37,25 @@ export function add_cads_node_to_domain(
   workspace_json: string,
   domain_id: string,
   node_json: string
+): string;
+
+/**
+ * Add a decision to an index.
+ *
+ * # Arguments
+ *
+ * * `index_json` - JSON string containing DecisionIndex
+ * * `decision_json` - JSON string containing Decision
+ * * `filename` - Filename for the decision YAML file
+ *
+ * # Returns
+ *
+ * JSON string containing updated DecisionIndex, or JsValue error
+ */
+export function add_decision_to_index(
+  index_json: string,
+  decision_json: string,
+  filename: string
 ): string;
 
 /**
@@ -181,6 +219,36 @@ export function convert_openapi_to_odcs(
 export function convert_to_odcs(input: string, format?: string | null): string;
 
 /**
+ * Create a new decision with required fields.
+ *
+ * # Arguments
+ *
+ * * `number` - Decision number (ADR-0001, ADR-0002, etc.)
+ * * `title` - Short title describing the decision
+ * * `context` - Problem statement and context
+ * * `decision` - The decision that was made
+ *
+ * # Returns
+ *
+ * JSON string containing Decision, or JsValue error
+ */
+export function create_decision(
+  number: number,
+  title: string,
+  context: string,
+  decision: string
+): string;
+
+/**
+ * Create a new empty decision index.
+ *
+ * # Returns
+ *
+ * JSON string containing DecisionIndex, or JsValue error
+ */
+export function create_decision_index(): string;
+
+/**
  * Create a new business domain.
  *
  * # Arguments
@@ -206,6 +274,38 @@ export function create_domain(name: string): string;
  * JSON string containing DomainConfig, or JsValue error
  */
 export function create_domain_config(name: string, workspace_id: string): string;
+
+/**
+ * Create a new knowledge article with required fields.
+ *
+ * # Arguments
+ *
+ * * `number` - Article number (1, 2, 3, etc. - will be formatted as KB-0001)
+ * * `title` - Article title
+ * * `summary` - Brief summary of the article
+ * * `content` - Full article content in Markdown
+ * * `author` - Article author (email or name)
+ *
+ * # Returns
+ *
+ * JSON string containing KnowledgeArticle, or JsValue error
+ */
+export function create_knowledge_article(
+  number: number,
+  title: string,
+  summary: string,
+  content: string,
+  author: string
+): string;
+
+/**
+ * Create a new empty knowledge index.
+ *
+ * # Returns
+ *
+ * JSON string containing KnowledgeIndex, or JsValue error
+ */
+export function create_knowledge_index(): string;
 
 /**
  * Create a new workspace.
@@ -239,6 +339,45 @@ export function detect_naming_conflicts(
 ): string;
 
 /**
+ * Export a decisions index to YAML format.
+ *
+ * # Arguments
+ *
+ * * `index_json` - JSON string containing DecisionIndex
+ *
+ * # Returns
+ *
+ * DecisionIndex YAML format string, or JsValue error
+ */
+export function export_decision_index_to_yaml(index_json: string): string;
+
+/**
+ * Export a decision to Markdown format (MADR template).
+ *
+ * # Arguments
+ *
+ * * `decision_json` - JSON string containing Decision
+ *
+ * # Returns
+ *
+ * Decision Markdown string, or JsValue error
+ */
+export function export_decision_to_markdown(decision_json: string): string;
+
+/**
+ * Export a decision to YAML format.
+ *
+ * # Arguments
+ *
+ * * `decision_json` - JSON string containing Decision
+ *
+ * # Returns
+ *
+ * Decision YAML format string, or JsValue error
+ */
+export function export_decision_to_yaml(decision_json: string): string;
+
+/**
  * Export a domain config to YAML format.
  *
  * # Arguments
@@ -250,6 +389,45 @@ export function detect_naming_conflicts(
  * DomainConfig YAML format string, or JsValue error
  */
 export function export_domain_config_to_yaml(config_json: string): string;
+
+/**
+ * Export a knowledge index to YAML format.
+ *
+ * # Arguments
+ *
+ * * `index_json` - JSON string containing KnowledgeIndex
+ *
+ * # Returns
+ *
+ * KnowledgeIndex YAML format string, or JsValue error
+ */
+export function export_knowledge_index_to_yaml(index_json: string): string;
+
+/**
+ * Export a knowledge article to Markdown format.
+ *
+ * # Arguments
+ *
+ * * `article_json` - JSON string containing KnowledgeArticle
+ *
+ * # Returns
+ *
+ * KnowledgeArticle Markdown string, or JsValue error
+ */
+export function export_knowledge_to_markdown(article_json: string): string;
+
+/**
+ * Export a knowledge article to YAML format.
+ *
+ * # Arguments
+ *
+ * * `article_json` - JSON string containing KnowledgeArticle
+ *
+ * # Returns
+ *
+ * KnowledgeArticle YAML format string, or JsValue error
+ */
+export function export_knowledge_to_yaml(article_json: string): string;
 
 /**
  * Export an OpenAPI specification to YAML or JSON content.
@@ -675,6 +853,32 @@ export function migrate_dataflow_to_domain(
 ): string;
 
 /**
+ * Parse a decisions index YAML file and return a structured representation.
+ *
+ * # Arguments
+ *
+ * * `yaml_content` - Decisions index YAML content as a string (decisions.yaml)
+ *
+ * # Returns
+ *
+ * JSON string containing DecisionIndex, or JsValue error
+ */
+export function parse_decision_index_yaml(yaml_content: string): string;
+
+/**
+ * Parse a decision YAML file and return a structured representation.
+ *
+ * # Arguments
+ *
+ * * `yaml_content` - Decision YAML content as a string (.madr.yaml)
+ *
+ * # Returns
+ *
+ * JSON string containing Decision, or JsValue error
+ */
+export function parse_decision_yaml(yaml_content: string): string;
+
+/**
  * Parse domain config YAML content and return a structured representation.
  *
  * # Arguments
@@ -686,6 +890,32 @@ export function migrate_dataflow_to_domain(
  * JSON string containing DomainConfig, or JsValue error
  */
 export function parse_domain_config_yaml(yaml_content: string): string;
+
+/**
+ * Parse a knowledge index YAML file and return a structured representation.
+ *
+ * # Arguments
+ *
+ * * `yaml_content` - Knowledge index YAML content as a string (knowledge.yaml)
+ *
+ * # Returns
+ *
+ * JSON string containing KnowledgeIndex, or JsValue error
+ */
+export function parse_knowledge_index_yaml(yaml_content: string): string;
+
+/**
+ * Parse a knowledge article YAML file and return a structured representation.
+ *
+ * # Arguments
+ *
+ * * `yaml_content` - Knowledge article YAML content as a string (.kb.yaml)
+ *
+ * # Returns
+ *
+ * JSON string containing KnowledgeArticle, or JsValue error
+ */
+export function parse_knowledge_yaml(yaml_content: string): string;
 
 /**
  * Import data model from legacy ODCL (Open Data Contract Language) YAML format.
@@ -844,6 +1074,20 @@ export function save_model(
 ): Promise<any>;
 
 /**
+ * Search knowledge articles by title, summary, or content.
+ *
+ * # Arguments
+ *
+ * * `articles_json` - JSON string containing array of KnowledgeArticle
+ * * `query` - Search query string (case-insensitive)
+ *
+ * # Returns
+ *
+ * JSON string containing array of matching KnowledgeArticle, or JsValue error
+ */
+export function search_knowledge_articles(articles_json: string, query: string): string;
+
+/**
  * Serialize a Tag enum to string format.
  *
  * # Arguments
@@ -982,7 +1226,23 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 
 export interface InitOutput {
   readonly memory: WebAssembly.Memory;
+  readonly add_article_to_knowledge_index: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number
+  ) => [number, number, number, number];
   readonly add_cads_node_to_domain: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number
+  ) => [number, number, number, number];
+  readonly add_decision_to_index: (
     a: number,
     b: number,
     c: number,
@@ -1056,6 +1316,16 @@ export interface InitOutput {
     c: number,
     d: number
   ) => [number, number, number, number];
+  readonly create_decision: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number
+  ) => [number, number, number, number];
+  readonly create_decision_index: () => [number, number, number, number];
   readonly create_domain: (a: number, b: number) => [number, number, number, number];
   readonly create_domain_config: (
     a: number,
@@ -1063,6 +1333,18 @@ export interface InitOutput {
     c: number,
     d: number
   ) => [number, number, number, number];
+  readonly create_knowledge_article: (
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+    g: number,
+    h: number,
+    i: number
+  ) => [number, number, number, number];
+  readonly create_knowledge_index: () => [number, number, number, number];
   readonly create_workspace: (
     a: number,
     b: number,
@@ -1075,7 +1357,19 @@ export interface InitOutput {
     c: number,
     d: number
   ) => [number, number, number, number];
+  readonly export_decision_index_to_yaml: (
+    a: number,
+    b: number
+  ) => [number, number, number, number];
+  readonly export_decision_to_markdown: (a: number, b: number) => [number, number, number, number];
+  readonly export_decision_to_yaml: (a: number, b: number) => [number, number, number, number];
   readonly export_domain_config_to_yaml: (a: number, b: number) => [number, number, number, number];
+  readonly export_knowledge_index_to_yaml: (
+    a: number,
+    b: number
+  ) => [number, number, number, number];
+  readonly export_knowledge_to_markdown: (a: number, b: number) => [number, number, number, number];
+  readonly export_knowledge_to_yaml: (a: number, b: number) => [number, number, number, number];
   readonly export_openapi_spec: (
     a: number,
     b: number,
@@ -1169,7 +1463,11 @@ export interface InitOutput {
     c: number,
     d: number
   ) => [number, number, number, number];
+  readonly parse_decision_index_yaml: (a: number, b: number) => [number, number, number, number];
+  readonly parse_decision_yaml: (a: number, b: number) => [number, number, number, number];
   readonly parse_domain_config_yaml: (a: number, b: number) => [number, number, number, number];
+  readonly parse_knowledge_index_yaml: (a: number, b: number) => [number, number, number, number];
+  readonly parse_knowledge_yaml: (a: number, b: number) => [number, number, number, number];
   readonly parse_odcl_yaml: (a: number, b: number) => [number, number, number, number];
   readonly parse_odcs_yaml: (a: number, b: number) => [number, number, number, number];
   readonly parse_tag: (a: number, b: number) => [number, number, number, number];
@@ -1211,6 +1509,12 @@ export interface InitOutput {
     g: number,
     h: number
   ) => any;
+  readonly search_knowledge_articles: (
+    a: number,
+    b: number,
+    c: number,
+    d: number
+  ) => [number, number, number, number];
   readonly serialize_tag: (a: number, b: number) => [number, number, number, number];
   readonly update_domain_view_positions: (
     a: number,
@@ -1231,12 +1535,12 @@ export interface InitOutput {
   readonly validate_pattern_exclusivity: (a: number, b: number) => [number, number, number, number];
   readonly validate_table_name: (a: number, b: number) => [number, number, number, number];
   readonly validate_uuid: (a: number, b: number) => [number, number, number, number];
-  readonly wasm_bindgen__convert__closures________invoke__h9df7878001327b6f: (
+  readonly wasm_bindgen__convert__closures________invoke__h88f474df8bbbc020: (
     a: number,
     b: number,
     c: any
   ) => void;
-  readonly wasm_bindgen__closure__destroy__h02c1026866e56e90: (a: number, b: number) => void;
+  readonly wasm_bindgen__closure__destroy__h7a03584dd9f375ea: (a: number, b: number) => void;
   readonly wasm_bindgen__convert__closures_____invoke__h3aa4f50d9cb64e36: (
     a: number,
     b: number,

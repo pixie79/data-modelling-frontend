@@ -2,6 +2,7 @@
 # Cloudflare Pages build script
 # This script builds the frontend application for Cloudflare Pages
 # It downloads pre-built WASM SDK from GitHub Releases (REQUIRED)
+# It also sets up DuckDB-WASM for in-browser database operations
 
 set -e
 
@@ -15,31 +16,38 @@ export VITE_BASE_PATH="/"
 echo "📦 Installing npm dependencies..."
 npm ci
 
-# WASM SDK version to download (defaults to latest release, or set via WASM_SDK_VERSION env var)
-WASM_SDK_VERSION="${WASM_SDK_VERSION:-latest}"
+# =============================================================================
+# Version Configuration
+# =============================================================================
+# WASM SDK version (defaults to 1.13.2, or set via WASM_SDK_VERSION env var)
+WASM_SDK_VERSION="${WASM_SDK_VERSION:-1.13.2}"
 SDK_REPO="${WASM_SDK_REPO:-pixie79/data-modelling-sdk}"
 WASM_OUT_DIR="public/wasm"
+
+# DuckDB-WASM version (should match @duckdb/duckdb-wasm in package.json)
+DUCKDB_WASM_VERSION="1.29.0"
+DUCKDB_OUT_DIR="public/duckdb"
 
 # Function to download WASM SDK from GitHub Releases
 # REQUIRED: Build will fail if WASM SDK cannot be downloaded
 download_wasm_sdk() {
   local version=$1
   local repo=$2
-  
+
   echo "📥 Downloading WASM SDK from GitHub Releases (REQUIRED)..."
-  
+
   if [ "$version" = "latest" ]; then
     # Get latest release tag
     echo "   Fetching latest release tag..."
     RELEASE_TAG=$(curl -s "https://api.github.com/repos/${repo}/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/' || echo "")
-    
+
     if [ -z "$RELEASE_TAG" ]; then
       echo "❌ ERROR: Could not fetch latest release tag from ${repo}"
       echo "   Please ensure the SDK repository has published releases"
       echo "   Or set WASM_SDK_VERSION to a specific version (e.g., 1.7.0)"
       exit 1
     fi
-    
+
     # Extract version number from tag (e.g., v1.7.0 -> 1.7.0)
     VERSION_NUM=${RELEASE_TAG#v}
     echo "   Latest release: ${RELEASE_TAG} (version ${VERSION_NUM})"
@@ -48,33 +56,33 @@ download_wasm_sdk() {
     RELEASE_TAG="v${version}"
     echo "   Using specified version: ${VERSION_NUM}"
   fi
-  
+
   # Download WASM archive
   ARCHIVE_URL="https://github.com/${repo}/releases/download/${RELEASE_TAG}/data-modelling-sdk-wasm-v${VERSION_NUM}.tar.gz"
   ARCHIVE_FILE="wasm-sdk.tar.gz"
-  
+
   echo "   Downloading from: ${ARCHIVE_URL}"
-  
+
   if curl -L -f -o "$ARCHIVE_FILE" "$ARCHIVE_URL"; then
     echo "✅ Downloaded WASM SDK successfully"
-    
+
     # Create output directory
     mkdir -p "$WASM_OUT_DIR"
-    
+
     # Extract archive
     echo "   Extracting WASM files..."
     tar -xzf "$ARCHIVE_FILE" -C "$WASM_OUT_DIR"
-    
+
     # Verify WASM files were extracted
     if [ ! -f "$WASM_OUT_DIR/data_modelling_sdk.js" ]; then
       echo "❌ ERROR: WASM SDK extraction failed - data_modelling_sdk.js not found"
       rm -f "$ARCHIVE_FILE"
       exit 1
     fi
-    
+
     # Clean up
     rm -f "$ARCHIVE_FILE"
-    
+
     echo "✅ WASM SDK installed to ${WASM_OUT_DIR}"
     return 0
   else
@@ -92,6 +100,50 @@ download_wasm_sdk() {
   fi
 }
 
+# Function to copy DuckDB-WASM files from node_modules
+# REQUIRED: Build will fail if DuckDB-WASM files cannot be copied
+copy_duckdb_wasm() {
+  echo "📥 Setting up DuckDB-WASM files..."
+
+  local duckdb_pkg="node_modules/@duckdb/duckdb-wasm/dist"
+
+  if [ ! -d "$duckdb_pkg" ]; then
+    echo "❌ ERROR: DuckDB-WASM package not found at ${duckdb_pkg}"
+    echo "   Please ensure @duckdb/duckdb-wasm is installed"
+    exit 1
+  fi
+
+  # Create output directory
+  mkdir -p "$DUCKDB_OUT_DIR"
+
+  # Copy WASM files (using eh bundle for better error handling)
+  echo "   Copying DuckDB-WASM files..."
+  cp "$duckdb_pkg/duckdb-mvp.wasm" "$DUCKDB_OUT_DIR/" 2>/dev/null || true
+  cp "$duckdb_pkg/duckdb-eh.wasm" "$DUCKDB_OUT_DIR/"
+  cp "$duckdb_pkg/duckdb-browser-mvp.worker.js" "$DUCKDB_OUT_DIR/" 2>/dev/null || true
+  cp "$duckdb_pkg/duckdb-browser-eh.worker.js" "$DUCKDB_OUT_DIR/"
+
+  # Verify required files were copied
+  if [ ! -f "$DUCKDB_OUT_DIR/duckdb-eh.wasm" ]; then
+    echo "❌ ERROR: Failed to copy DuckDB-WASM files"
+    exit 1
+  fi
+
+  # Verify version
+  local installed_version=$(node -p "require('@duckdb/duckdb-wasm/package.json').version" 2>/dev/null || echo "unknown")
+  if [ "$installed_version" != "$DUCKDB_WASM_VERSION" ]; then
+    echo "⚠️  WARNING: DuckDB-WASM version mismatch"
+    echo "   Expected: ${DUCKDB_WASM_VERSION}"
+    echo "   Installed: ${installed_version}"
+  fi
+
+  echo "✅ DuckDB-WASM ${installed_version} installed to ${DUCKDB_OUT_DIR}"
+}
+
+# =============================================================================
+# Download/Copy WASM Dependencies
+# =============================================================================
+
 # Download WASM SDK (REQUIRED - build will fail if this fails)
 if [ -z "$CLOUDFLARE_SKIP_WASM" ]; then
   download_wasm_sdk "$WASM_SDK_VERSION" "$SDK_REPO"
@@ -102,9 +154,36 @@ else
   echo "   Build will continue but the application may not function correctly"
 fi
 
+# Copy DuckDB-WASM files (REQUIRED)
+copy_duckdb_wasm
+
+# =============================================================================
+# Build Application
+# =============================================================================
+
 # Build the frontend application
 echo "🔨 Building frontend application..."
 npm run build
 
-echo "✅ Build complete! Output directory: dist"
+# =============================================================================
+# Verify Build Output
+# =============================================================================
 
+echo "🔍 Verifying build output..."
+
+# Check SDK WASM files in dist
+if [ ! -f "dist/wasm/data_modelling_sdk.js" ]; then
+  echo "⚠️  WARNING: SDK WASM files may not be in build output"
+fi
+
+# Check DuckDB WASM files in dist
+if [ ! -f "dist/duckdb/duckdb-eh.wasm" ]; then
+  echo "⚠️  WARNING: DuckDB WASM files may not be in build output"
+fi
+
+echo "✅ Build complete! Output directory: dist"
+echo ""
+echo "📋 Build Summary:"
+echo "   - SDK WASM Version: ${WASM_SDK_VERSION}"
+echo "   - DuckDB-WASM Version: ${DUCKDB_WASM_VERSION}"
+echo "   - Output Directory: dist"

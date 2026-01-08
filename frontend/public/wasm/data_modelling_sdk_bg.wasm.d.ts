@@ -1,7 +1,23 @@
 /* tslint:disable */
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
+export const add_article_to_knowledge_index: (
+  a: number,
+  b: number,
+  c: number,
+  d: number,
+  e: number,
+  f: number
+) => [number, number, number, number];
 export const add_cads_node_to_domain: (
+  a: number,
+  b: number,
+  c: number,
+  d: number,
+  e: number,
+  f: number
+) => [number, number, number, number];
+export const add_decision_to_index: (
   a: number,
   b: number,
   c: number,
@@ -75,6 +91,16 @@ export const convert_to_odcs: (
   c: number,
   d: number
 ) => [number, number, number, number];
+export const create_decision: (
+  a: number,
+  b: number,
+  c: number,
+  d: number,
+  e: number,
+  f: number,
+  g: number
+) => [number, number, number, number];
+export const create_decision_index: () => [number, number, number, number];
 export const create_domain: (a: number, b: number) => [number, number, number, number];
 export const create_domain_config: (
   a: number,
@@ -82,6 +108,18 @@ export const create_domain_config: (
   c: number,
   d: number
 ) => [number, number, number, number];
+export const create_knowledge_article: (
+  a: number,
+  b: number,
+  c: number,
+  d: number,
+  e: number,
+  f: number,
+  g: number,
+  h: number,
+  i: number
+) => [number, number, number, number];
+export const create_knowledge_index: () => [number, number, number, number];
 export const create_workspace: (
   a: number,
   b: number,
@@ -94,10 +132,28 @@ export const detect_naming_conflicts: (
   c: number,
   d: number
 ) => [number, number, number, number];
+export const export_decision_index_to_yaml: (
+  a: number,
+  b: number
+) => [number, number, number, number];
+export const export_decision_to_markdown: (
+  a: number,
+  b: number
+) => [number, number, number, number];
+export const export_decision_to_yaml: (a: number, b: number) => [number, number, number, number];
 export const export_domain_config_to_yaml: (
   a: number,
   b: number
 ) => [number, number, number, number];
+export const export_knowledge_index_to_yaml: (
+  a: number,
+  b: number
+) => [number, number, number, number];
+export const export_knowledge_to_markdown: (
+  a: number,
+  b: number
+) => [number, number, number, number];
+export const export_knowledge_to_yaml: (a: number, b: number) => [number, number, number, number];
 export const export_openapi_spec: (
   a: number,
   b: number,
@@ -191,7 +247,11 @@ export const migrate_dataflow_to_domain: (
   c: number,
   d: number
 ) => [number, number, number, number];
+export const parse_decision_index_yaml: (a: number, b: number) => [number, number, number, number];
+export const parse_decision_yaml: (a: number, b: number) => [number, number, number, number];
 export const parse_domain_config_yaml: (a: number, b: number) => [number, number, number, number];
+export const parse_knowledge_index_yaml: (a: number, b: number) => [number, number, number, number];
+export const parse_knowledge_yaml: (a: number, b: number) => [number, number, number, number];
 export const parse_odcl_yaml: (a: number, b: number) => [number, number, number, number];
 export const parse_odcs_yaml: (a: number, b: number) => [number, number, number, number];
 export const parse_tag: (a: number, b: number) => [number, number, number, number];
@@ -233,6 +293,12 @@ export const save_model: (
   g: number,
   h: number
 ) => any;
+export const search_knowledge_articles: (
+  a: number,
+  b: number,
+  c: number,
+  d: number
+) => [number, number, number, number];
 export const serialize_tag: (a: number, b: number) => [number, number, number, number];
 export const update_domain_view_positions: (
   a: number,
@@ -256,12 +322,12 @@ export const validate_pattern_exclusivity: (
 ) => [number, number, number, number];
 export const validate_table_name: (a: number, b: number) => [number, number, number, number];
 export const validate_uuid: (a: number, b: number) => [number, number, number, number];
-export const wasm_bindgen__convert__closures________invoke__h9df7878001327b6f: (
+export const wasm_bindgen__convert__closures________invoke__h88f474df8bbbc020: (
   a: number,
   b: number,
   c: any
 ) => void;
-export const wasm_bindgen__closure__destroy__h02c1026866e56e90: (a: number, b: number) => void;
+export const wasm_bindgen__closure__destroy__h7a03584dd9f375ea: (a: number, b: number) => void;
 export const wasm_bindgen__convert__closures_____invoke__h3aa4f50d9cb64e36: (
   a: number,
   b: number,

@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-01-08
+
+### Added
+- **DuckDB-WASM Integration**: Complete in-browser SQL database with OPFS persistence
+  - DuckDB-WASM 1.29.0 (DuckDB 1.4.3) for in-browser SQL queries
+  - OPFS (Origin Private File System) for persistent storage
+  - Automatic fallback to in-memory mode for unsupported browsers
+  - Type-safe query builder with fluent API
+  - YAML ↔ DuckDB synchronization engine with hash-based change detection
+  - React hooks: `useDuckDB`, `useQuery`, `useMutation`, `useSyncStatus`
+  - DuckDB context provider for application-wide database access
+- **Database UI Components**:
+  - `DatabaseSettings`: OPFS status, storage quota, sync configuration
+  - `StorageStatusBanner`: Browser compatibility warnings
+  - `ExportDatabaseDialog`: Export to JSON, CSV, or DuckDB format
+  - `ImportDatabaseDialog`: Import with merge/replace options
+  - `QueryConsole`: Developer SQL query interface (dev mode)
+  - `DatabaseInspector`: Table browser and schema viewer (dev mode)
+- **Electron DuckDB Support**:
+  - Native file export/import via IPC handlers
+  - Git hooks integration for DuckDB ↔ YAML sync (pre-commit, post-checkout, post-merge)
+- **Documentation**:
+  - `frontend/docs/DUCKDB_GUIDE.md`: User guide with browser compatibility and architecture
+  - `frontend/docs/api/DUCKDB_SERVICE.md`: DuckDB service API reference
+  - `frontend/docs/api/SYNC_ENGINE.md`: Sync engine API reference
+  - `frontend/docs/DUCKDB_BINDINGS.md`: DuckDB-WASM bindings documentation
+  - `frontend/docs/SDK_BINDINGS.md`: SDK WASM bindings documentation
+- **Testing**: 117 new unit tests for DuckDB services
+  - `duckdbService.test.ts`: 30 API contract tests
+  - `queryBuilder.test.ts`: 50 query builder tests
+  - `opfsManager.test.ts`: 18 OPFS manager tests
+  - `syncEngine.test.ts`: 19 sync engine tests
+
+### Changed
+- **SDK Version**: Upgraded to data-modelling-sdk 1.13.2
+- **Build Configuration**: Vite configured for WASM MIME types and SharedArrayBuffer headers
+- **Test Suite**: Expanded from 487 to 604 tests
+
 ## [2.0.0] - 2026-01-07
 
 ### Added

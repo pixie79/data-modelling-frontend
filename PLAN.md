@@ -1,587 +1,662 @@
-# SDK 1.13.1 Upgrade Plan
+# DuckDB-WASM with OPFS Integration Plan
 
 ## Executive Summary
 
-This document outlines the comprehensive plan for upgrading the Open Data Modelling application from SDK 1.8.4 to SDK 1.13.1. The upgrade introduces three major feature areas:
+This document outlines the implementation of **DuckDB-WASM with OPFS (Origin Private File System)** for the Open Data Modelling application. This enables high-performance SQL queries in the browser with persistent storage that survives browser restarts.
 
-1. **DuckDB Storage Backend** - High-performance embedded database replacing file-based array operations
-2. **MADR Decision Logs** - Architecture Decision Records with full lifecycle management
-3. **Knowledge Base System** - Domain documentation and knowledge article management
-
-## Current State Analysis
-
-### Application Overview
-- **Package**: `open-data-modelling` v1.1.2
-- **Current SDK Version**: 1.8.4 (WASM)
-- **Architecture**: React + TypeScript + Electron (offline-first)
-- **Storage**: File-based YAML with IndexedDB caching (browser) / Direct filesystem (Electron)
-
-### Current SDK Integration Points
-| Service | Location | Current SDK Methods |
-|---------|----------|---------------------|
-| odcsService | `services/sdk/odcsService.ts` | `parse_odcs_yaml`, `export_to_odcs_yaml` |
-| odpsService | `services/sdk/odpsService.ts` | `parse_odps_yaml`, `export_to_odps_yaml` |
-| cadsService | `services/sdk/cadsService.ts` | `parse_cads_yaml`, `export_to_cads_yaml` |
-| bpmnService | `services/sdk/bpmnService.ts` | `parse_bpmn_xml`, `export_to_bpmn_xml`, `validate_bpmn_xml` |
-| dmnService | `services/sdk/dmnService.ts` | `parse_dmn_xml`, `export_to_dmn_xml`, `validate_dmn_xml` |
-| openapiService | `services/sdk/openapiService.ts` | `parse_openapi`, `export_openapi`, `openapi_to_odcs` |
-| importExportService | `services/sdk/importExportService.ts` | SQL/AVRO/Protobuf/JSON Schema methods |
-| filterService | `services/sdk/filterService.ts` | `filter_by_tags`, `filter_nodes_by_*` methods |
-| sdkLoader | `services/sdk/sdkLoader.ts` | Module initialization and version detection |
-
-### Performance Bottlenecks (Addressed by DuckDB)
-- O(n) array operations for finding/filtering entities
-- Relationship graph traversal becomes prohibitive at scale (10s+ for 10,000 tables)
-- Tag-based filtering scans full arrays
-- Complex folder hierarchy requiring recursive directory traversal
+**Key Benefits:**
+- 10-100x query performance improvement over array operations
+- Persistent storage via OPFS (no data loss on refresh)
+- Works offline in both browser and Electron
+- Exportable `.duckdb` files for CLI/analytics tools
+- No backend server required
 
 ---
 
-## New Features in SDK 1.13.1
+## Architecture Overview
 
-### 1. DuckDB Storage Backend
-
-#### Overview
-The DuckDB integration provides an embedded analytical database offering 10-100x performance improvement over file-based operations for large workspaces.
-
-#### Key Components
-- **DatabaseBackend trait** - Unified interface for database operations
-- **DuckDBBackend** - Embedded analytical database implementation
-- **SyncEngine** - Bidirectional YAML ↔ Database synchronization
-- **DatabaseConfig** - Configuration via `.data-model.toml`
-
-#### New SDK Methods
-```typescript
-// Database operations (via CLI/Electron IPC)
-db_init(workspace_path: string): Promise<void>
-db_sync(workspace_path: string): Promise<SyncResult>
-db_status(workspace_path: string): Promise<DatabaseStatus>
-db_export(workspace_path: string): Promise<ExportResult>
-query(sql: string): Promise<QueryResult>
 ```
-
-#### Configuration
-```toml
-# .data-model.toml
-[database]
-backend = "duckdb"
-path = ".data-model.duckdb"
-
-[sync]
-auto_sync = true
-watch = false
-
-[git]
-hooks_enabled = true
-```
-
-#### Database Schema
-- Core tables: `workspaces`, `domains`, `systems`, `tables`, `columns`, `relationships`
-- Resource tables: `products`, `compute_assets`, `bpmn_processes`, `dmn_decisions`
-- Normalized `tags` table for efficient filtering
-- `sync_metadata` for file change tracking
-
-### 2. MADR Decision Logs
-
-#### Overview
-Architecture Decision Records (ADRs) following the MADR format with full lifecycle management.
-
-#### Data Models
-```typescript
-interface Decision {
-  id: string;
-  number: number;
-  title: string;
-  status: DecisionStatus;
-  category: DecisionCategory;
-  context: string;
-  decision: string;
-  consequences: string;
-  options: DecisionOption[];
-  domain_id?: string;
-  created_at: string;
-  updated_at: string;
-  superseded_by?: string;
-  tags: Tag[];
-}
-
-enum DecisionStatus {
-  Draft = 'draft',
-  Proposed = 'proposed',
-  Accepted = 'accepted',
-  Deprecated = 'deprecated',
-  Superseded = 'superseded',
-  Rejected = 'rejected'
-}
-
-enum DecisionCategory {
-  Architecture = 'architecture',
-  Technology = 'technology',
-  Process = 'process',
-  Security = 'security',
-  Data = 'data',
-  Integration = 'integration'
-}
-
-interface DecisionOption {
-  title: string;
-  description: string;
-  pros: string[];
-  cons: string[];
-}
-```
-
-#### New SDK Methods
-```typescript
-// Decision loading
-load_decisions(): Promise<Decision[]>
-load_decision_index(): Promise<DecisionIndex>
-load_decisions_by_domain(domain_id: string): Promise<Decision[]>
-
-// Decision saving
-save_decision(decision: Decision): Promise<void>
-save_decision_index(index: DecisionIndex): Promise<void>
-export_decision_markdown(decision_id: string): Promise<string>
-```
-
-#### File Structure
-```
-decisions/
-├── index.yaml           # Decision index with metadata
-├── 0001-use-duckdb.yaml # Individual decision files
-├── 0002-adopt-madr.yaml
-└── ...
-decisions-md/
-├── 0001-use-duckdb.md   # Auto-generated markdown
-└── ...
-```
-
-### 3. Knowledge Base System
-
-#### Overview
-Domain documentation system for guides, references, tutorials, and runbooks.
-
-#### Data Models
-```typescript
-interface KnowledgeArticle {
-  id: string;
-  number: number;
-  title: string;
-  type: ArticleType;
-  status: ArticleStatus;
-  summary: string;
-  content: string;
-  domain_id?: string;
-  authors: string[];
-  reviewers: string[];
-  created_at: string;
-  updated_at: string;
-  published_at?: string;
-  tags: Tag[];
-}
-
-enum ArticleType {
-  Guide = 'guide',
-  Reference = 'reference',
-  Concept = 'concept',
-  Tutorial = 'tutorial',
-  Troubleshooting = 'troubleshooting',
-  Runbook = 'runbook'
-}
-
-enum ArticleStatus {
-  Draft = 'draft',
-  Review = 'review',
-  Published = 'published',
-  Archived = 'archived',
-  Deprecated = 'deprecated'
-}
-```
-
-#### New SDK Methods
-```typescript
-// Knowledge loading
-load_knowledge(): Promise<KnowledgeArticle[]>
-load_knowledge_index(): Promise<KnowledgeIndex>
-load_knowledge_by_domain(domain_id: string): Promise<KnowledgeArticle[]>
-
-// Knowledge saving
-save_knowledge(article: KnowledgeArticle): Promise<void>
-save_knowledge_index(index: KnowledgeIndex): Promise<void>
-export_knowledge_markdown(article_id: string): Promise<string>
-
-// Search
-search_knowledge(query: string): Promise<KnowledgeArticle[]>
-```
-
-#### File Structure
-```
-knowledge/
-├── index.yaml              # Knowledge index
-├── 0001-data-governance.yaml
-├── 0002-odcs-best-practices.yaml
-└── ...
-knowledge-md/
-├── 0001-data-governance.md  # Auto-generated markdown
-└── ...
-```
-
-### 4. Additional SDK Enhancements
-
-#### Enhanced CADS Assets
-```typescript
-interface CADSAsset {
-  // ... existing fields ...
-  bpmn_models: CADSBPMNModel[];      // Cross-model BPMN references
-  dmn_models: CADSDMNModel[];         // Cross-model DMN references
-  openapi_specs: CADSOpenAPISpec[];   // Cross-model OpenAPI references
-}
-```
-
-#### Enhanced Relationships
-```typescript
-interface Relationship {
-  // ... existing fields ...
-  color?: string;           // UI display color
-  drawio_edge_id?: string;  // Diagram integration
-}
-```
-
-#### Workspace Model Updates
-```typescript
-interface Workspace {
-  // ... existing fields ...
-  relationships: Relationship[];  // Embedded in workspace (no separate file)
-}
-```
-
-#### Domain-Based File Organization
-New flat file naming convention:
-```
-{workspace}_{domain}_{system}_{resource}.{type}.yaml
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        Browser / Electron                               │
+│                                                                         │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │  React Application                                               │   │
+│  │                                                                   │   │
+│  │  ┌─────────────┐    ┌─────────────────┐    ┌─────────────────┐  │   │
+│  │  │ YAML Files  │───▶│ DuckDB-WASM     │◀──▶│ OPFS Storage    │  │   │
+│  │  │ (workspace) │    │ (in-browser DB) │    │ (persistent)    │  │   │
+│  │  └─────────────┘    └─────────────────┘    └─────────────────┘  │   │
+│  │         │                   │                       │            │   │
+│  │         │                   ▼                       │            │   │
+│  │         │           ┌─────────────────┐             │            │   │
+│  │         │           │ SQL Queries     │             │            │   │
+│  │         │           │ O(1) Lookups    │             │            │   │
+│  │         │           │ Graph Traversal │             │            │   │
+│  │         │           └─────────────────┘             │            │   │
+│  │         │                   │                       │            │   │
+│  │         ▼                   ▼                       ▼            │   │
+│  │  ┌─────────────────────────────────────────────────────────────┐│   │
+│  │  │                    Export / Import                          ││   │
+│  │  │  • Download .duckdb file (for CLI/analytics)                ││   │
+│  │  │  • Import existing .duckdb file                             ││   │
+│  │  │  • Export to Parquet (cross-platform)                       ││   │
+│  │  └─────────────────────────────────────────────────────────────┘│   │
+│  └─────────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Implementation Phases
+## Technology Stack
 
-### Phase 1: Foundation (Weeks 1-2)
-
-#### 1.1 SDK Update
-- Update WASM SDK to 1.13.1
-- Update `sdkLoader.ts` with new method detection
-- Add new SDK methods to interface definitions
-- Verify all existing functionality continues to work
-
-#### 1.2 Type System Updates
-- Add Decision and DecisionOption types
-- Add KnowledgeArticle types
-- Add DecisionStatus and ArticleStatus enums
-- Add DecisionCategory and ArticleType enums
-- Update Relationship type with new fields
-- Update CADSAsset type with cross-model references
-- Add DatabaseConfig types
-
-#### 1.3 Configuration System
-- Add `.data-model.toml` configuration support
-- Create configuration types and validation
-- Add configuration UI in Settings component
-
-### Phase 2: DuckDB Integration (Weeks 3-5)
-
-#### 2.1 Database Service Layer
-- Create `databaseService.ts` for database operations
-- Implement database initialization
-- Implement sync operations
-- Implement query interface
-- Add database status monitoring
-
-#### 2.2 Storage Layer Updates
-- Update `electronFileService.ts` with DuckDB support
-- Add database-first loading option
-- Implement fallback to YAML when database unavailable
-- Add sync metadata tracking
-
-#### 2.3 Performance Optimizations
-- Replace array-based filtering with database queries
-- Implement indexed lookups for IDs
-- Optimize relationship graph queries
-- Add query caching layer
-
-#### 2.4 Git Hook Integration (Electron Only)
-- Implement pre-commit hook (database → YAML export)
-- Implement post-checkout hook (YAML → database sync)
-- Add hook configuration UI
-
-### Phase 3: Decision Logs (Weeks 6-7)
-
-#### 3.1 Decision Service
-- Create `decisionService.ts` for CRUD operations
-- Implement decision loading/saving
-- Implement index management
-- Add markdown export functionality
-
-#### 3.2 Decision Store
-- Create `decisionStore.ts` Zustand store
-- Add decision state management
-- Implement filtering by domain/status/category
-
-#### 3.3 Decision UI Components
-- Create `DecisionList.tsx` component
-- Create `DecisionEditor.tsx` component
-- Create `DecisionViewer.tsx` component
-- Add decision tab to domain view
-- Implement status workflow UI
-
-### Phase 4: Knowledge Base (Weeks 8-9)
-
-#### 4.1 Knowledge Service
-- Create `knowledgeService.ts` for CRUD operations
-- Implement article loading/saving
-- Implement index management
-- Add markdown export functionality
-- Implement search functionality
-
-#### 4.2 Knowledge Store
-- Create `knowledgeStore.ts` Zustand store
-- Add article state management
-- Implement filtering by domain/type/status
-
-#### 4.3 Knowledge UI Components
-- Create `KnowledgeList.tsx` component
-- Create `ArticleEditor.tsx` component
-- Create `ArticleViewer.tsx` component
-- Create `KnowledgeSearch.tsx` component
-- Add knowledge tab to domain view
-
-### Phase 5: Integration & Polish (Weeks 10-11)
-
-#### 5.1 Cross-Feature Integration
-- Link decisions to domains
-- Link knowledge articles to domains
-- Cross-reference between decisions and knowledge
-- CADS asset cross-model linking UI
-
-#### 5.2 Workspace V2 Migration
-- Implement V1 → V2 format migration
-- Add migration wizard UI
-- Ensure backward compatibility
-
-#### 5.3 Enhanced Relationship Features
-- Add color picker for relationships
-- Implement DrawIO edge ID integration
-- Update canvas rendering
-
-### Phase 6: Testing & Documentation (Week 12)
-
-#### 6.1 Test Coverage
-- Unit tests for all new services
-- Integration tests for database operations
-- E2E tests for decision/knowledge workflows
-- Maintain 95% coverage threshold
-
-#### 6.2 Documentation
-- Update README with new features
-- Document configuration options
-- Create user guides for decision logs
-- Create user guides for knowledge base
+| Component | Technology | Version | Purpose |
+|-----------|------------|---------|---------|
+| In-Browser Database | `@duckdb/duckdb-wasm` | 1.29.0 (DuckDB 1.4.3) | SQL engine in WebAssembly |
+| SDK WASM | `data-modelling-sdk` | 1.13.2 | YAML parsing, validation |
+| Persistent Storage | OPFS | Browser API | Browser-native file storage |
+| State Management | Zustand | 5.0.9 | React state with DuckDB integration |
+| Query Interface | SQL | - | Standard SQL for all operations |
+| Interchange Format | Parquet | - | Cross-platform data export |
 
 ---
 
-## Migration Strategy
+## OPFS (Origin Private File System) Details
 
-### Backward Compatibility
-- SDK 1.13.1 supports legacy `tables/` directory structure
-- Existing workspaces continue to work without changes
-- New features are opt-in
+### What is OPFS?
 
-### Upgrade Path
-1. **Update SDK WASM files** - Replace `public/wasm/` contents
-2. **Update TypeScript types** - Add new type definitions
-3. **Enable DuckDB** (optional) - Create `.data-model.toml` configuration
-4. **Create decision/knowledge directories** (optional) - Enable new features
+OPFS is a modern browser API that provides:
+- **Private filesystem** per origin (isolated per domain)
+- **High-performance I/O** (synchronous access in workers)
+- **Persistence** that survives browser restarts
+- **Large file support** (GBs, not capped like localStorage)
 
-### Data Migration
-- No automatic migration required
-- Users can opt-in to DuckDB by adding configuration
-- Workspace V2 migration available via wizard
+### Browser Support
 
----
+| Browser | OPFS Support | Notes |
+|---------|--------------|-------|
+| Chrome 86+ | Full | Recommended |
+| Edge 86+ | Full | Chromium-based |
+| Firefox 111+ | Full | Supported |
+| Safari 15.2+ | Partial | Fallback to memory |
+| Electron | Full | Uses Chromium |
 
-## Risk Assessment
+### How DuckDB-WASM Uses OPFS
 
-### Technical Risks
-| Risk | Impact | Likelihood | Mitigation |
-|------|--------|------------|------------|
-| WASM size increase | Slower initial load | Medium | Lazy-load DuckDB features, code splitting |
-| DuckDB memory limits | Large workspace issues | Low | 4GB WASM limit; monitor usage, warn users |
-| Breaking API changes | App crashes | Low | Comprehensive version checking |
-| Performance regression | User experience degradation | Low | Extensive benchmarking |
+```javascript
+// DuckDB-WASM with OPFS persistence
+import * as duckdb from '@duckdb/duckdb-wasm';
 
-### DuckDB Browser Support (Updated)
-DuckDB WASM is production-ready for browser use:
-- **Current Version**: 1.4.3 (stable)
-- **Browser Support**: Chrome, Firefox, Safari, Node.js
-- **Features**: In-process SQL, Arrow support, Parquet/CSV/JSON file reading
+// Initialize with OPFS
+const db = await duckdb.AsyncDuckDB.create({
+  path: 'opfs://workspace.duckdb',  // OPFS path
+  accessMode: duckdb.AccessMode.ReadWrite
+});
 
-**Constraints to consider:**
-- Single-threaded by default in browser (acceptable for our use case)
-- Memory limited to 4GB in WASM (browsers may impose stricter limits)
-- For very large workspaces (10,000+ tables), monitor memory usage
+// Database persists to OPFS automatically
+await db.query("CREATE TABLE tables (id TEXT, name TEXT)");
+await db.query("INSERT INTO tables VALUES ('uuid', 'customers')");
 
-**Conclusion**: DuckDB WASM can be used in both Electron AND browser builds. No feature restriction needed.
-
-### Mitigation Strategies
-1. **Feature flags** - Gate new features behind configuration
-2. **Fallback mechanisms** - YAML fallback when DuckDB unavailable
-3. **Version detection** - Graceful degradation for older SDK
-4. **Incremental rollout** - Phase features separately
-5. **Memory monitoring** - Track DuckDB memory usage in browser, warn if approaching limits
+// Data survives browser restart!
+```
 
 ---
 
-## Success Criteria
+## Data Flow
 
-### Performance Targets
-- ID lookup: <1ms (vs 1ms+ currently for 10k tables)
-- Domain filtering: <10ms
-- Tag search: <50ms
-- Import 1,000 tables: <1 second
-- Export 1,000 tables: <2 seconds
+### 1. Initial Load (First Visit)
 
-### Quality Targets
-- Test coverage: 95%+ maintained
-- Zero regressions in existing functionality
-- TypeScript strict mode compliance
-- ESLint warnings: <110
+```
+YAML Files ──parse──▶ DuckDB-WASM ──persist──▶ OPFS
+                           │
+                           ▼
+                      SQL Queries
+```
 
-### User Experience
-- Seamless upgrade for existing users
-- Intuitive decision log interface
-- Searchable knowledge base
-- Clear configuration options
+1. User opens workspace
+2. Parse all YAML files (tables, relationships, etc.)
+3. INSERT data into DuckDB-WASM tables
+4. DuckDB persists to OPFS automatically
+5. Application uses SQL for all queries
+
+### 2. Subsequent Loads
+
+```
+OPFS ──load──▶ DuckDB-WASM ──verify──▶ YAML Files
+                    │                      │
+                    │                      ▼
+                    │                 (sync if changed)
+                    ▼
+               SQL Queries
+```
+
+1. User opens workspace
+2. DuckDB loads from OPFS (fast!)
+3. Compare file hashes with `sync_metadata` table
+4. Only re-import changed YAML files
+5. Application ready in milliseconds
+
+### 3. Save/Export
+
+```
+DuckDB-WASM ──export──▶ YAML Files (for Git)
+      │
+      └──export──▶ .duckdb file (for CLI/sharing)
+      │
+      └──export──▶ Parquet files (for analytics)
+```
+
+---
+
+## Database Schema
+
+### Core Tables
+
+```sql
+-- Workspaces
+CREATE TABLE workspaces (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    folder_path TEXT,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
+-- Domains
+CREATE TABLE domains (
+    id TEXT PRIMARY KEY,
+    workspace_id TEXT REFERENCES workspaces(id),
+    name TEXT NOT NULL,
+    description TEXT,
+    folder_path TEXT,
+    position_x REAL,
+    position_y REAL,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
+-- Tables (ODCS resources)
+CREATE TABLE tables (
+    id TEXT PRIMARY KEY,
+    workspace_id TEXT REFERENCES workspaces(id),
+    domain_id TEXT REFERENCES domains(id),
+    system_id TEXT,
+    name TEXT NOT NULL,
+    alias TEXT,
+    description TEXT,
+    model_type TEXT,
+    data_level TEXT,
+    position_x REAL,
+    position_y REAL,
+    width REAL,
+    height REAL,
+    owner JSON,
+    sla JSON,
+    metadata JSON,
+    quality_rules JSON,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
+-- Columns
+CREATE TABLE columns (
+    id TEXT PRIMARY KEY,
+    table_id TEXT REFERENCES tables(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    data_type TEXT NOT NULL,
+    nullable BOOLEAN DEFAULT true,
+    is_primary_key BOOLEAN DEFAULT false,
+    is_foreign_key BOOLEAN DEFAULT false,
+    description TEXT,
+    column_order INTEGER,
+    constraints JSON,
+    quality_rules JSON,
+    created_at TIMESTAMP
+);
+
+-- Relationships
+CREATE TABLE relationships (
+    id TEXT PRIMARY KEY,
+    workspace_id TEXT REFERENCES workspaces(id),
+    domain_id TEXT,
+    source_id TEXT NOT NULL,
+    target_id TEXT NOT NULL,
+    source_type TEXT NOT NULL,
+    target_type TEXT NOT NULL,
+    relationship_type TEXT,
+    source_cardinality TEXT,
+    target_cardinality TEXT,
+    label TEXT,
+    color TEXT,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
+-- Systems
+CREATE TABLE systems (
+    id TEXT PRIMARY KEY,
+    workspace_id TEXT REFERENCES workspaces(id),
+    domain_id TEXT REFERENCES domains(id),
+    name TEXT NOT NULL,
+    description TEXT,
+    system_type TEXT,
+    connection_info JSON,
+    position_x REAL,
+    position_y REAL,
+    metadata JSON,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+```
+
+### Supporting Tables
+
+```sql
+-- Normalized tags for fast filtering
+CREATE TABLE tags (
+    id INTEGER PRIMARY KEY,
+    resource_type TEXT NOT NULL,
+    resource_id TEXT NOT NULL,
+    tag_key TEXT,
+    tag_value TEXT NOT NULL
+);
+
+CREATE INDEX idx_tags_resource ON tags(resource_id, resource_type);
+CREATE INDEX idx_tags_value ON tags(tag_value);
+
+-- Sync metadata for change detection
+CREATE TABLE sync_metadata (
+    file_path TEXT PRIMARY KEY,
+    file_hash TEXT NOT NULL,
+    resource_type TEXT NOT NULL,
+    resource_id TEXT,
+    last_synced_at TIMESTAMP NOT NULL,
+    sync_status TEXT
+);
+
+-- Decision logs
+CREATE TABLE decisions (
+    id TEXT PRIMARY KEY,
+    workspace_id TEXT,
+    domain_id TEXT,
+    number INTEGER,
+    title TEXT NOT NULL,
+    status TEXT,
+    category TEXT,
+    context TEXT,
+    decision TEXT,
+    consequences TEXT,
+    options JSON,
+    superseded_by TEXT,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
+-- Knowledge articles
+CREATE TABLE knowledge_articles (
+    id TEXT PRIMARY KEY,
+    workspace_id TEXT,
+    domain_id TEXT,
+    number INTEGER,
+    title TEXT NOT NULL,
+    article_type TEXT,
+    status TEXT,
+    summary TEXT,
+    content TEXT,
+    authors JSON,
+    reviewers JSON,
+    published_at TIMESTAMP,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+```
+
+---
+
+## Performance Comparison
+
+| Operation | Current (Array) | With DuckDB | Improvement |
+|-----------|-----------------|-------------|-------------|
+| Find by ID | O(n) ~1ms | O(1) <0.1ms | 10x+ |
+| Filter by domain | O(n) ~5ms | O(log n) <1ms | 5x+ |
+| Tag search | O(n×m) ~20ms | O(log n) <2ms | 10x+ |
+| Relationship graph (depth 3) | O(n³) ~100ms | O(log n) <5ms | 20x+ |
+| Load 1,000 tables | N/A | <1s | New |
+| Query 10,000 tables | ~10s | <100ms | 100x+ |
+
+---
+
+## Sync Strategy
+
+### YAML → DuckDB Sync
+
+1. **On workspace open:**
+   - Check if OPFS database exists
+   - If exists: load from OPFS, verify hashes
+   - If not: full import from YAML
+
+2. **Incremental sync:**
+   - Compute SHA-256 hash of each YAML file
+   - Compare with `sync_metadata` table
+   - Only re-import changed files
+
+3. **Conflict detection:**
+   - Track both file hash and last sync time
+   - Detect if file changed since last sync
+   - Prompt user for resolution if needed
+
+### DuckDB → YAML Sync
+
+1. **On save:**
+   - Query changed entities from DuckDB
+   - Generate YAML files
+   - Update `sync_metadata` with new hashes
+
+2. **Export options:**
+   - Save to workspace folder (for Git)
+   - Download as `.duckdb` file
+   - Export as Parquet files
+
+---
+
+## Electron vs Browser
+
+| Feature | Browser | Electron |
+|---------|---------|----------|
+| OPFS Storage | Yes (browser-native) | Yes (Chromium) |
+| File System Access | Via File API / OPFS | Direct via Node.js |
+| Export .duckdb | Download to Downloads | Save anywhere |
+| Git Hooks | Not applicable | Pre-commit, post-checkout |
+| Native DuckDB CLI | Not available | Can spawn CLI |
+
+### Electron Enhancements
+
+```typescript
+// In Electron main process
+ipcMain.handle('duckdb:export', async (_, workspacePath) => {
+  // Export OPFS database to native file
+  const db = await getDuckDBFromOPFS();
+  const buffer = await db.export();
+  await writeFile(`${workspacePath}/.data-model.duckdb`, buffer);
+});
+
+ipcMain.handle('duckdb:import', async (_, filePath) => {
+  // Import native .duckdb file to OPFS
+  const buffer = await readFile(filePath);
+  await importToOPFS(buffer);
+});
+```
+
+---
+
+## API Design
+
+### DuckDB Service
+
+```typescript
+// frontend/src/services/database/duckdbService.ts
+
+interface DuckDBService {
+  // Initialization
+  initialize(): Promise<void>;
+  isInitialized(): boolean;
+  isOPFSSupported(): boolean;
+  
+  // Sync operations
+  syncFromYAML(workspacePath: string): Promise<SyncResult>;
+  syncToYAML(workspacePath: string): Promise<ExportResult>;
+  getSyncStatus(): Promise<SyncStatus>;
+  
+  // Query interface
+  query<T>(sql: string, params?: unknown[]): Promise<T[]>;
+  execute(sql: string, params?: unknown[]): Promise<void>;
+  
+  // Export/Import
+  exportDatabase(): Promise<Uint8Array>;
+  importDatabase(data: Uint8Array): Promise<void>;
+  exportToParquet(tableName: string): Promise<Uint8Array>;
+  
+  // Lifecycle
+  close(): Promise<void>;
+  reset(): Promise<void>;
+}
+```
+
+### Storage Adapter
+
+```typescript
+// frontend/src/services/storage/duckdbStorageAdapter.ts
+
+interface DuckDBStorageAdapter {
+  // Tables
+  getTableById(id: string): Promise<Table | null>;
+  getTablesByDomain(domainId: string): Promise<Table[]>;
+  getTablesByTag(tag: string): Promise<Table[]>;
+  saveTable(table: Table): Promise<void>;
+  deleteTable(id: string): Promise<void>;
+  
+  // Relationships
+  getRelationshipById(id: string): Promise<Relationship | null>;
+  getRelationshipsForTable(tableId: string): Promise<Relationship[]>;
+  getRelatedTables(tableId: string, depth?: number): Promise<Table[]>;
+  
+  // Domains
+  getDomainById(id: string): Promise<Domain | null>;
+  getAllDomains(): Promise<Domain[]>;
+  
+  // Graph queries
+  findPath(sourceId: string, targetId: string): Promise<string[]>;
+  detectCycles(): Promise<Relationship[]>;
+  getUpstreamDependencies(tableId: string): Promise<Table[]>;
+  getDownstreamDependencies(tableId: string): Promise<Table[]>;
+}
+```
+
+---
+
+## File Structure
+
+### New Files
+
+```
+frontend/
+├── src/
+│   ├── services/
+│   │   └── database/
+│   │       ├── duckdbService.ts       # Core DuckDB-WASM service
+│   │       ├── duckdbStorageAdapter.ts # Storage adapter using DuckDB
+│   │       ├── opfsManager.ts         # OPFS file management
+│   │       ├── syncEngine.ts          # YAML ↔ DuckDB sync
+│   │       ├── schemaManager.ts       # Database schema creation
+│   │       └── queryBuilder.ts        # Type-safe query builder
+│   ├── workers/
+│   │   └── duckdb.worker.ts           # Web Worker for DuckDB
+│   └── hooks/
+│       ├── useDuckDB.ts               # React hook for DuckDB
+│       └── useQuery.ts                # SQL query hook
+├── public/
+│   └── duckdb/                        # DuckDB WASM files
+│       ├── duckdb-mvp.wasm
+│       ├── duckdb-eh.wasm
+│       └── duckdb-browser.worker.js
+└── package.json                       # Add @duckdb/duckdb-wasm
+```
+
+### Modified Files
+
+```
+frontend/src/
+├── services/
+│   └── storage/
+│       ├── electronFileService.ts     # Add DuckDB integration
+│       └── browserFileService.ts      # Add DuckDB integration
+├── stores/
+│   ├── tableStore.ts                  # Use DuckDB for queries
+│   ├── relationshipStore.ts           # Use DuckDB for queries
+│   └── domainStore.ts                 # Use DuckDB for queries
+└── components/
+    └── settings/
+        └── DatabaseSettings.tsx       # Add OPFS status, export buttons
+```
+
+---
+
+## Error Handling
+
+### Fallback Strategy
+
+```typescript
+async function initializeStorage() {
+  // Try DuckDB with OPFS
+  if (await isOPFSSupported()) {
+    try {
+      await duckdbService.initialize();
+      return 'duckdb-opfs';
+    } catch (error) {
+      console.warn('OPFS failed, falling back to in-memory');
+    }
+  }
+  
+  // Fallback to in-memory DuckDB
+  try {
+    await duckdbService.initializeInMemory();
+    return 'duckdb-memory';
+  } catch (error) {
+    console.warn('DuckDB failed, falling back to arrays');
+  }
+  
+  // Final fallback: array-based storage
+  return 'array';
+}
+```
+
+### Browser Compatibility Banner
+
+```tsx
+function StorageStatusBanner() {
+  const { storageType } = useStorageStatus();
+  
+  if (storageType === 'array') {
+    return (
+      <Banner variant="warning">
+        Your browser doesn't support OPFS. Data will not persist across sessions.
+        <a href="/docs/browser-support">Learn more</a>
+      </Banner>
+    );
+  }
+  
+  if (storageType === 'duckdb-memory') {
+    return (
+      <Banner variant="info">
+        Using in-memory database. Data will not persist across sessions.
+      </Banner>
+    );
+  }
+  
+  return null;
+}
+```
+
+---
+
+## Migration Path
+
+### From Current Implementation
+
+1. **No breaking changes** - existing YAML files work unchanged
+2. **Opt-in DuckDB** - enabled automatically when `@duckdb/duckdb-wasm` is installed
+3. **Graceful degradation** - falls back to array operations if DuckDB fails
+4. **Data preservation** - YAML remains source of truth
+
+### Upgrade Steps
+
+1. Install `@duckdb/duckdb-wasm` package
+2. Copy WASM files to `public/duckdb/`
+3. Deploy updated application
+4. DuckDB initializes automatically on first load
+5. Users see improved performance immediately
+
+---
+
+## Testing Strategy
+
+### Unit Tests
+
+- DuckDB service initialization
+- Query execution
+- Sync operations
+- Error handling
+
+### Integration Tests
+
+- YAML → DuckDB import
+- DuckDB → YAML export
+- OPFS persistence
+- Browser compatibility
+
+### Performance Tests
+
+- Load 1,000 / 10,000 tables
+- Query response times
+- Memory usage monitoring
+- OPFS storage limits
+
+---
+
+## Security Considerations
+
+### OPFS Isolation
+
+- OPFS is isolated per origin
+- Data cannot be accessed by other websites
+- Clearing site data removes OPFS storage
+
+### Data Sensitivity
+
+- Database may contain sensitive schema information
+- Export functions should warn users about data exposure
+- Consider encryption for downloaded `.duckdb` files
 
 ---
 
 ## Dependencies
 
-### SDK Requirements
-- SDK version 1.13.1 with WASM feature
-- DuckDB backend feature enabled (for database support)
+### New Dependencies
 
-### Frontend Dependencies (No Changes)
-- React 18.2.0
-- Zustand 5.0.9
-- TypeScript 5.9.3
-- Vite 7.3.0
+```json
+{
+  "dependencies": {
+    "@duckdb/duckdb-wasm": "1.29.0"
+  }
+}
+```
 
-### New Development Dependencies
-- None required (all functionality via WASM SDK)
+### Required Versions
+
+| Package | Version | Notes |
+|---------|---------|-------|
+| `@duckdb/duckdb-wasm` | 1.29.0 | DuckDB 1.4.3 core |
+| `data-modelling-sdk` (WASM) | 1.13.2 | YAML parsing, validation |
+
+### WASM Bundle Size
+
+| File | Size | Notes |
+|------|------|-------|
+| duckdb-mvp.wasm | ~4MB | Minimal viable product |
+| duckdb-eh.wasm | ~10MB | Full exception handling |
+| data_modelling_sdk.wasm | ~2MB | SDK WASM binary |
+
+**Recommendation:** Use `duckdb-mvp.wasm` for initial load, lazy-load full version if needed.
 
 ---
 
-## Timeline Summary
+## Success Criteria
 
-| Phase | Duration | Key Deliverables |
-|-------|----------|------------------|
-| 1. Foundation | 2 weeks | SDK update, types, config |
-| 2. DuckDB | 3 weeks | Database service, storage updates, optimization |
-| 3. Decision Logs | 2 weeks | Service, store, UI components |
-| 4. Knowledge Base | 2 weeks | Service, store, UI components |
-| 5. Integration | 2 weeks | Cross-feature integration, migration |
-| 6. Testing | 1 week | Tests, documentation |
-| **Total** | **12 weeks** | Full SDK 1.13.1 integration |
-
----
-
-## Appendix A: New File Structure
-
-### New Service Files
-```
-frontend/src/services/
-├── sdk/
-│   ├── decisionService.ts       # NEW: Decision CRUD
-│   ├── knowledgeService.ts      # NEW: Knowledge CRUD
-│   └── databaseService.ts       # NEW: DuckDB operations
-└── storage/
-    └── databaseConfig.ts        # NEW: Config management
-```
-
-### New Store Files
-```
-frontend/src/stores/
-├── decisionStore.ts             # NEW: Decision state
-└── knowledgeStore.ts            # NEW: Knowledge state
-```
-
-### New Component Files
-```
-frontend/src/components/
-├── decision/
-│   ├── DecisionList.tsx         # NEW
-│   ├── DecisionEditor.tsx       # NEW
-│   ├── DecisionViewer.tsx       # NEW
-│   └── DecisionStatusBadge.tsx  # NEW
-└── knowledge/
-    ├── KnowledgeList.tsx        # NEW
-    ├── ArticleEditor.tsx        # NEW
-    ├── ArticleViewer.tsx        # NEW
-    └── KnowledgeSearch.tsx      # NEW
-```
-
-### New Type Files
-```
-frontend/src/types/
-├── decision.ts                  # NEW: Decision types
-├── knowledge.ts                 # NEW: Knowledge types
-└── database.ts                  # NEW: Database config types
-```
-
-## Appendix B: SDK Method Mapping
-
-### New Methods to Implement in Frontend
-
-| SDK Method | Frontend Service | Purpose |
-|------------|-----------------|---------|
-| `load_decisions` | decisionService | Load all decisions |
-| `load_decision_index` | decisionService | Load decision index |
-| `save_decision` | decisionService | Save decision |
-| `export_decision_markdown` | decisionService | Generate markdown |
-| `load_knowledge` | knowledgeService | Load all articles |
-| `load_knowledge_index` | knowledgeService | Load knowledge index |
-| `save_knowledge` | knowledgeService | Save article |
-| `search_knowledge` | knowledgeService | Search articles |
-| `export_knowledge_markdown` | knowledgeService | Generate markdown |
-| `db_init` | databaseService | Initialize DuckDB |
-| `db_sync` | databaseService | Sync YAML to DB |
-| `db_status` | databaseService | Check DB health |
-| `db_export` | databaseService | Export DB to YAML |
-| `query` | databaseService | Execute SQL query |
-
-## Appendix C: Configuration Schema
-
-### .data-model.toml
-```toml
-[database]
-# Storage backend: "duckdb" | "postgres" | "none"
-backend = "duckdb"
-
-# Path to DuckDB file (relative to workspace)
-path = ".data-model.duckdb"
-
-[postgres]
-# PostgreSQL connection (if backend = "postgres")
-connection_string = "postgresql://user:pass@localhost/db"
-pool_size = 5
-
-[sync]
-# Automatically sync YAML to database on load
-auto_sync = true
-
-# Watch for file changes and auto-sync
-watch = false
-
-[git]
-# Enable Git hooks for automatic sync
-hooks_enabled = true
-```
+- [ ] DuckDB-WASM initializes successfully in browser and Electron
+- [ ] OPFS persistence works across browser restarts
+- [ ] Query performance meets targets (<1ms for ID lookup)
+- [ ] Full sync cycle (YAML → DuckDB → YAML) preserves all data
+- [ ] Fallback to array operations works when DuckDB unavailable
+- [ ] Export/import of `.duckdb` files works correctly
+- [ ] Memory usage stays under 500MB for 10,000 tables
+- [ ] All existing tests continue to pass

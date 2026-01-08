@@ -8,12 +8,15 @@
   },
   "scripts": {
     "build:wasm": "bash scripts/build-wasm.sh || echo 'WASM SDK build skipped (SDK not found or wasm-pack not installed)'",
-    "prebuild": "npm run build:wasm || true",
-    "dev": "vite",
+    "build:duckdb": "bash scripts/copy-duckdb-wasm.sh",
+    "build:all-wasm": "npm run build:wasm && npm run build:duckdb",
+    "prebuild": "npm run build:all-wasm || true",
+    "dev": "npm run build:duckdb && vite",
     "build": "tsc && vite build",
+    "verify:versions": "node scripts/verify-versions.js",
     "build:electron": "vite build --config vite.electron.config.ts",
     "build:electron:frontend": "VITE_ELECTRON_BUILD=true vite build && npm run copy:wasm:electron",
-    "copy:wasm:electron": "mkdir -p dist-electron/wasm && cp -r public/wasm/* dist-electron/wasm/ 2>/dev/null || cp -r dist/wasm/* dist-electron/wasm/ 2>/dev/null || true",
+    "copy:wasm:electron": "mkdir -p dist-electron/wasm dist-electron/duckdb && cp -r public/wasm/* dist-electron/wasm/ 2>/dev/null || cp -r dist/wasm/* dist-electron/wasm/ 2>/dev/null || true && cp -r public/duckdb/* dist-electron/duckdb/ 2>/dev/null || true",
     "preview": "vite preview",
     "test": "vitest",
     "test:ui": "vitest --ui",
@@ -37,6 +40,7 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "@duckdb/duckdb-wasm": "1.29.0",
     "@tanstack/react-query": "^5.90.16",
     "@types/js-yaml": "^4.0.9",
     "@types/jszip": "^3.4.0",
@@ -76,7 +80,9 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.26",
+    "husky": "^9.1.7",
     "jsdom": "^27.4.0",
+    "lint-staged": "^15.2.11",
     "playwright": "^1.57.0",
     "postcss": "^8.5.6",
     "prettier": "^3.7.4",
@@ -84,8 +90,6 @@
     "typescript": "^5.9.3",
     "vite": "^7.3.0",
     "vitest": "^4.0.16",
-    "wait-on": "^9.0.3",
-    "husky": "^9.1.7",
-    "lint-staged": "^15.2.11"
+    "wait-on": "^9.0.3"
   }
 }

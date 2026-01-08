@@ -1,7 +1,7 @@
 version: "1.0.0"
 apiVersion: v3.1.0
 kind: DataContract
-id: js-mart-supplies
+id: 8460a400-04e8-4b17-992d-b4d025557b4a
 status: active
 name: supplies
 domain: ecommerce
@@ -45,7 +45,7 @@ schema:
 
 customProperties:
   - property: system_id
-    value: js-system-duckdb
+    value: ad789620-a825-4bc4-afd7-429db96a6359
   - property: data_level
     value: gold
 

@@ -1,4 +1,4 @@
-id: js-kb-0003
+id: e87dcbc8-bd38-4b46-8b8c-9b243bf1cfc4
 number: 3
 title: MetricFlow Semantic Layer Implementation Guide
 type: tutorial
@@ -149,16 +149,16 @@ content: |
   - **APIs:** REST and GraphQL endpoints
   - **Exports:** Scheduled CSV/Parquet exports
 
-domain_id: js-domain-ecommerce
-workspace_id: js-workspace
+domain_id: d9004c83-fd63-43fe-afb8-77726c3e276e
+workspace_id: f47ac10b-58cc-4372-a567-0e02b2c3d479
 authors:
   - analytics-engineering@jaffleshop.example
 reviewers:
   - bi-team@jaffleshop.example
 related_articles:
-  - js-kb-0001
+  - 82ab7dc8-e596-419c-9a8e-c91fe84b5c7e
 prerequisites:
-  - js-kb-0001
+  - 82ab7dc8-e596-419c-9a8e-c91fe84b5c7e
 tags:
   - name: metricflow
   - name: semantic-layer

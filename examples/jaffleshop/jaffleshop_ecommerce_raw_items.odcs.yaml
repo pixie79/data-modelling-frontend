@@ -1,7 +1,7 @@
 version: "1.0.0"
 apiVersion: v3.1.0
 kind: DataContract
-id: js-raw-items
+id: 01739458-f08c-4e9b-a75c-41ac95732595
 status: active
 name: raw_items
 domain: ecommerce
@@ -35,7 +35,7 @@ schema:
 
 customProperties:
   - property: system_id
-    value: js-system-duckdb
+    value: ad789620-a825-4bc4-afd7-429db96a6359
   - property: data_level
     value: bronze
 

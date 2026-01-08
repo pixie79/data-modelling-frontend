@@ -1,4 +1,4 @@
-id: js-adr-0003
+id: 38d932cf-02c3-4b0c-af9f-8bc3efcfec77
 number: 3
 title: Use ODCS Data Contracts for Schema Documentation
 status: accepted
@@ -81,8 +81,8 @@ options:
       - Vendor lock-in
       - Cost
 
-domain_id: js-domain-ecommerce
-workspace_id: js-workspace
+domain_id: d9004c83-fd63-43fe-afb8-77726c3e276e
+workspace_id: f47ac10b-58cc-4372-a567-0e02b2c3d479
 authors:
   - data-governance@jaffleshop.example
 deciders:
@@ -94,11 +94,11 @@ consulted:
 informed:
   - all-data-team@jaffleshop.example
 related_decisions:
-  - js-adr-0001
-  - js-adr-0002
+  - bc9a9569-a8d8-430a-8df3-0af171f2d2eb
+  - 635103fe-6ebc-4b35-ab5c-2dd99005045c
 related_knowledge:
-  - js-kb-0001
-  - js-kb-0002
+  - 82ab7dc8-e596-419c-9a8e-c91fe84b5c7e
+  - 67b8fa82-545d-4acf-9d67-28c139c887b0
 tags:
   - name: data-contracts
   - name: odcs

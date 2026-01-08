@@ -1,7 +1,7 @@
 version: "1.0.0"
 apiVersion: v3.1.0
 kind: DataContract
-id: js-mart-locations
+id: 2d2cd506-372f-48a0-a880-a7399d8208a5
 status: active
 name: locations
 domain: ecommerce
@@ -40,7 +40,7 @@ schema:
 
 customProperties:
   - property: system_id
-    value: js-system-duckdb
+    value: ad789620-a825-4bc4-afd7-429db96a6359
   - property: data_level
     value: gold
 

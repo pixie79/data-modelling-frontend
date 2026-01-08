@@ -1,6 +1,6 @@
 apiVersion: v1.0.0
 kind: DataProduct
-id: js-product-sales-analytics
+id: 371c66c7-02cb-4fc7-b95c-f2edf818567f
 status: active
 name: Sales Analytics
 version: "1.0.0"
@@ -15,33 +15,33 @@ description:
 inputPorts:
   - name: stg_orders
     version: "1.0.0"
-    contractId: js-stg-orders
+    contractId: 01f8fd58-5c57-4ccf-8bb0-7e5ad0bbaa96
   - name: stg_order_items
     version: "1.0.0"
-    contractId: js-stg-order-items
+    contractId: 54f89d6c-900c-4403-b53c-4df32d8c47e8
   - name: stg_products
     version: "1.0.0"
-    contractId: js-stg-products
+    contractId: 0072c7c7-38ad-48f4-81a8-eff0b2ac403e
   - name: stg_locations
     version: "1.0.0"
-    contractId: js-stg-locations
+    contractId: 9931fece-ad3b-46ad-8872-10ae4327501a
 
 outputPorts:
   - name: orders
     version: "1.0.0"
-    contractId: js-mart-orders
+    contractId: 2636c98e-0dec-4d3d-895a-e7ba8339d6be
   - name: order_items
     version: "1.0.0"
-    contractId: js-mart-order-items
+    contractId: 11bd83b4-c10a-47f3-8e52-d5f0295b645e
   - name: products
     version: "1.0.0"
-    contractId: js-mart-products
+    contractId: bfe4654e-ede1-4750-827e-54b5fbb3ecd1
   - name: locations
     version: "1.0.0"
-    contractId: js-mart-locations
+    contractId: 2d2cd506-372f-48a0-a880-a7399d8208a5
   - name: metricflow_time_spine
     version: "1.0.0"
-    contractId: js-mart-time-spine
+    contractId: 1a5e3e4e-80ee-4ecd-836a-fc303bad3d36
 
 team:
   name: Analytics Engineering

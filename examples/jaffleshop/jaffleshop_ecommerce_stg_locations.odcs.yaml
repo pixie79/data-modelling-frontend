@@ -1,7 +1,7 @@
 version: "1.0.0"
 apiVersion: v3.1.0
 kind: DataContract
-id: js-stg-locations
+id: 9931fece-ad3b-46ad-8872-10ae4327501a
 status: active
 name: stg_locations
 domain: ecommerce
@@ -40,7 +40,7 @@ schema:
 
 customProperties:
   - property: system_id
-    value: js-system-duckdb
+    value: ad789620-a825-4bc4-afd7-429db96a6359
   - property: data_level
     value: silver
 

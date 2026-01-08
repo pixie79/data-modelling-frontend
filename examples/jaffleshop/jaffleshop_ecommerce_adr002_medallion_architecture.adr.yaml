@@ -1,4 +1,4 @@
-id: js-adr-0002
+id: 635103fe-6ebc-4b35-ab5c-2dd99005045c
 number: 2
 title: Adopt Medallion Architecture for Data Layers
 status: accepted
@@ -82,8 +82,8 @@ options:
       - Reprocessing challenges
       - Higher cost for batch workloads
 
-domain_id: js-domain-ecommerce
-workspace_id: js-workspace
+domain_id: d9004c83-fd63-43fe-afb8-77726c3e276e
+workspace_id: f47ac10b-58cc-4372-a567-0e02b2c3d479
 authors:
   - data-architecture-team@jaffleshop.example
 deciders:
@@ -94,9 +94,9 @@ consulted:
 informed:
   - all-engineering@jaffleshop.example
 related_decisions:
-  - js-adr-0001
+  - bc9a9569-a8d8-430a-8df3-0af171f2d2eb
 related_knowledge:
-  - js-kb-0001
+  - 82ab7dc8-e596-419c-9a8e-c91fe84b5c7e
 tags:
   - name: architecture
   - name: medallion

@@ -1,7 +1,7 @@
 version: "1.0.0"
 apiVersion: v3.1.0
 kind: DataContract
-id: js-mart-customers
+id: a1b365b7-9562-4036-85e5-032324ca59a2
 status: active
 name: customers
 domain: ecommerce
@@ -50,7 +50,7 @@ schema:
 
 customProperties:
   - property: system_id
-    value: js-system-duckdb
+    value: ad789620-a825-4bc4-afd7-429db96a6359
   - property: data_level
     value: gold
 

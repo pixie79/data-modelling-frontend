@@ -1,7 +1,7 @@
 version: "1.0.0"
 apiVersion: v3.1.0
 kind: DataContract
-id: js-stg-customers
+id: 4ec969d7-7f62-40b8-81dc-86ab915dd26a
 status: active
 name: stg_customers
 domain: ecommerce
@@ -30,7 +30,7 @@ schema:
 
 customProperties:
   - property: system_id
-    value: js-system-duckdb
+    value: ad789620-a825-4bc4-afd7-429db96a6359
   - property: data_level
     value: silver
 

@@ -1,4 +1,4 @@
-id: js-kb-0002
+id: 67b8fa82-545d-4acf-9d67-28c139c887b0
 number: 2
 title: Data Quality Standards and Validation Rules
 type: reference
@@ -108,14 +108,14 @@ content: |
   4. Fix deployed within 24 hours for ERROR severity
   5. Post-mortem for recurring issues
 
-domain_id: js-domain-ecommerce
-workspace_id: js-workspace
+domain_id: d9004c83-fd63-43fe-afb8-77726c3e276e
+workspace_id: f47ac10b-58cc-4372-a567-0e02b2c3d479
 authors:
   - data-quality-team@jaffleshop.example
 reviewers:
   - data-governance@jaffleshop.example
 related_articles:
-  - js-kb-0001
+  - 82ab7dc8-e596-419c-9a8e-c91fe84b5c7e
 tags:
   - name: data-quality
   - name: validation

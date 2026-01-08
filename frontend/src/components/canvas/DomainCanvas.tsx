@@ -707,6 +707,8 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
           isShared, // Mark if this is a shared resource from another domain
           // Determine model type based on current view
           modelType: currentView === 'process' ? 'logical' : 'physical',
+          // Expand columns (no max-height) for analytical and operational views
+          expandColumns: currentView === 'analytical' || currentView === 'operational',
         },
         selected: selectedTableId === table.id,
       };

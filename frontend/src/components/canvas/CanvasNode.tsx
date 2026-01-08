@@ -15,10 +15,17 @@ export interface TableNodeData {
   nodeType?: 'table' | 'system' | 'product' | 'compute-asset';
   isOwnedByDomain?: boolean; // True if owned by current domain
   isShared?: boolean; // True if this is a shared resource from another domain
+  expandColumns?: boolean; // True to show all columns without max-height limit
 }
 
 export const CanvasNode: React.FC<NodeProps<TableNodeData>> = memo(({ data, selected }) => {
-  const { table, modelType = 'conceptual', isOwnedByDomain, isShared = false } = data;
+  const {
+    table,
+    modelType = 'conceptual',
+    isOwnedByDomain,
+    isShared = false,
+    expandColumns = false,
+  } = data;
   const { selectedDomainId, bpmnProcesses } = useModelStore();
   const isPrimaryDomain = table.primary_domain_id === selectedDomainId;
   const isReadOnly = !isPrimaryDomain || (isOwnedByDomain !== undefined && !isOwnedByDomain);
@@ -155,7 +162,9 @@ export const CanvasNode: React.FC<NodeProps<TableNodeData>> = memo(({ data, sele
 
       {/* Columns list - only show in logical/physical views */}
       {showColumns && (
-        <div className="p-2 max-h-[300px] overflow-y-auto table-columns-scrollable">
+        <div
+          className={`p-2 ${expandColumns ? '' : 'max-h-[300px] overflow-y-auto'} table-columns-scrollable`}
+        >
           {visibleColumns.length === 0 ? (
             <div className="text-sm text-gray-400 italic py-2">
               {modelType === 'logical' ? 'No keys' : 'No columns'}

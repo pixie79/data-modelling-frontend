@@ -498,12 +498,6 @@ export class WorkspaceV2Loader {
             table.workspace_id = workspaceId;
             table.visible_domains = [domainSpec.id];
 
-            console.log(`[WorkspaceV2Loader] Loaded table "${table.name}" from ${file.name}:`, {
-              id: table.id,
-              data_level: table.data_level,
-              tags: table.tags,
-            });
-
             tables.push(table);
           }
         }

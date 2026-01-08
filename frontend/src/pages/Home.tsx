@@ -167,46 +167,12 @@ const Home: React.FC = () => {
 
       // Set domains
       if ((workspace as any).domains) {
-        console.log(
-          `[Home] Setting ${(workspace as any).domains.length} domain(s) in model store:`,
-          (workspace as any).domains.map((d: any) => ({ id: d.id, name: d.name }))
-        );
         modelStore.setDomains((workspace as any).domains);
       }
 
       // Set tables
       if ((workspace as any).tables) {
-        const tablesToSet = (workspace as any).tables;
-        console.log(
-          `[Home] Setting ${tablesToSet.length} table(s) in model store:`,
-          tablesToSet.map((t: any) => ({
-            id: t.id,
-            name: t.name,
-            primary_domain_id: t.primary_domain_id,
-            visible_domains: t.visible_domains,
-          }))
-        );
-        modelStore.setTables(tablesToSet);
-        // Wait a tick to ensure state update
-        await new Promise((resolve) => setTimeout(resolve, 0));
-        const tablesAfterSet = useModelStore.getState().tables;
-        console.log(
-          `[Home] Tables in store after setting: ${tablesAfterSet.length}`,
-          tablesAfterSet.map((t: any) => ({
-            id: t.id,
-            name: t.name,
-            primary_domain_id: t.primary_domain_id,
-            visible_domains: t.visible_domains,
-          }))
-        );
-        if (tablesAfterSet.length === 0) {
-          console.error(
-            `[Home] ERROR: Tables were not persisted! Expected ${tablesToSet.length}, got ${tablesAfterSet.length}`
-          );
-        }
-      } else {
-        console.log(`[Home] No tables found in workspace object`);
-        console.log(`[Home] Workspace object keys:`, Object.keys(workspace as any));
+        modelStore.setTables((workspace as any).tables);
       }
 
       // Set relationships
@@ -216,111 +182,44 @@ const Home: React.FC = () => {
 
       // Set systems
       if ((workspace as any).systems) {
-        const systemsToSet = (workspace as any).systems;
-        console.log(
-          `[Home] Setting ${systemsToSet.length} system(s) in model store:`,
-          systemsToSet.map((s: any) => ({
-            id: s.id,
-            name: s.name,
-            table_ids: s.table_ids || [],
-            table_count: (s.table_ids || []).length,
-          }))
-        );
-        modelStore.setSystems(systemsToSet);
-        // Wait a tick to ensure state update
-        await new Promise((resolve) => setTimeout(resolve, 0));
-        const systemsAfterSet = useModelStore.getState().systems;
-        console.log(
-          `[Home] Systems in store after setting: ${systemsAfterSet.length}`,
-          systemsAfterSet.map((s: any) => ({
-            id: s.id,
-            name: s.name,
-            table_ids: s.table_ids || [],
-            table_count: (s.table_ids || []).length,
-          }))
-        );
-        if (systemsAfterSet.length === 0) {
-          console.error(
-            `[Home] ERROR: Systems were not persisted! Expected ${systemsToSet.length}, got ${systemsAfterSet.length}`
-          );
-        }
-      } else {
-        console.log(`[Home] No systems found in workspace object`);
-      }
-
-      // Set relationships
-      if ((workspace as any).relationships) {
-        console.log(
-          `[Home] Setting ${(workspace as any).relationships.length} relationship(s) in model store`
-        );
-        modelStore.setRelationships((workspace as any).relationships);
-      } else {
-        console.log(`[Home] No relationships found in workspace object`);
+        modelStore.setSystems((workspace as any).systems);
       }
 
       // Set products
       if ((workspace as any).products) {
-        console.log(
-          `[Home] Setting ${(workspace as any).products.length} product(s) in model store`
-        );
         modelStore.setProducts((workspace as any).products);
       }
 
       // Set assets
       if ((workspace as any).assets) {
-        console.log(`[Home] Setting ${(workspace as any).assets.length} asset(s) in model store`);
         modelStore.setComputeAssets((workspace as any).assets);
       }
 
       // Set BPMN processes
       if ((workspace as any).bpmnProcesses) {
-        console.log(
-          `[Home] Setting ${(workspace as any).bpmnProcesses.length} BPMN process(es) in model store`
-        );
         modelStore.setBPMNProcesses((workspace as any).bpmnProcesses);
       }
 
       // Set DMN decisions
       if ((workspace as any).dmnDecisions) {
-        console.log(
-          `[Home] Setting ${(workspace as any).dmnDecisions.length} DMN decision(s) in model store`
-        );
         modelStore.setDMNDecisions((workspace as any).dmnDecisions);
       }
 
       // Set knowledge articles
       if ((workspace as any).knowledgeArticles) {
-        console.log(
-          `[Home] Setting ${(workspace as any).knowledgeArticles.length} knowledge article(s) in knowledge store`
-        );
         const { useKnowledgeStore } = await import('@/stores/knowledgeStore');
         useKnowledgeStore.getState().setArticles((workspace as any).knowledgeArticles);
       }
 
       // Set decision records (ADRs)
       if ((workspace as any).decisionRecords) {
-        console.log(
-          `[Home] Setting ${(workspace as any).decisionRecords.length} decision record(s) in decision store`
-        );
         const { useDecisionStore } = await import('@/stores/decisionStore');
         useDecisionStore.getState().setDecisions((workspace as any).decisionRecords);
       }
 
-      console.log(`[Home] Final model store state:`, {
-        domains: modelStore.domains.length,
-        tables: modelStore.tables.length,
-        relationships: modelStore.relationships.length,
-        systems: modelStore.systems.length,
-        products: modelStore.products.length,
-        assets: modelStore.computeAssets.length,
-        bpmnProcesses: modelStore.bpmnProcesses.length,
-        dmnDecisions: modelStore.dmnDecisions.length,
-      });
-
       // Select first domain if available
       if ((workspace as any).domains && (workspace as any).domains.length > 0) {
         const firstDomainId = (workspace as any).domains[0].id;
-        console.log(`[Home] Setting selected domain to: ${firstDomainId}`);
         modelStore.setSelectedDomain(firstDomainId);
       }
 

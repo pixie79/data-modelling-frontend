@@ -257,7 +257,46 @@ const ModelEditor: React.FC = () => {
         // Check if we're in offline mode - skip API calls
         const currentMode = useSDKModeStore.getState().mode;
         if (currentMode === 'offline') {
-          // In offline mode, load from workspace store (loaded from file)
+          // In offline mode, check if model store already has data (set by Home.tsx)
+          // If so, don't overwrite it - just set the workspace and domain selection
+          const modelStore = useModelStore.getState();
+          const hasExistingData =
+            modelStore.tables.length > 0 ||
+            modelStore.systems.length > 0 ||
+            modelStore.domains.length > 0;
+
+          if (hasExistingData) {
+            console.log(
+              `[ModelEditor] Model store already has data (tables: ${modelStore.tables.length}, systems: ${modelStore.systems.length}, domains: ${modelStore.domains.length}) - not reloading from workspace object`
+            );
+
+            // Just set current workspace and select first domain if needed
+            const workspace = workspaces.find((w) => w.id === workspaceId);
+            if (workspace) {
+              setCurrentWorkspace(workspace.id);
+            }
+
+            // Select first domain if none selected
+            if (!selectedDomainId && modelStore.domains.length > 0) {
+              const firstDomain = modelStore.domains[0];
+              if (firstDomain) {
+                console.log(
+                  `[ModelEditor] Setting selected domain to: ${firstDomain.id} (${firstDomain.name})`
+                );
+                setSelectedDomain(firstDomain.id);
+              }
+            }
+
+            addToast({
+              type: 'success',
+              message: `Loaded workspace: ${workspace?.name || workspaceId}`,
+            });
+
+            setIsLoading(false);
+            return;
+          }
+
+          // Model store is empty - load from workspace store (loaded from file)
           const workspace = workspaces.find((w) => w.id === workspaceId);
           if (workspace) {
             // Set current workspace

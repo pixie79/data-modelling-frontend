@@ -515,19 +515,6 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
   // Find unlinked tables (tables that don't appear in any system's table_ids)
   const unlinkedTables = useMemo(() => {
     const allTableIdsInSystems = new Set(domainSystems.flatMap((s) => s.table_ids || []));
-
-    console.log(`[DomainCanvas] Computing unlinked tables:`, {
-      domainSystemsCount: domainSystems.length,
-      domainSystems: domainSystems.map((s) => ({
-        id: s.id,
-        name: s.name,
-        table_ids: s.table_ids,
-        table_ids_count: (s.table_ids || []).length,
-      })),
-      allTableIdsInSystems: Array.from(allTableIdsInSystems),
-      totalTablesInDomain: tables.filter((t) => t.primary_domain_id === domainId).length,
-    });
-
     return tables.filter(
       (t) => t.primary_domain_id === domainId && !allTableIdsInSystems.has(t.id)
     );

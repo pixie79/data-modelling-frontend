@@ -48,8 +48,12 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
       setPricing(table.pricing || {});
       setTeam(table.team || []);
       setSLA(table.sla || {});
-      setTags(table.tags || []);
-      setTagsInput((table.tags || []).join(', '));
+      // Filter out dm_level tags - these are managed by the Data Level dropdown, not the tags input
+      const editableTags = (table.tags || []).filter(
+        (tag) => !tag.toLowerCase().startsWith('dm_level:')
+      );
+      setTags(editableTags);
+      setTagsInput(editableTags.join(', '));
       setMetadata(table.metadata || {});
       setQualityRules(table.quality_rules || {});
       setHasUnsavedChanges(false);
@@ -93,7 +97,14 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
             sla.update_frequency)
             ? sla
             : undefined,
-        tags: tags.length > 0 ? tags : undefined,
+        // Preserve dm_level tag from original table (managed by Data Level dropdown)
+        tags: (() => {
+          const dmLevelTag = (table.tags || []).find((t) =>
+            t.toLowerCase().startsWith('dm_level:')
+          );
+          const allTags = dmLevelTag ? [...tags, dmLevelTag] : tags;
+          return allTags.length > 0 ? allTags : undefined;
+        })(),
         metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
         quality_rules: Object.keys(qualityRules).length > 0 ? qualityRules : undefined,
         last_modified_at: new Date().toISOString(),

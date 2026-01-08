@@ -11,6 +11,7 @@ echo "🚀 Starting Cloudflare Pages build..."
 # Set environment variables for Cloudflare Pages
 export VITE_OFFLINE_MODE="true"
 export VITE_BASE_PATH="/"
+export CLOUDFLARE_PAGES="true"  # Signals scripts to use CDN for large WASM files
 
 # Install dependencies first
 echo "📦 Installing npm dependencies..."

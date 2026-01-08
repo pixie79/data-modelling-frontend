@@ -1,8 +1,18 @@
 #!/bin/bash
 # Copy DuckDB-WASM files from node_modules to public/duckdb/
 # This script ensures DuckDB-WASM files are available for the browser
+#
+# For Cloudflare Pages builds, set CLOUDFLARE_PAGES=true to skip copying
+# (DuckDB WASM files are loaded from CDN instead due to 25MB file size limit)
 
 set -e
+
+# Skip for Cloudflare Pages - files are loaded from CDN
+if [ "$CLOUDFLARE_PAGES" = "true" ]; then
+  echo "Skipping DuckDB-WASM copy for Cloudflare Pages (using CDN instead)"
+  echo "   CDN URL: https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/"
+  exit 0
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FRONTEND_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"

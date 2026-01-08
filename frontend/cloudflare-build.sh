@@ -111,6 +111,15 @@ setup_duckdb_wasm() {
   # This is because Cloudflare Pages has a 25MB file size limit
   # and duckdb-eh.wasm is ~35MB
 
+  # IMPORTANT: Remove any existing WASM files to avoid 25MB limit errors
+  # These files may exist from local development or git
+  if [ -d "$DUCKDB_OUT_DIR" ]; then
+    echo "   Removing existing DuckDB WASM files (too large for Cloudflare)..."
+    rm -f "$DUCKDB_OUT_DIR"/*.wasm
+    rm -f "$DUCKDB_OUT_DIR"/*.js
+    echo "   ✅ Removed large WASM files"
+  fi
+
   # Create a placeholder README to document this
   mkdir -p "$DUCKDB_OUT_DIR"
   cat > "$DUCKDB_OUT_DIR/README.md" << 'EOF'

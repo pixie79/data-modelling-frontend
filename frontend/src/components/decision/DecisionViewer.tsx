@@ -8,6 +8,7 @@ import { useDecisionStore } from '@/stores/decisionStore';
 import { useKnowledgeStore } from '@/stores/knowledgeStore';
 import { DecisionStatusBadge } from './DecisionStatusBadge';
 import { DecisionCategoryBadge } from './DecisionCategoryBadge';
+import { MarkdownRenderer } from '@/components/common/MarkdownRenderer';
 import type { Decision } from '@/types/decision';
 import {
   DecisionStatus,
@@ -249,9 +250,11 @@ export const DecisionViewer: React.FC<DecisionViewerProps> = ({
         {/* Context */}
         <section className="mb-6">
           <h2 className="text-lg font-semibold text-gray-800 mb-2">Context</h2>
-          <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap">
-            {decision.context || <span className="text-gray-400 italic">No context provided</span>}
-          </div>
+          {decision.context ? (
+            <MarkdownRenderer content={decision.context} />
+          ) : (
+            <span className="text-gray-400 italic">No context provided</span>
+          )}
         </section>
 
         {/* Considered Options */}
@@ -304,20 +307,18 @@ export const DecisionViewer: React.FC<DecisionViewerProps> = ({
         {/* Decision */}
         <section className="mb-6">
           <h2 className="text-lg font-semibold text-gray-800 mb-2">Decision</h2>
-          <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap">
-            {decision.decision || (
-              <span className="text-gray-400 italic">No decision documented</span>
-            )}
-          </div>
+          {decision.decision ? (
+            <MarkdownRenderer content={decision.decision} />
+          ) : (
+            <span className="text-gray-400 italic">No decision documented</span>
+          )}
         </section>
 
         {/* Consequences */}
         {decision.consequences && (
           <section className="mb-6">
             <h2 className="text-lg font-semibold text-gray-800 mb-2">Consequences</h2>
-            <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap">
-              {decision.consequences}
-            </div>
+            <MarkdownRenderer content={decision.consequences} />
           </section>
         )}
 

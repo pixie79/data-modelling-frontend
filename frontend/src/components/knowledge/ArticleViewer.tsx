@@ -8,6 +8,7 @@ import { useKnowledgeStore } from '@/stores/knowledgeStore';
 import { useDecisionStore } from '@/stores/decisionStore';
 import { ArticleTypeBadge } from './ArticleTypeBadge';
 import { ArticleStatusBadge } from './ArticleStatusBadge';
+import { MarkdownRenderer } from '@/components/common/MarkdownRenderer';
 import type { KnowledgeArticle } from '@/types/knowledge';
 import {
   ArticleStatus,
@@ -251,9 +252,7 @@ export const ArticleViewer: React.FC<ArticleViewerProps> = ({
 
         {/* Content */}
         <section className="mb-6">
-          <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap">
-            {article.content || <span className="text-gray-400 italic">No content</span>}
-          </div>
+          <MarkdownRenderer content={article.content || ''} />
         </section>
 
         {/* Related Articles */}

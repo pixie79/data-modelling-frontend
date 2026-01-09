@@ -338,6 +338,29 @@ class ODCSService {
                         );
                       }
                     }
+                    // IMPORTANT: Preserve compound keys (composite primary/unique keys)
+                    if (Array.isArray(table.compoundKeys) && table.compoundKeys.length > 0) {
+                      cleaned.compoundKeys = table.compoundKeys.map((ck: any) => ({
+                        id: ck.id,
+                        tableId: ck.table_id || table.id,
+                        columnIds: ck.column_ids || ck.columnIds,
+                        isPrimary: ck.is_primary ?? ck.isPrimary ?? false,
+                        createdAt: ck.created_at || ck.createdAt || now,
+                        ...(ck.name && { name: ck.name }),
+                      }));
+                    } else if (
+                      Array.isArray(table.compound_keys) &&
+                      table.compound_keys.length > 0
+                    ) {
+                      cleaned.compoundKeys = table.compound_keys.map((ck: any) => ({
+                        id: ck.id,
+                        tableId: ck.table_id || table.id,
+                        columnIds: ck.column_ids || ck.columnIds,
+                        isPrimary: ck.is_primary ?? ck.isPrimary ?? false,
+                        createdAt: ck.created_at || ck.createdAt || now,
+                        ...(ck.name && { name: ck.name }),
+                      }));
+                    }
                     return cleaned;
                   })
                 : [];
@@ -1702,9 +1725,30 @@ class ODCSService {
       metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
       quality_rules: qualityRules,
       is_owned_by_domain: true, // Default to true for imported tables
+      // Load compound keys (composite primary/unique keys) from YAML
+      compoundKeys: this.normalizeCompoundKeys(item, tableId, now),
       created_at: item.created_at || now,
       last_modified_at: item.last_modified_at || now,
     };
+  }
+
+  /**
+   * Normalize compound keys from YAML to CompoundKey[] type
+   */
+  private normalizeCompoundKeys(item: any, tableId: string, now: string): any[] | undefined {
+    const rawKeys = item.compoundKeys || item.compound_keys;
+    if (!Array.isArray(rawKeys) || rawKeys.length === 0) {
+      return undefined;
+    }
+
+    return rawKeys.map((ck: any) => ({
+      id: ck.id || generateUUID(),
+      table_id: ck.tableId || ck.table_id || tableId,
+      column_ids: ck.columnIds || ck.column_ids || [],
+      is_primary: ck.isPrimary ?? ck.is_primary ?? false,
+      created_at: ck.createdAt || ck.created_at || now,
+      ...(ck.name && { name: ck.name }),
+    }));
   }
 
   /**

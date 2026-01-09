@@ -1190,6 +1190,31 @@ class ODCSService {
       'domain_id',
       'created_at',
       'last_modified_at',
+      // ODCS v3.x standard fields
+      'tableIndex',
+      'apiVersion',
+      'version',
+      'status',
+      'kind',
+      'odcsMetadata',
+      'customProperties',
+      // Additional ODCS fields
+      'roles',
+      'support',
+      'pricing',
+      'price',
+      'team',
+      'stakeholders',
+      'quality_tier',
+      'data_modeling_method',
+      'info',
+      'qualityRules',
+      'table_name',
+      'entity_name',
+      'label',
+      'title',
+      'x',
+      'y',
     ];
 
     // Try multiple possible name fields (ODCS format variations)
@@ -1323,9 +1348,21 @@ class ODCSService {
     if (item.quality_tier) metadata.quality_tier = item.quality_tier;
     if (item.data_modeling_method) metadata.data_modeling_method = item.data_modeling_method;
 
+    // Map ODCS v3.x standard fields to metadata
+    if (item.tableIndex !== undefined) metadata.tableIndex = item.tableIndex;
+    if (item.apiVersion) metadata.apiVersion = item.apiVersion;
+    if (item.version) metadata.version = item.version;
+    if (item.status) metadata.status = item.status;
+    if (item.kind) metadata.kind = item.kind;
+    if (item.odcsMetadata && typeof item.odcsMetadata === 'object') {
+      metadata.odcsMetadata = item.odcsMetadata;
+    }
+
     // Convert customProperties array to metadata object (ODCS v3.1.0 format)
     // customProperties: [{ property: "system_id", value: "js-system-duckdb" }]
+    // Also store the raw customProperties for reference
     if (item.customProperties && Array.isArray(item.customProperties)) {
+      metadata.customProperties = item.customProperties;
       for (const prop of item.customProperties) {
         if (prop.property && prop.value !== undefined) {
           metadata[prop.property] = prop.value;

@@ -28,6 +28,7 @@ export function useCanvas(_workspaceId: string, domainId: string): UseCanvasRetu
     domains,
     currentView,
     setSelectedTable,
+    openTableEditor,
     setSelectedRelationship,
     updateTable,
     updateTableRemote,
@@ -41,8 +42,9 @@ export function useCanvas(_workspaceId: string, domainId: string): UseCanvasRetu
   const onNodeClick = useCallback(
     (_event: React.MouseEvent, node: Node) => {
       setSelectedTable(node.id);
+      openTableEditor(node.id); // Open the table editor modal
     },
-    [setSelectedTable]
+    [setSelectedTable, openTableEditor]
   );
 
   const onNodeDragStop = useCallback(

@@ -714,7 +714,7 @@ const ModelEditor: React.FC = () => {
             }}
             zIndex={zIndex}
             onFocus={() => focusTableEditor(tableId)}
-            hideBackdrop={index > 0} // Only first editor shows backdrop
+            hideBackdrop={true} // No backdrop so users can click other tables on canvas
           >
             <TableEditor
               tableId={tableId}

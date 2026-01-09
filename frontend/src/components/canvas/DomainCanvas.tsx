@@ -71,6 +71,7 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
     selectedSystemId,
     setSelectedSystem,
     setSelectedTable,
+    openTableEditor,
     currentView,
     getFilteredTables,
     updateSystem,
@@ -140,13 +141,13 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
     [setSelectedTable]
   );
 
-  // Handle table edit
+  // Handle table edit - opens table editor modal
   const handleTableEdit = React.useCallback(
     (tableId: string) => {
-      setSelectedTable(tableId);
-      // The ModelEditor will handle opening the table editor when selectedTableId changes
+      setSelectedTable(tableId); // Keep selection for canvas highlighting
+      openTableEditor(tableId); // Open the editor modal
     },
-    [setSelectedTable]
+    [setSelectedTable, openTableEditor]
   );
 
   // Handle table delete
@@ -476,12 +477,13 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
           // For shared systems: only show tables that are explicitly shared AND belong to this system
           // This prevents new tables from appearing without being explicitly shared
           const sharedTableIds = new Set(sharedResources.tables.map((t) => t.id));
-          filtered = tables.filter(
+          filtered = filtered.filter(
             (t) => selectedSystem.table_ids?.includes(t.id) && sharedTableIds.has(t.id)
           );
         } else {
           // For owned systems: only show tables from current domain that belong to this system
-          filtered = tables.filter(
+          // Use filtered (not tables) to preserve data level filtering from getFilteredTables()
+          filtered = filtered.filter(
             (t) => t.primary_domain_id === domainId && selectedSystem.table_ids?.includes(t.id)
           );
         }
@@ -587,6 +589,17 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
     // Get domain to access view_positions
     const domain = domains.find((d) => d.id === domainId);
     const viewPositions = domain?.view_positions?.[currentView] || {};
+
+    // Debug: Log view positions being loaded
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[DomainCanvas] Loading positions for ${currentView} view:`, {
+        domainId,
+        hasViewPositions: !!domain?.view_positions,
+        availableViews: domain?.view_positions ? Object.keys(domain.view_positions) : [],
+        currentViewPositions: Object.keys(viewPositions).length,
+        samplePositions: Object.entries(viewPositions).slice(0, 3),
+      });
+    }
 
     // In Systems view, show systems as nodes with table cards inside
     if (currentView === 'systems') {

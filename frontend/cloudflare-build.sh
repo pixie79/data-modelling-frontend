@@ -22,7 +22,7 @@ npm ci
 # =============================================================================
 # WASM SDK version (defaults to 1.13.4, or set via WASM_SDK_VERSION env var)
 WASM_SDK_VERSION="${WASM_SDK_VERSION:-1.13.4}"
-SDK_REPO="${WASM_SDK_REPO:-pixie79/data-modelling-sdk}"
+SDK_REPO="${WASM_SDK_REPO:-OffeneDatenmodellierung/data-modelling-sdk}"
 WASM_OUT_DIR="public/wasm"
 
 # DuckDB-WASM version (should match @duckdb/duckdb-wasm in package.json)

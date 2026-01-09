@@ -6,8 +6,8 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FRONTEND_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 WASM_OUT_DIR="$FRONTEND_DIR/public/wasm"
-SDK_VERSION="1.13.5"
-GITHUB_REPO="pixie79/data-modelling-sdk"
+SDK_VERSION="1.13.6"
+GITHUB_REPO="OffeneDatenmodellierung/data-modelling-sdk"
 RELEASE_URL="https://github.com/$GITHUB_REPO/releases/download/v$SDK_VERSION/data-modelling-sdk-wasm-v$SDK_VERSION.tar.gz"
 
 echo "Downloading pre-built WASM SDK v$SDK_VERSION from GitHub releases..."

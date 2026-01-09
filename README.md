@@ -15,8 +15,8 @@ A domain-centric data modelling application built with React and Electron. Creat
 - **Import/Export**: Support for ODCS, SQL, AVRO, JSON Schema, and Protobuf formats
 - **Cross-Platform**: Electron desktop app (macOS, Windows, Linux)
 - **Domain-Centric**: Organize data models by business domains with systems, tables, relationships, BPMN processes, and DMN decisions
-- **Decision Logs** (SDK 1.13.5+): MADR-format Architecture Decision Records with status workflow
-- **Knowledge Base** (SDK 1.13.5+): Documentation articles with types (Guide, Tutorial, Reference, etc.)
+- **Decision Logs** (SDK 1.13.6+): MADR-format Architecture Decision Records with status workflow
+- **Knowledge Base** (SDK 1.13.6+): Documentation articles with types (Guide, Tutorial, Reference, etc.)
 - **DuckDB-WASM** (v2.1.0+): In-browser SQL database with OPFS persistence for advanced querying and analytics
 
 ## Prerequisites
@@ -187,15 +187,15 @@ frontend/
 
 ## WASM SDK Integration
 
-The application uses a WASM build of the `data-modelling-sdk` (version **1.13.5**) for offline functionality:
+The application uses a WASM build of the `data-modelling-sdk` (version **1.13.6**) for offline functionality:
 
-1. **SDK Version**: Requires `data-modelling-sdk = "1.13.5"` crate
+1. **SDK Version**: Requires `data-modelling-sdk = "1.13.6"` crate
 2. **Build Process**: The SDK is built using `wasm-pack` and copied to `public/wasm/`
 3. **Automatic Build**: Runs automatically before `npm run build` via `prebuild` script
 4. **Development**: Can be built manually with `npm run build:wasm`
 5. **Fallback**: If WASM SDK is not available, the app uses a JavaScript YAML parser fallback
 
-**Note**: The SDK must be version 1.13.5 or compatible. The API project (`data-modelling-api`) is available on [crates.io](https://crates.io/crates/data-modelling-api) and uses `data-modelling-sdk = "1.13.5"` with features `["api-backend", "git"]`.
+**Note**: The SDK must be version 1.13.6 or compatible. The API project (`data-modelling-api`) is available on [crates.io](https://crates.io/crates/data-modelling-api) and uses `data-modelling-sdk = "1.13.6"` with features `["api-backend", "git"]`.
 
 ### SDK 1.13.1 Features
 

@@ -31,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Security Vulnerabilities**: Updated react-router packages to fix CSRF, XSS, and open redirect vulnerabilities
 
 ### Changed
-- **SDK Version**: Upgraded to data-modelling-sdk 1.13.5
+- **SDK Version**: Upgraded to data-modelling-sdk 1.13.6
   - Fixed ODCS `id` field preservation issue where contract UUIDs were lost during `TableData` construction
   - Added ODCS v3.1.0 contract-level field preservation: `id`, `apiVersion`, `version`, `status`, `kind`, `domain`, `dataProduct`, `tenant`, `description`, `servers`, `team`, `support`, `roles`, `slaProperties`, `quality`, `price`, `tags`, `customProperties`, `authoritativeDefinitions`, `contractCreatedTs`, `odcsMetadata`
   - SystemReference now includes optional `table_ids` and `asset_ids` UUID arrays for explicit system mapping
@@ -410,4 +410,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [1.1.2]: https://github.com/your-org/data-modelling-app/compare/v1.1.0...v1.1.2
 [1.1.0]: https://github.com/your-org/data-modelling-app/compare/v0.1.0...v1.1.0
 [0.1.0]: https://github.com/your-org/data-modelling-app/releases/tag/v0.1.0
-

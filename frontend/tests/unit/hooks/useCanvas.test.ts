@@ -52,6 +52,7 @@ describe('useCanvas', () => {
       selectedRelationshipId: null,
       selectedDomainId: 'domain-1',
       setSelectedTable: vi.fn(),
+      openTableEditor: vi.fn(),
       setSelectedRelationship: vi.fn(),
       updateTable: vi.fn(),
       updateDomain: vi.fn(),
@@ -70,6 +71,7 @@ describe('useCanvas', () => {
 
   it('should handle node click to select table', () => {
     const setSelectedTable = vi.fn();
+    const openTableEditor = vi.fn();
     vi.mocked(modelStore.useModelStore).mockReturnValue({
       tables: mockTables,
       relationships: [],
@@ -88,6 +90,7 @@ describe('useCanvas', () => {
       selectedRelationshipId: null,
       selectedDomainId: 'domain-1',
       setSelectedTable,
+      openTableEditor,
       setSelectedRelationship: vi.fn(),
       updateTable: vi.fn(),
       updateDomain: vi.fn(),
@@ -101,6 +104,7 @@ describe('useCanvas', () => {
     });
 
     expect(setSelectedTable).toHaveBeenCalledWith('table-1');
+    expect(openTableEditor).toHaveBeenCalledWith('table-1');
   });
 
   it('should handle node drag to update position', async () => {

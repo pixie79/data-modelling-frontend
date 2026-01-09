@@ -9,7 +9,7 @@ services:
         VITE_OFFLINE_MODE: "true"
         # WASM SDK version to download (defaults to latest)
         WASM_SDK_VERSION: "latest"
-        WASM_SDK_REPO: "pixie79/data-modelling-sdk"
+        WASM_SDK_REPO: "OffeneDatenmodellierung/data-modelling-sdk"
     container_name: data-modelling-frontend
     ports:
       - "5173:80"

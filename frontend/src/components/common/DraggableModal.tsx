@@ -16,6 +16,9 @@ export interface DraggableModalProps {
   initialPosition?: { x: number; y: number };
   noPadding?: boolean;
   resizable?: boolean;
+  zIndex?: number; // For stacking multiple modals
+  onFocus?: () => void; // Called when modal is clicked/focused
+  hideBackdrop?: boolean; // Hide backdrop for multi-modal support
 }
 
 export const DraggableModal: React.FC<DraggableModalProps> = ({
@@ -28,6 +31,9 @@ export const DraggableModal: React.FC<DraggableModalProps> = ({
   initialPosition,
   noPadding = false,
   resizable = false,
+  zIndex = 50,
+  onFocus,
+  hideBackdrop = false,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
@@ -223,30 +229,33 @@ export const DraggableModal: React.FC<DraggableModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 overflow-hidden"
+      className="fixed inset-0 overflow-hidden pointer-events-none"
+      style={{ zIndex }}
       aria-labelledby={titleId}
       aria-describedby={descriptionId}
       aria-modal="true"
       role="dialog"
     >
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
-        onClick={onClose}
-        onKeyDown={(e) => {
-          if (e.key === 'Escape') {
-            onClose();
-          }
-        }}
-        role="button"
-        tabIndex={0}
-        aria-label="Close modal"
-      />
+      {/* Backdrop - only show for single modal or first modal */}
+      {!hideBackdrop && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 transition-opacity pointer-events-auto"
+          onClick={onClose}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              onClose();
+            }
+          }}
+          role="button"
+          tabIndex={0}
+          aria-label="Close modal"
+        />
+      )}
 
       {/* Draggable Modal */}
       <div
         ref={modalRef}
-        className={`fixed bg-white rounded-lg shadow-2xl ${dimensions ? '' : sizeClasses[size]} ${dimensions ? '' : 'max-h-[90vh]'} flex flex-col`}
+        className={`fixed bg-white rounded-lg shadow-2xl ${dimensions ? '' : sizeClasses[size]} ${dimensions ? '' : 'max-h-[90vh]'} flex flex-col pointer-events-auto`}
         style={{
           left: `${position.x}px`,
           top: `${position.y}px`,
@@ -256,6 +265,7 @@ export const DraggableModal: React.FC<DraggableModalProps> = ({
           maxHeight: dimensions ? undefined : '90vh',
         }}
         onClick={(e) => e.stopPropagation()}
+        onMouseDown={() => onFocus?.()}
         role="dialog"
         aria-modal="true"
       >

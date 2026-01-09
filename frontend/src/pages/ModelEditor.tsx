@@ -63,13 +63,18 @@ const ModelEditor: React.FC = () => {
     setComputeAssets,
     setBPMNProcesses,
     setDMNDecisions,
+    // Multi-editor support
+    openTableEditorIds,
+    focusedTableEditorId,
+    openTableEditor,
+    closeTableEditor,
+    focusTableEditor,
   } = useModelStore();
   const { addToast } = useUIStore();
   const { mode } = useSDKModeStore();
   const { conflicts } = useCollaborationStore();
 
   const [isLoading, setIsLoading] = useState(true);
-  const [showTableEditor, setShowTableEditor] = useState(false);
   const [showTableProperties, setShowTableProperties] = useState(false);
   const [showConflictResolver, setShowConflictResolver] = useState(false);
   const [showWorkspaceSettings, setShowWorkspaceSettings] = useState(false);
@@ -193,13 +198,9 @@ const ModelEditor: React.FC = () => {
     }
   }, [conflicts.length]);
 
-  // Show table editor modal when table is selected
+  // Close table properties when selected table changes
   useEffect(() => {
-    if (selectedTableId) {
-      setShowTableEditor(true);
-      setShowTableProperties(false);
-    } else {
-      setShowTableEditor(false);
+    if (!selectedTableId) {
       setShowTableProperties(false);
     }
   }, [selectedTableId]);
@@ -682,33 +683,54 @@ const ModelEditor: React.FC = () => {
         onClose={() => setShowImportExportDialog(false)}
       />
 
-      {/* Table Editor Modal */}
-      {selectedTableId && selectedDomainId && (
-        <DraggableModal
-          isOpen={showTableEditor}
-          onClose={() => {
-            setShowTableEditor(false);
-            setSelectedTable(null);
-          }}
-          title="Edit Table"
-          size="lg"
-          initialPosition={{
-            x: Math.max(50, window.innerWidth / 2 - 400),
-            y: Math.max(50, window.innerHeight / 2 - 300),
-          }}
-        >
-          <TableEditor
-            tableId={selectedTableId}
-            workspaceId={workspaceId ?? ''}
-            onClose={async () => {
-              // Small delay to ensure canvas updates before closing
-              await new Promise((resolve) => setTimeout(resolve, 150));
-              setShowTableEditor(false);
-              setSelectedTable(null);
+      {/* Multi-Table Editor Modals - up to 3 editors side by side */}
+      {openTableEditorIds.map((tableId, index) => {
+        const table = tables.find((t) => t.id === tableId);
+        const tableName = table?.name || 'Table';
+        // Position editors side by side: 50px start, 720px width + 20px gap
+        const editorWidth = 720;
+        const gap = 20;
+        const startX = 50;
+        const posX = startX + index * (editorWidth + gap);
+        const isFocused = focusedTableEditorId === tableId;
+        // Base z-index 50, focused editor gets +10
+        const zIndex = isFocused ? 60 : 50;
+
+        return (
+          <DraggableModal
+            key={tableId}
+            isOpen={true}
+            onClose={() => {
+              closeTableEditor(tableId);
+              if (selectedTableId === tableId) {
+                setSelectedTable(null);
+              }
             }}
-          />
-        </DraggableModal>
-      )}
+            title={`Edit: ${tableName}`}
+            size="lg"
+            initialPosition={{
+              x: Math.max(50, posX),
+              y: 100,
+            }}
+            zIndex={zIndex}
+            onFocus={() => focusTableEditor(tableId)}
+            hideBackdrop={true} // No backdrop so users can click other tables on canvas
+          >
+            <TableEditor
+              tableId={tableId}
+              workspaceId={workspaceId ?? ''}
+              onClose={async () => {
+                // Small delay to ensure canvas updates before closing
+                await new Promise((resolve) => setTimeout(resolve, 150));
+                closeTableEditor(tableId);
+                if (selectedTableId === tableId) {
+                  setSelectedTable(null);
+                }
+              }}
+            />
+          </DraggableModal>
+        );
+      })}
 
       {/* Table Properties Modal */}
       {selectedTableId && (
@@ -728,7 +750,9 @@ const ModelEditor: React.FC = () => {
           <div className="flex gap-2 mb-4 border-b border-gray-200 pb-4">
             <button
               onClick={() => {
-                setShowTableEditor(true);
+                if (selectedTableId) {
+                  openTableEditor(selectedTableId);
+                }
                 setShowTableProperties(false);
               }}
               className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"

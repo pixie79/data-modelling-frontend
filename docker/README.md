@@ -57,7 +57,7 @@ services:
 
 **Build Arguments**:
 - `WASM_SDK_VERSION`: SDK version to download (defaults to `latest`)
-- `WASM_SDK_REPO`: GitHub repository (defaults to `pixie79/data-modelling-sdk`)
+- `WASM_SDK_REPO`: GitHub repository (defaults to `OffeneDatenmodellierung/data-modelling-sdk`)
 
 ## Configuration
 

@@ -1,7 +1,7 @@
 # Data Modelling SDK WASM Bindings Reference
 
 **Package**: `data-modelling-sdk`  
-**Version**: 1.13.5  
+**Version**: 1.13.6  
 **Audit Date**: 2026-01-08
 
 This document lists all exported bindings from the Data Modelling SDK WASM module.
@@ -16,7 +16,7 @@ The SDK is downloaded from GitHub releases during build:
 npm run build:wasm
 ```
 
-This downloads from: `https://github.com/pixie79/data-modelling-sdk/releases/download/v1.13.5/data-modelling-sdk-wasm-v1.13.5.tar.gz`
+This downloads from: `https://github.com/OffeneDatenmodellierung/data-modelling-sdk/releases/download/v1.13.6/data-modelling-sdk-wasm-v1.13.6.tar.gz`
 
 ## WASM Files
 
@@ -348,9 +348,9 @@ console.log('Has cycle:', cycle.has_cycle);
 
 ---
 
-## New in Version 1.13.5
+## New in Version 1.13.6
 
-The following features were added/fixed in SDK 1.13.5:
+The following features were added/fixed in SDK 1.13.6:
 
 ### ODCS v3.1.0 Field Preservation
 

@@ -50,6 +50,10 @@ interface ModelState {
   isLoading: boolean;
   error: string | null;
 
+  // Multi-editor support (max 3 editors open at once)
+  openTableEditorIds: string[]; // Array of table IDs with open editors
+  focusedTableEditorId: string | null; // Which editor is currently focused (in front)
+
   // Tag filter backup (stored when filtering is active)
   originalTables?: Table[];
   originalComputeAssets?: ComputeAsset[];
@@ -99,6 +103,11 @@ interface ModelState {
   setLoading: (isLoading: boolean) => void;
   setError: (error: string | null) => void;
 
+  // Multi-editor actions
+  openTableEditor: (tableId: string) => void; // Opens editor or focuses if already open
+  closeTableEditor: (tableId: string) => void; // Closes specific editor
+  focusTableEditor: (tableId: string) => void; // Brings editor to front
+
   // CRUD Operations
   fetchTables: (domain: string) => Promise<void>;
   fetchRelationships: (domain: string) => Promise<void>;
@@ -126,6 +135,31 @@ interface ModelState {
   getFilteredTables: () => Table[]; // Filter by currentView and selectedDataLevel
 }
 
+// Helper function to extract data_level from dm_level tag
+const getDataLevelFromTags = (tags?: string[]): DataLevel | undefined => {
+  if (!tags || !Array.isArray(tags)) return undefined;
+
+  for (const tag of tags) {
+    if (typeof tag === 'string' && tag.toLowerCase().startsWith('dm_level:')) {
+      const levelValue = tag.substring('dm_level:'.length).toLowerCase();
+      if (['operational', 'bronze', 'silver', 'gold'].includes(levelValue)) {
+        return levelValue as DataLevel;
+      }
+    }
+  }
+  return undefined;
+};
+
+// Helper function to get effective data level (from field or tags)
+const getEffectiveDataLevel = (table: Table): DataLevel | undefined => {
+  // First check the data_level field
+  if (table.data_level) {
+    return table.data_level;
+  }
+  // Fall back to extracting from dm_level tag
+  return getDataLevelFromTags(table.tags);
+};
+
 // Helper function to filter tables based on view mode and data level
 const filterTablesByView = (
   tables: Table[],
@@ -145,16 +179,40 @@ const filterTablesByView = (
 
   // Filter by data level (for operational/analytical view)
   if (currentView === 'operational' || currentView === 'analytical') {
+    // Debug: log table data levels
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[ModelStore] Filtering for ${currentView} view:`, {
+        totalTables: filtered.length,
+        selectedDataLevel,
+        tableLevels: filtered.slice(0, 5).map((t) => ({
+          name: t.name,
+          data_level: t.data_level,
+          tags: t.tags,
+          effectiveLevel: getEffectiveDataLevel(t),
+        })),
+      });
+    }
+
     if (selectedDataLevel) {
-      filtered = filtered.filter((t) => t.data_level === selectedDataLevel);
+      // Filter by specific data level - check both field and tags
+      filtered = filtered.filter((t) => getEffectiveDataLevel(t) === selectedDataLevel);
     } else if (currentView === 'operational') {
-      // Operational view: show only operational tables if no level selected
-      filtered = filtered.filter((t) => t.data_level === 'operational' || !t.data_level);
+      // Operational view: show ONLY tables with explicit 'operational' level
+      // Tables without a level should NOT appear (they need to be assigned a level)
+      filtered = filtered.filter((t) => {
+        const level = getEffectiveDataLevel(t);
+        return level === 'operational';
+      });
     } else {
       // Analytical view: show bronze/silver/gold if no level selected
-      filtered = filtered.filter(
-        (t) => t.data_level === 'bronze' || t.data_level === 'silver' || t.data_level === 'gold'
-      );
+      filtered = filtered.filter((t) => {
+        const level = getEffectiveDataLevel(t);
+        return level === 'bronze' || level === 'silver' || level === 'gold';
+      });
+    }
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[ModelStore] After ${currentView} filter: ${filtered.length} tables`);
     }
   }
 
@@ -189,6 +247,10 @@ export const useModelStore = create<ModelState>((set, get) => ({
   selectedDataLevel: null,
   isLoading: false,
   error: null,
+
+  // Multi-editor state
+  openTableEditorIds: [],
+  focusedTableEditorId: null,
 
   setTables: (tables) => set({ tables }),
   setRelationships: (relationships) => set({ relationships }),
@@ -430,6 +492,52 @@ export const useModelStore = create<ModelState>((set, get) => ({
   setSelectedDataLevel: (level) => set({ selectedDataLevel: level }),
   setLoading: (isLoading) => set({ isLoading }),
   setError: (error) => set({ error }),
+
+  // Multi-editor actions
+  openTableEditor: (tableId) => {
+    const { openTableEditorIds } = get();
+
+    // If already open, just focus it
+    if (openTableEditorIds.includes(tableId)) {
+      set({ focusedTableEditorId: tableId });
+      return;
+    }
+
+    // Check max limit (3 editors)
+    if (openTableEditorIds.length >= 3) {
+      console.warn('[ModelStore] Maximum 3 table editors can be open at once');
+      return;
+    }
+
+    // Add new editor and focus it
+    set({
+      openTableEditorIds: [...openTableEditorIds, tableId],
+      focusedTableEditorId: tableId,
+    });
+  },
+
+  closeTableEditor: (tableId) => {
+    const { openTableEditorIds, focusedTableEditorId } = get();
+    const newOpenIds = openTableEditorIds.filter((id) => id !== tableId);
+
+    // If closing the focused editor, focus the last remaining one
+    const newFocusedId =
+      focusedTableEditorId === tableId
+        ? newOpenIds[newOpenIds.length - 1] || null
+        : focusedTableEditorId;
+
+    set({
+      openTableEditorIds: newOpenIds,
+      focusedTableEditorId: newFocusedId,
+    });
+  },
+
+  focusTableEditor: (tableId) => {
+    const { openTableEditorIds } = get();
+    if (openTableEditorIds.includes(tableId)) {
+      set({ focusedTableEditorId: tableId });
+    }
+  },
 
   // CRUD Operations
   fetchTables: async (domain: string) => {

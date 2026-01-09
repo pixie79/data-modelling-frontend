@@ -14,6 +14,12 @@ vi.mock('@/stores/workspaceStore', () => ({
   useWorkspaceStore: vi.fn(),
 }));
 
+vi.mock('@/stores/uiStore', () => ({
+  useUIStore: vi.fn(() => ({
+    addToast: vi.fn(),
+  })),
+}));
+
 vi.mock('react-router-dom', () => ({
   useNavigate: () => vi.fn(),
 }));
@@ -46,6 +52,7 @@ describe('WorkspaceList', () => {
       isLoading: false,
       setCurrentWorkspace: vi.fn(),
       deleteWorkspaceRemote: vi.fn(),
+      reloadWorkspaceFromDisk: vi.fn().mockResolvedValue({ success: true, reloaded: false }),
     } as any);
   });
 
@@ -70,6 +77,7 @@ describe('WorkspaceList', () => {
       workspaces: mockWorkspaces,
       currentWorkspaceId: 'workspace-1',
       setCurrentWorkspace: mockSetCurrentWorkspace,
+      reloadWorkspaceFromDisk: vi.fn().mockResolvedValue({ success: true, reloaded: false }),
     } as any);
 
     render(<WorkspaceList />);
@@ -99,6 +107,7 @@ describe('WorkspaceList', () => {
       workspaces: mockWorkspaces,
       currentWorkspaceId: 'workspace-1',
       deleteWorkspaceRemote: mockDeleteWorkspace,
+      reloadWorkspaceFromDisk: vi.fn().mockResolvedValue({ success: true, reloaded: false }),
     } as any);
 
     render(<WorkspaceList />);
@@ -119,6 +128,7 @@ describe('WorkspaceList', () => {
       workspaces: [],
       currentWorkspaceId: null,
       isLoading: true,
+      reloadWorkspaceFromDisk: vi.fn().mockResolvedValue({ success: true, reloaded: false }),
     } as any);
 
     render(<WorkspaceList />);
@@ -131,6 +141,7 @@ describe('WorkspaceList', () => {
       workspaces: [],
       currentWorkspaceId: null,
       isLoading: false,
+      reloadWorkspaceFromDisk: vi.fn().mockResolvedValue({ success: true, reloaded: false }),
     } as any);
 
     render(<WorkspaceList />);

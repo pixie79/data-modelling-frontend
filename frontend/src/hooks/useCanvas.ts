@@ -61,23 +61,29 @@ export function useCanvas(_workspaceId: string, domainId: string): UseCanvasRetu
         return;
       }
 
-      // Initialize view_positions if it doesn't exist
-      if (!domain.view_positions) {
-        domain.view_positions = {};
-      }
-      if (!domain.view_positions[currentView]) {
-        domain.view_positions[currentView] = {};
-      }
+      // Create new view_positions object (immutable update - don't mutate domain directly)
+      const existingViewPositions = domain.view_positions || {};
+      const existingCurrentViewPositions = existingViewPositions[currentView] || {};
 
-      // Save position per view mode
-      domain.view_positions[currentView][node.id] = {
-        x: node.position.x,
-        y: node.position.y,
+      const newViewPositions = {
+        ...existingViewPositions,
+        [currentView]: {
+          ...existingCurrentViewPositions,
+          [node.id]: {
+            x: node.position.x,
+            y: node.position.y,
+          },
+        },
       };
 
       // Update domain with new view_positions
       updateDomain(domainId, {
-        view_positions: domain.view_positions,
+        view_positions: newViewPositions,
+      });
+
+      console.log(`[useCanvas] Saved position for ${node.id} in ${currentView} view:`, {
+        x: node.position.x,
+        y: node.position.y,
       });
 
       if (isTable) {

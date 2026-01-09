@@ -588,6 +588,17 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
     const domain = domains.find((d) => d.id === domainId);
     const viewPositions = domain?.view_positions?.[currentView] || {};
 
+    // Debug: Log view positions being loaded
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[DomainCanvas] Loading positions for ${currentView} view:`, {
+        domainId,
+        hasViewPositions: !!domain?.view_positions,
+        availableViews: domain?.view_positions ? Object.keys(domain.view_positions) : [],
+        currentViewPositions: Object.keys(viewPositions).length,
+        samplePositions: Object.entries(viewPositions).slice(0, 3),
+      });
+    }
+
     // In Systems view, show systems as nodes with table cards inside
     if (currentView === 'systems') {
       // Combine owned and shared systems

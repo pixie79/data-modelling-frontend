@@ -170,14 +170,29 @@ const filterTablesByView = (
 
   // Filter by data level (for operational/analytical view)
   if (currentView === 'operational' || currentView === 'analytical') {
+    // Debug: log table data levels
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[ModelStore] Filtering for ${currentView} view:`, {
+        totalTables: filtered.length,
+        selectedDataLevel,
+        tableLevels: filtered.slice(0, 5).map((t) => ({
+          name: t.name,
+          data_level: t.data_level,
+          tags: t.tags,
+          effectiveLevel: getEffectiveDataLevel(t),
+        })),
+      });
+    }
+
     if (selectedDataLevel) {
       // Filter by specific data level - check both field and tags
       filtered = filtered.filter((t) => getEffectiveDataLevel(t) === selectedDataLevel);
     } else if (currentView === 'operational') {
-      // Operational view: show only operational tables if no level selected
+      // Operational view: show ONLY tables with explicit 'operational' level
+      // Tables without a level should NOT appear (they need to be assigned a level)
       filtered = filtered.filter((t) => {
         const level = getEffectiveDataLevel(t);
-        return level === 'operational' || !level;
+        return level === 'operational';
       });
     } else {
       // Analytical view: show bronze/silver/gold if no level selected
@@ -185,6 +200,10 @@ const filterTablesByView = (
         const level = getEffectiveDataLevel(t);
         return level === 'bronze' || level === 'silver' || level === 'gold';
       });
+    }
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[ModelStore] After ${currentView} filter: ${filtered.length} tables`);
     }
   }
 

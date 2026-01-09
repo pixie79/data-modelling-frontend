@@ -1257,6 +1257,12 @@ class ODCSService {
       console.log(
         `[ODCSService] normalizeTable - Found 'columns' array with ${columns.length} items.`
       );
+    } else if (Array.isArray(item.properties)) {
+      // ODCS schema uses 'properties' for columns
+      columns = item.properties;
+      console.log(
+        `[ODCSService] normalizeTable - Found 'properties' array with ${columns.length} items.`
+      );
     } else if (Array.isArray(item.attributes)) {
       columns = item.attributes;
       console.log(
@@ -1635,8 +1641,10 @@ class ODCSService {
           `column_${colIndex + 1}`,
         data_type: columnDataType,
         nullable: columnNullable,
-        is_primary_key: col.is_primary_key ?? col.primary_key ?? col.isPrimaryKey ?? false,
-        is_foreign_key: col.is_foreign_key ?? col.foreign_key ?? col.isForeignKey ?? false,
+        is_primary_key:
+          col.is_primary_key ?? col.primary_key ?? col.isPrimaryKey ?? col.primaryKey ?? false,
+        is_foreign_key:
+          col.is_foreign_key ?? col.foreign_key ?? col.isForeignKey ?? col.foreignKey ?? false,
         foreign_key_reference:
           col.foreign_key_reference || col.foreign_key || col.reference || col.foreignKeyReference,
         default_value: col.default_value || col.default || col.defaultValue,

@@ -35,6 +35,7 @@ import { UnlinkedTablesDialog } from '@/components/system/UnlinkedTablesDialog';
 import { ComputeAssetEditor } from '@/components/asset/ComputeAssetEditor';
 import { RelationshipEditor } from '@/components/relationship/RelationshipEditor';
 import { EditorModal } from '@/components/editors/EditorModal';
+import { CanvasExport } from './CanvasExport';
 import { useUIStore } from '@/stores/uiStore';
 import { bpmnService } from '@/services/sdk/bpmnService';
 import { dmnService } from '@/services/sdk/dmnService';
@@ -1085,6 +1086,7 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
         <Background />
         <Controls />
         <MiniMap />
+        <CanvasExport filenamePrefix={`${currentView}-view`} />
       </ReactFlow>
 
       {/* Create/Import System button - only in Systems view */}

@@ -209,8 +209,13 @@ describe('DecisionViewer', () => {
       />
     );
 
-    const exportButton = screen.getByRole('button', { name: /export|markdown/i });
-    fireEvent.click(exportButton);
+    // Click the Export dropdown button first
+    const exportDropdownButton = screen.getByRole('button', { name: /export/i });
+    fireEvent.click(exportDropdownButton);
+
+    // Then click the Markdown option in the dropdown
+    const markdownOption = await screen.findByRole('button', { name: /markdown/i });
+    fireEvent.click(markdownOption);
 
     await waitFor(() => {
       expect(exportMock).toHaveBeenCalledWith(mockDecision);

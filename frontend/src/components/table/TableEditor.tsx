@@ -1007,6 +1007,36 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
                           </div>
                         )}
                       </div>
+                      {/* Documentation Export - Coming Soon */}
+                      <div className="border-t border-gray-200 pt-1">
+                        <div className="px-4 py-1 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                          Documentation
+                        </div>
+                        <button
+                          disabled
+                          className="w-full text-left px-4 py-2 text-sm text-gray-400 cursor-not-allowed flex items-center justify-between"
+                        >
+                          <span>Markdown (.md)</span>
+                          <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">
+                            Coming Soon
+                          </span>
+                        </button>
+                        <button
+                          disabled
+                          className="w-full text-left px-4 py-2 text-sm text-gray-400 cursor-not-allowed flex items-center justify-between"
+                        >
+                          <span>PDF Document</span>
+                          <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">
+                            Coming Soon
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+                    {/* Branding footer */}
+                    <div className="border-t border-gray-100 px-4 py-2 bg-gray-50">
+                      <p className="text-xs text-gray-400 text-center">
+                        Powered by opendatamodelling.com
+                      </p>
                     </div>
                   </div>
                 </>

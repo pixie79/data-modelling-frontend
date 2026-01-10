@@ -3,11 +3,17 @@
  * Shows detailed information about a data product
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Dialog } from '@/components/common/Dialog';
 import { odpsService } from '@/services/sdk/odpsService';
 import { browserFileService } from '@/services/platform/browser';
 import { useUIStore } from '@/stores/uiStore';
+import {
+  ExportDropdown,
+  YAMLIcon,
+  MarkdownIcon,
+  PDFIcon,
+} from '@/components/common/ExportDropdown';
 import type { DataProduct } from '@/types/odps';
 
 export interface ProductDetailModalProps {
@@ -26,18 +32,18 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const { addToast } = useUIStore();
   const [isExporting, setIsExporting] = useState(false);
 
-  const handleExport = async () => {
+  const handleExportYAML = async () => {
     setIsExporting(true);
     try {
       // Get domain name for ODPS export
       const { useModelStore } = await import('@/stores/modelStore');
       const domains = useModelStore.getState().domains;
-      const productDomain = domains.find(d => d.id === product.domain_id);
+      const productDomain = domains.find((d) => d.id === product.domain_id);
       const domainName = productDomain?.name || 'unknown';
-      
+
       const yamlContent = await odpsService.toYAML(product, domainName);
-      const filename = `${product.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.yaml`;
-      browserFileService.downloadFile(yamlContent, filename, 'text/yaml');
+      const filename = `${product.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.odps.yaml`;
+      browserFileService.downloadFile(filename, yamlContent, 'text/yaml');
       addToast({
         type: 'success',
         message: `Product "${product.name}" exported successfully`,
@@ -51,6 +57,43 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
       setIsExporting(false);
     }
   };
+
+  const handleExportMarkdown = async () => {
+    // Markdown export - coming soon with SDK support
+  };
+
+  const handleExportPDF = async () => {
+    // PDF export - coming soon with SDK support
+  };
+
+  const exportOptions = useMemo(
+    () => [
+      {
+        id: 'yaml',
+        label: 'YAML (.odps.yaml)',
+        description: 'Export as ODPS YAML specification',
+        icon: <YAMLIcon />,
+        onClick: handleExportYAML,
+      },
+      {
+        id: 'markdown',
+        label: 'Markdown (.md)',
+        description: 'Export as formatted documentation',
+        icon: <MarkdownIcon />,
+        onClick: handleExportMarkdown,
+        comingSoon: true,
+      },
+      {
+        id: 'pdf',
+        label: 'PDF Document',
+        description: 'Branded PDF with OpenDataModelling logo',
+        icon: <PDFIcon />,
+        onClick: handleExportPDF,
+        comingSoon: true,
+      },
+    ],
+    []
+  );
 
   return (
     <Dialog isOpen={isOpen} onClose={onClose} title={`Data Product: ${product.name}`} size="lg">
@@ -67,7 +110,9 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               <div>
                 <span className="text-sm font-medium text-gray-600">Description:</span>
                 <p className="mt-1 text-sm text-gray-900">
-                  {typeof product.description === 'string' ? product.description : JSON.stringify(product.description)}
+                  {typeof product.description === 'string'
+                    ? product.description
+                    : JSON.stringify(product.description)}
                 </p>
               </div>
             )}
@@ -81,8 +126,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               <div>
                 <span className="text-sm font-medium text-gray-600">Team:</span>
                 <span className="ml-2 text-sm text-gray-900">
-                  {typeof product.team === 'string' 
-                    ? product.team 
+                  {typeof product.team === 'string'
+                    ? product.team
                     : (product.team as any)?.name || JSON.stringify(product.team)}
                 </span>
               </div>
@@ -151,9 +196,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             <div className="space-y-1 text-sm text-gray-900">
               {product.support.team && <div>Team: {product.support.team}</div>}
               {product.support.contact && <div>Contact: {product.support.contact}</div>}
-              {product.support.slack_channel && (
-                <div>Slack: {product.support.slack_channel}</div>
-              )}
+              {product.support.slack_channel && <div>Slack: {product.support.slack_channel}</div>}
               {product.support.documentation_url && (
                 <div>
                   <a
@@ -172,13 +215,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
         {/* Actions */}
         <div className="flex justify-end gap-2 pt-4 border-t border-gray-200">
-          <button
-            onClick={handleExport}
-            disabled={isExporting}
-            className="px-4 py-2 text-sm font-medium text-green-700 bg-green-100 rounded-lg hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isExporting ? 'Exporting...' : 'Export YAML'}
-          </button>
+          <ExportDropdown options={exportOptions} isExporting={isExporting} />
           {onEdit && (
             <button
               onClick={onEdit}
@@ -198,5 +235,3 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
     </Dialog>
   );
 };
-
-

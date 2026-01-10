@@ -9,6 +9,7 @@ import type { Owner } from './table';
 export interface Workspace {
   id: string; // UUID
   name: string; // max 255 chars
+  description?: string; // Workspace description (from README.md)
   owner_id: string; // UUID
   created_at: string; // ISO timestamp
   last_modified_at: string; // ISO timestamp

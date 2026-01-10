@@ -194,6 +194,7 @@ export class WorkspaceV2Loader {
     } = {
       id: workspaceId,
       name: workspaceName,
+      description: workspaceV2.description, // From workspace.yaml or extracted from README.md
       owner_id: workspaceV2.owner_id || 'offline-user',
       created_at: workspaceV2.created_at || new Date().toISOString(),
       last_modified_at: workspaceV2.last_modified_at || new Date().toISOString(),
@@ -356,6 +357,16 @@ export class WorkspaceV2Loader {
       }
     }
 
+    // 5.5. Try to load README.md and extract description (for string files)
+    const readmeFile = files.find((f) => f.name === 'README.md');
+    if (readmeFile && !workspaceV2.description) {
+      const extractedDescription = this.extractDescriptionFromReadme(readmeFile.content);
+      if (extractedDescription) {
+        workspaceV2.description = extractedDescription;
+        console.log('[WorkspaceV2Loader] Extracted description from README.md (strings)');
+      }
+    }
+
     // 6. Build workspace object
     const workspace: Workspace & {
       tables?: Table[];
@@ -370,6 +381,7 @@ export class WorkspaceV2Loader {
     } = {
       id: workspaceId,
       name: workspaceName,
+      description: workspaceV2.description, // From workspace.yaml or extracted from README.md
       owner_id: workspaceV2.owner_id || 'example-user',
       created_at: workspaceV2.created_at || new Date().toISOString(),
       last_modified_at: workspaceV2.last_modified_at || new Date().toISOString(),

@@ -266,6 +266,7 @@ export class WorkspaceV2Saver {
       created_at: workspace.created_at,
       last_modified_at: now,
       // Optional fields
+      description: workspace.description,
       domains: domains.map((domain) => {
         const domainSystems = allSystems.filter((s) => (s as any).domain_id === domain.id);
 

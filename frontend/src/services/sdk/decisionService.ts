@@ -28,6 +28,7 @@ import {
   DecisionCategory,
   isValidStatusTransition,
   formatDecisionNumber,
+  generateDecisionNumber,
 } from '@/types/decision';
 
 /**
@@ -376,6 +377,8 @@ class DecisionService {
 
   /**
    * Create a new decision object (client-side)
+   * @param data Decision data
+   * @param number Optional timestamp-based number (YYMMDDHHmm). If not provided, generates one.
    */
   createDecision(
     data: {
@@ -388,12 +391,12 @@ class DecisionService {
       domain_id?: string;
       authors?: string[];
     },
-    nextNumber: number = 1
+    number?: number
   ): Decision {
     const now = new Date().toISOString();
     return {
       id: crypto.randomUUID(),
-      number: nextNumber,
+      number: number ?? generateDecisionNumber(),
       title: data.title,
       status: DecisionStatus.Draft,
       category: data.category,

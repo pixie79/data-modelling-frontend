@@ -49,8 +49,8 @@ export interface DecisionOption {
  * Architecture Decision Record following MADR format
  */
 export interface Decision {
-  id: string; // UUID
-  number: number; // Auto-generated decision number (e.g., 0001)
+  id: string; // UUID - unique identifier, must be preserved
+  number: number; // Timestamp-based number (YYMMDDHHmm format, e.g., 2601101806)
   title: string; // Decision title (max 255 chars)
   status: DecisionStatus;
   category: DecisionCategory;
@@ -94,7 +94,8 @@ export interface DecisionIndexEntry {
  */
 export interface DecisionIndex {
   workspace_id: string;
-  next_number: number;
+  /** @deprecated No longer used - numbers are now timestamp-based */
+  next_number?: number;
   decisions: DecisionIndexEntry[];
   last_updated: string; // ISO timestamp
 }
@@ -194,10 +195,31 @@ export function getDecisionCategoryColor(category: DecisionCategory): string {
 }
 
 /**
- * Format decision number as padded string (e.g., "0001")
+ * Generate a timestamp-based decision number in YYMMDDHHmm format
+ * This ensures unique numbers even when multiple users create decisions
+ * on different systems and merge via Git
+ */
+export function generateDecisionNumber(): number {
+  const now = new Date();
+  const yy = String(now.getFullYear()).slice(-2);
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  const hh = String(now.getHours()).padStart(2, '0');
+  const min = String(now.getMinutes()).padStart(2, '0');
+  return parseInt(`${yy}${mm}${dd}${hh}${min}`, 10);
+}
+
+/**
+ * Format decision number for display (e.g., "2601101806")
+ * For timestamp-based numbers, just return the number as string
  */
 export function formatDecisionNumber(num: number): string {
-  return num.toString().padStart(4, '0');
+  // Timestamp-based numbers are 10 digits (YYMMDDHHmm)
+  // Legacy 4-digit numbers should still be padded
+  if (num < 10000) {
+    return num.toString().padStart(4, '0');
+  }
+  return num.toString();
 }
 
 /**

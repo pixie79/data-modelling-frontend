@@ -29,6 +29,7 @@ import {
   ArticleStatus,
   isValidArticleStatusTransition,
   formatArticleNumber,
+  generateArticleNumber,
 } from '@/types/knowledge';
 
 /**
@@ -450,6 +451,8 @@ class KnowledgeService {
 
   /**
    * Create a new article object (client-side)
+   * @param data Article data
+   * @param number Optional timestamp-based number (YYMMDDHHmm). If not provided, generates one.
    */
   createArticle(
     data: {
@@ -460,12 +463,12 @@ class KnowledgeService {
       domain_id?: string;
       authors?: string[];
     },
-    nextNumber: number = 1
+    number?: number
   ): KnowledgeArticle {
     const now = new Date().toISOString();
     return {
       id: crypto.randomUUID(),
-      number: nextNumber,
+      number: number ?? generateArticleNumber(),
       title: data.title,
       type: data.type,
       status: ArticleStatus.Draft,

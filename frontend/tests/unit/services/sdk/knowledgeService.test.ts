@@ -353,7 +353,7 @@ describe('KnowledgeService', () => {
       expect(result.updated_at).toBeDefined();
     });
 
-    it('should use default number of 1 when not provided', () => {
+    it('should generate timestamp-based number when not provided', () => {
       const result = knowledgeService.createArticle({
         title: 'New Article',
         type: ArticleType.Tutorial,
@@ -361,7 +361,9 @@ describe('KnowledgeService', () => {
         content: 'Test content',
       });
 
-      expect(result.number).toBe(1);
+      // Number should be timestamp-based (YYMMDDHHmm format - 10 digits)
+      expect(result.number).toBeGreaterThan(2000000000);
+      expect(result.number.toString()).toHaveLength(10);
     });
   });
 

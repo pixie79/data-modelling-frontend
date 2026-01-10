@@ -35,8 +35,8 @@ export enum ArticleStatus {
  * Knowledge article entity
  */
 export interface KnowledgeArticle {
-  id: string; // UUID
-  number: number; // Auto-generated article number (e.g., 0001)
+  id: string; // UUID - unique identifier, must be preserved
+  number: number; // Timestamp-based number (YYMMDDHHmm format, e.g., 2601101806)
   title: string; // Article title (max 255 chars)
   type: ArticleType;
   status: ArticleStatus;
@@ -79,7 +79,8 @@ export interface KnowledgeIndexEntry {
  */
 export interface KnowledgeIndex {
   workspace_id: string;
-  next_number: number;
+  /** @deprecated No longer used - numbers are now timestamp-based */
+  next_number?: number;
   articles: KnowledgeIndexEntry[];
   last_updated: string; // ISO timestamp
 }
@@ -205,10 +206,31 @@ export function getArticleTypeIcon(type: ArticleType): string {
 }
 
 /**
- * Format article number as padded string (e.g., "0001")
+ * Generate a timestamp-based article number in YYMMDDHHmm format
+ * This ensures unique numbers even when multiple users create articles
+ * on different systems and merge via Git
+ */
+export function generateArticleNumber(): number {
+  const now = new Date();
+  const yy = String(now.getFullYear()).slice(-2);
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  const hh = String(now.getHours()).padStart(2, '0');
+  const min = String(now.getMinutes()).padStart(2, '0');
+  return parseInt(`${yy}${mm}${dd}${hh}${min}`, 10);
+}
+
+/**
+ * Format article number for display (e.g., "2601101806")
+ * For timestamp-based numbers, just return the number as string
  */
 export function formatArticleNumber(num: number): string {
-  return num.toString().padStart(4, '0');
+  // Timestamp-based numbers are 10 digits (YYMMDDHHmm)
+  // Legacy 4-digit numbers should still be padded
+  if (num < 10000) {
+    return num.toString().padStart(4, '0');
+  }
+  return num.toString();
 }
 
 /**

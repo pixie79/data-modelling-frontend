@@ -18,7 +18,7 @@ import type {
   KnowledgeFilter,
   KnowledgeSearchResult,
 } from '@/types/knowledge';
-import { ArticleType, ArticleStatus } from '@/types/knowledge';
+import { ArticleType, ArticleStatus, generateArticleNumber } from '@/types/knowledge';
 
 interface KnowledgeState {
   // State
@@ -248,8 +248,9 @@ export const useKnowledgeStore = create<KnowledgeState>()(
 
       // High-level creation using service
       createArticle: (data) => {
-        const nextNumber = get().getNextArticleNumber();
-        const article = knowledgeService.createArticle(data, nextNumber);
+        // Use timestamp-based number (YYMMDDHHmm) for unique IDs across systems
+        const timestampNumber = generateArticleNumber();
+        const article = knowledgeService.createArticle(data, timestampNumber);
 
         // Add to store
         get().addArticle(article);
@@ -262,7 +263,6 @@ export const useKnowledgeStore = create<KnowledgeState>()(
           const updatedIndex: KnowledgeIndex = {
             ...index,
             articles: [...index.articles, entry],
-            next_number: nextNumber + 1,
             last_updated: new Date().toISOString(),
           };
           set({ knowledgeIndex: updatedIndex });
@@ -352,14 +352,10 @@ export const useKnowledgeStore = create<KnowledgeState>()(
         return get().articles.filter((a) => a.status === ArticleStatus.Draft);
       },
 
+      /** @deprecated Use generateArticleNumber() from types/knowledge instead */
       getNextArticleNumber: () => {
-        const index = get().knowledgeIndex;
-        if (index?.next_number) {
-          return index.next_number;
-        }
-        const articles = get().articles;
-        if (articles.length === 0) return 1;
-        return Math.max(...articles.map((a) => a.number)) + 1;
+        // Now uses timestamp-based numbers (YYMMDDHHmm)
+        return generateArticleNumber();
       },
 
       // Reset

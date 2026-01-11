@@ -5,6 +5,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import packageJson from '../../package.json';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useSDKModeStore } from '@/services/sdk/sdkMode';
@@ -506,6 +507,11 @@ const Home: React.FC = () => {
               </div>
             )}
 
+            {/* Version Footer */}
+            <footer className="mt-12 pt-6 border-t border-gray-200 text-center text-sm text-gray-500">
+              Version {packageJson.version}
+            </footer>
+
             {/* Create Workspace Dialog for offline mode */}
             {showCreateDialog && (
               <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -805,6 +811,11 @@ const Home: React.FC = () => {
           <WorkspaceList
             onWorkspaceSelect={(workspaceId) => navigate(`/workspace/${workspaceId}`)}
           />
+
+          {/* Version Footer */}
+          <footer className="mt-12 pt-6 border-t border-gray-200 text-center text-sm text-gray-500">
+            Version {packageJson.version}
+          </footer>
 
           {/* Create Workspace Dialog */}
           {showCreateDialog && (

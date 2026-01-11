@@ -34,8 +34,14 @@ export const DecisionViewer: React.FC<DecisionViewerProps> = ({
   onClose,
   className = '',
 }) => {
-  const { isSaving, changeDecisionStatus, exportDecisionToMarkdown, getDecisionById } =
-    useDecisionStore();
+  const {
+    isSaving,
+    changeDecisionStatus,
+    exportDecisionToMarkdown,
+    exportDecisionToPDF,
+    hasPDFExport,
+    getDecisionById,
+  } = useDecisionStore();
   const { articles } = useKnowledgeStore();
 
   const [showStatusChange, setShowStatusChange] = useState(false);
@@ -77,9 +83,17 @@ export const DecisionViewer: React.FC<DecisionViewerProps> = ({
   };
 
   const handleExportPDF = async () => {
-    // PDF export requires SDK support - coming soon
-    // Will use SDK's export_decision_to_pdf when available
+    setIsExporting(true);
+    try {
+      await exportDecisionToPDF(decision);
+    } catch {
+      // Error handled by store
+    } finally {
+      setIsExporting(false);
+    }
   };
+
+  const pdfExportAvailable = hasPDFExport();
 
   const exportOptions = useMemo(
     () => [
@@ -96,10 +110,11 @@ export const DecisionViewer: React.FC<DecisionViewerProps> = ({
         description: 'Branded PDF with OpenDataModelling logo',
         icon: <PDFIcon />,
         onClick: handleExportPDF,
-        comingSoon: true,
+        disabled: !pdfExportAvailable,
+        comingSoon: !pdfExportAvailable,
       },
     ],
-    []
+    [pdfExportAvailable]
   );
 
   const availableTransitions = VALID_STATUS_TRANSITIONS[decision.status];

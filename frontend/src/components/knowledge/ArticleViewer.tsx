@@ -34,8 +34,14 @@ export const ArticleViewer: React.FC<ArticleViewerProps> = ({
   onClose,
   className = '',
 }) => {
-  const { isSaving, changeArticleStatus, exportKnowledgeToMarkdown, getArticleById } =
-    useKnowledgeStore();
+  const {
+    isSaving,
+    changeArticleStatus,
+    exportKnowledgeToMarkdown,
+    exportKnowledgeToPDF,
+    hasPDFExport,
+    getArticleById,
+  } = useKnowledgeStore();
   const { getDecisionById } = useDecisionStore();
 
   const [showStatusChange, setShowStatusChange] = useState(false);
@@ -71,9 +77,17 @@ export const ArticleViewer: React.FC<ArticleViewerProps> = ({
   };
 
   const handleExportPDF = async () => {
-    // PDF export requires SDK support - coming soon
-    // Will use SDK's export_knowledge_to_pdf when available
+    setIsExporting(true);
+    try {
+      await exportKnowledgeToPDF(article);
+    } catch {
+      // Error handled by store
+    } finally {
+      setIsExporting(false);
+    }
   };
+
+  const pdfExportAvailable = hasPDFExport();
 
   const exportOptions = useMemo(
     () => [
@@ -90,10 +104,11 @@ export const ArticleViewer: React.FC<ArticleViewerProps> = ({
         description: 'Branded PDF with OpenDataModelling logo',
         icon: <PDFIcon />,
         onClick: handleExportPDF,
-        comingSoon: true,
+        disabled: !pdfExportAvailable,
+        comingSoon: !pdfExportAvailable,
       },
     ],
-    []
+    [pdfExportAvailable]
   );
 
   const availableTransitions = VALID_ARTICLE_STATUS_TRANSITIONS[article.status];

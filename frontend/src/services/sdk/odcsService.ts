@@ -1997,6 +1997,62 @@ class ODCSService {
   }
 
   /**
+   * Export a table to Markdown format
+   * Uses SDK 1.14.1+ export_table_to_markdown method
+   */
+  async exportTableToMarkdown(table: Table): Promise<string> {
+    if (!sdkLoader.hasODCSExport()) {
+      throw new Error('ODCS Markdown export requires SDK 1.14.1 or later');
+    }
+
+    try {
+      await sdkLoader.load();
+      const sdk = sdkLoader.getModule();
+
+      if (sdk && typeof (sdk as any).export_table_to_markdown === 'function') {
+        const tableJson = JSON.stringify(table);
+        return (sdk as any).export_table_to_markdown(tableJson);
+      }
+
+      throw new Error('SDK export_table_to_markdown method not available');
+    } catch (error) {
+      console.error('[ODCSService] Failed to export table to Markdown:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Export a table to PDF format
+   * Uses SDK 1.14.1+ export_table_to_pdf method
+   * Returns base64-encoded PDF data
+   */
+  async exportTableToPDF(
+    table: Table,
+    branding?: { logo_base64?: string; company_name?: string; footer_text?: string }
+  ): Promise<{ pdf_base64: string }> {
+    if (!sdkLoader.hasODCSExport()) {
+      throw new Error('ODCS PDF export requires SDK 1.14.1 or later');
+    }
+
+    try {
+      await sdkLoader.load();
+      const sdk = sdkLoader.getModule();
+
+      if (sdk && typeof (sdk as any).export_table_to_pdf === 'function') {
+        const tableJson = JSON.stringify(table);
+        const brandingJson = branding ? JSON.stringify(branding) : null;
+        const resultJson = (sdk as any).export_table_to_pdf(tableJson, brandingJson);
+        return JSON.parse(resultJson);
+      }
+
+      throw new Error('SDK export_table_to_pdf method not available');
+    } catch (error) {
+      console.error('[ODCSService] Failed to export table to PDF:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Export workspace as Git diff format for conflict resolution
    * Creates a diff-friendly format that can be used with Git merge tools
    */

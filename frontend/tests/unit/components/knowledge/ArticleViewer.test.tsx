@@ -43,6 +43,8 @@ describe('ArticleViewer', () => {
       isSaving: false,
       changeArticleStatus: vi.fn().mockReturnValue(mockArticle),
       exportKnowledgeToMarkdown: vi.fn().mockResolvedValue('# KB-0001'),
+      exportKnowledgeToPDF: vi.fn().mockResolvedValue(undefined),
+      hasPDFExport: vi.fn().mockReturnValue(false),
       getArticleById: vi.fn().mockReturnValue(mockArticle),
     } as any);
     vi.mocked(useDecisionStore).mockReturnValue({
@@ -214,6 +216,8 @@ describe('ArticleViewer', () => {
       isSaving: false,
       changeArticleStatus: vi.fn().mockReturnValue(mockArticle),
       exportKnowledgeToMarkdown: exportMock,
+      exportKnowledgeToPDF: vi.fn().mockResolvedValue(undefined),
+      hasPDFExport: vi.fn().mockReturnValue(false),
       getArticleById: vi.fn().mockReturnValue(mockArticle),
     } as any);
 

@@ -17,7 +17,7 @@ class CADSService {
    */
   async parseYAML(yamlContent: string): Promise<ComputeAsset> {
     const isOnline = await sdkModeDetector.checkOnlineMode();
-    
+
     if (isOnline) {
       try {
         const response = await apiClient.getClient().post('/api/v1/import/cads', {
@@ -52,7 +52,7 @@ class CADSService {
    */
   async toYAML(asset: ComputeAsset): Promise<string> {
     const isOnline = await sdkModeDetector.checkOnlineMode();
-    
+
     if (isOnline) {
       try {
         const response = await apiClient.getClient().post('/api/v1/export/cads', {
@@ -77,6 +77,60 @@ class CADSService {
 
     // Fallback: Use js-yaml serializer
     return yaml.dump(asset);
+  }
+
+  /**
+   * Export a compute asset to Markdown format
+   * Uses SDK 1.14.1+ export_cads_to_markdown method
+   */
+  async exportToMarkdown(asset: ComputeAsset): Promise<string> {
+    if (!sdkLoader.hasCADSExport()) {
+      throw new Error('CADS Markdown export requires SDK 1.14.1 or later');
+    }
+
+    try {
+      const sdk = await sdkLoader.load();
+
+      if (sdk && typeof sdk.export_cads_to_markdown === 'function') {
+        const assetJson = JSON.stringify(asset);
+        return sdk.export_cads_to_markdown(assetJson);
+      }
+
+      throw new Error('SDK export_cads_to_markdown method not available');
+    } catch (error) {
+      console.error('[CADSService] Failed to export compute asset to Markdown:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Export a compute asset to PDF format
+   * Uses SDK 1.14.1+ export_cads_to_pdf method
+   * Returns base64-encoded PDF data
+   */
+  async exportToPDF(
+    asset: ComputeAsset,
+    branding?: { logo_base64?: string; company_name?: string; footer_text?: string }
+  ): Promise<{ pdf_base64: string }> {
+    if (!sdkLoader.hasCADSExport()) {
+      throw new Error('CADS PDF export requires SDK 1.14.1 or later');
+    }
+
+    try {
+      const sdk = await sdkLoader.load();
+
+      if (sdk && typeof sdk.export_cads_to_pdf === 'function') {
+        const assetJson = JSON.stringify(asset);
+        const brandingJson = branding ? JSON.stringify(branding) : null;
+        const resultJson = sdk.export_cads_to_pdf(assetJson, brandingJson);
+        return JSON.parse(resultJson);
+      }
+
+      throw new Error('SDK export_cads_to_pdf method not available');
+    } catch (error) {
+      console.error('[CADSService] Failed to export compute asset to PDF:', error);
+      throw error;
+    }
   }
 
   /**
@@ -107,4 +161,3 @@ class CADSService {
 }
 
 export const cadsService = new CADSService();
-

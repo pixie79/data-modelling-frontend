@@ -60,6 +60,8 @@ interface KnowledgeState {
   parseKnowledgeIndexYaml: (yaml: string) => Promise<KnowledgeIndex | null>;
   exportKnowledgeToYaml: (article: KnowledgeArticle) => Promise<string | null>;
   exportKnowledgeToMarkdown: (article: KnowledgeArticle) => Promise<string>;
+  exportKnowledgeToPDF: (article: KnowledgeArticle) => Promise<void>;
+  hasPDFExport: () => boolean;
 
   // Search (uses SDK if available, falls back to client-side)
   search: (query: string) => Promise<void>;
@@ -224,6 +226,22 @@ export const useKnowledgeStore = create<KnowledgeState>()(
           });
           throw error;
         }
+      },
+
+      exportKnowledgeToPDF: async (article) => {
+        try {
+          const pdfResult = await knowledgeService.exportKnowledgeToPDF(article);
+          knowledgeService.downloadPDF(pdfResult);
+        } catch (error) {
+          set({
+            error: error instanceof Error ? error.message : 'Failed to export article to PDF',
+          });
+          throw error;
+        }
+      },
+
+      hasPDFExport: () => {
+        return knowledgeService.hasPDFExport();
       },
 
       // Search

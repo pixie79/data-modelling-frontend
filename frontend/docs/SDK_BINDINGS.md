@@ -1,8 +1,8 @@
 # Data Modelling SDK WASM Bindings Reference
 
 **Package**: `data-modelling-sdk`  
-**Version**: 1.13.6  
-**Audit Date**: 2026-01-08
+**Version**: 1.14.1  
+**Audit Date**: 2026-01-11
 
 This document lists all exported bindings from the Data Modelling SDK WASM module.
 
@@ -16,7 +16,7 @@ The SDK is downloaded from GitHub releases during build:
 npm run build:wasm
 ```
 
-This downloads from: `https://github.com/OffeneDatenmodellierung/data-modelling-sdk/releases/download/v1.13.6/data-modelling-sdk-wasm-v1.13.6.tar.gz`
+This downloads from: `https://github.com/OffeneDatenmodellierung/data-modelling-sdk/releases/download/v1.14.1/data-modelling-sdk-wasm-v1.14.1.tar.gz`
 
 ## WASM Files
 
@@ -46,13 +46,15 @@ const result = sdk.parse_odcs_yaml(yamlContent);
 
 ### ODCS/ODCL Parsing
 
-| Function              | Signature                                    | Description                    |
-| --------------------- | -------------------------------------------- | ------------------------------ |
-| `parse_odcs_yaml`     | `(yaml: string) => string`                   | Parse ODCS YAML to JSON        |
-| `parse_odcl_yaml`     | `(yaml: string) => string`                   | Parse legacy ODCL YAML to JSON |
-| `is_odcl_format`      | `(yaml: string) => boolean`                  | Check if YAML is ODCL format   |
-| `export_to_odcs_yaml` | `(json: string) => string`                   | Export workspace to ODCS YAML  |
-| `convert_to_odcs`     | `(input: string, format?: string) => string` | Convert any format to ODCS     |
+| Function                   | Signature                                                | Description                        |
+| -------------------------- | -------------------------------------------------------- | ---------------------------------- |
+| `parse_odcs_yaml`          | `(yaml: string) => string`                               | Parse ODCS YAML to JSON            |
+| `parse_odcl_yaml`          | `(yaml: string) => string`                               | Parse legacy ODCL YAML to JSON     |
+| `is_odcl_format`           | `(yaml: string) => boolean`                              | Check if YAML is ODCL format       |
+| `export_to_odcs_yaml`      | `(json: string) => string`                               | Export workspace to ODCS YAML      |
+| `convert_to_odcs`          | `(input: string, format?: string) => string`             | Convert any format to ODCS         |
+| `export_table_to_markdown` | `(table_json: string) => string`                         | Export table to Markdown (1.14.1+) |
+| `export_table_to_pdf`      | `(table_json: string, branding_json?: string) => string` | Export table to PDF (1.14.1+)      |
 
 ### Domain Operations
 
@@ -112,19 +114,23 @@ const result = sdk.parse_odcs_yaml(yamlContent);
 
 ### CADS (Compute Asset) Operations
 
-| Function                  | Signature                                                        | Description                 |
-| ------------------------- | ---------------------------------------------------------------- | --------------------------- |
-| `import_from_cads`        | `(yaml: string) => string`                                       | Import CADS asset from YAML |
-| `export_to_cads`          | `(json: string) => string`                                       | Export CADS asset to YAML   |
-| `add_cads_node_to_domain` | `(workspace: string, domain_id: string, node: string) => string` | Add CADS node to domain     |
+| Function                  | Signature                                                        | Description                        |
+| ------------------------- | ---------------------------------------------------------------- | ---------------------------------- |
+| `import_from_cads`        | `(yaml: string) => string`                                       | Import CADS asset from YAML        |
+| `export_to_cads`          | `(json: string) => string`                                       | Export CADS asset to YAML          |
+| `add_cads_node_to_domain` | `(workspace: string, domain_id: string, node: string) => string` | Add CADS node to domain            |
+| `export_cads_to_markdown` | `(asset_json: string) => string`                                 | Export asset to Markdown (1.14.1+) |
+| `export_cads_to_pdf`      | `(asset_json: string, branding_json?: string) => string`         | Export asset to PDF (1.14.1+)      |
 
 ### ODPS (Data Product) Operations
 
-| Function           | Signature                  | Description                   |
-| ------------------ | -------------------------- | ----------------------------- |
-| `import_from_odps` | `(yaml: string) => string` | Import ODPS product from YAML |
-| `export_to_odps`   | `(json: string) => string` | Export ODPS product to YAML   |
-| `validate_odps`    | `(yaml: string) => void`   | Validate ODPS YAML            |
+| Function                  | Signature                                                  | Description                          |
+| ------------------------- | ---------------------------------------------------------- | ------------------------------------ |
+| `import_from_odps`        | `(yaml: string) => string`                                 | Import ODPS product from YAML        |
+| `export_to_odps`          | `(json: string) => string`                                 | Export ODPS product to YAML          |
+| `validate_odps`           | `(yaml: string) => void`                                   | Validate ODPS YAML                   |
+| `export_odps_to_markdown` | `(product_json: string) => string`                         | Export product to Markdown (1.14.1+) |
+| `export_odps_to_pdf`      | `(product_json: string, branding_json?: string) => string` | Export product to PDF (1.14.1+)      |
 
 ### OpenAPI Operations
 
@@ -348,6 +354,82 @@ console.log('Has cycle:', cycle.has_cycle);
 
 ---
 
+## New in Version 1.14.1
+
+The following features were added in SDK 1.14.1:
+
+### Markdown/PDF Export Functions
+
+Export data contracts, data products, and compute assets to Markdown or PDF format for documentation purposes.
+
+#### ODCS (Data Contracts)
+
+| Function                   | Signature                                                        | Description              |
+| -------------------------- | ---------------------------------------------------------------- | ------------------------ |
+| `export_table_to_markdown` | `(table_json: string) => string`                                 | Export table to Markdown |
+| `export_table_to_pdf`      | `(table_json: string, branding_json?: string \| null) => string` | Export table to PDF      |
+
+#### ODPS (Data Products)
+
+| Function                  | Signature                                                          | Description                |
+| ------------------------- | ------------------------------------------------------------------ | -------------------------- |
+| `export_odps_to_markdown` | `(product_json: string) => string`                                 | Export product to Markdown |
+| `export_odps_to_pdf`      | `(product_json: string, branding_json?: string \| null) => string` | Export product to PDF      |
+
+#### CADS (Compute Assets)
+
+| Function                  | Signature                                                        | Description              |
+| ------------------------- | ---------------------------------------------------------------- | ------------------------ |
+| `export_cads_to_markdown` | `(asset_json: string) => string`                                 | Export asset to Markdown |
+| `export_cads_to_pdf`      | `(asset_json: string, branding_json?: string \| null) => string` | Export asset to PDF      |
+
+#### PDF Branding Configuration
+
+PDF export functions accept an optional branding JSON parameter:
+
+```typescript
+interface PDFBranding {
+  logo_base64?: string; // Base64-encoded logo image
+  company_name?: string; // Company name for header
+  footer_text?: string; // Footer text
+}
+```
+
+#### PDF Export Result
+
+PDF export functions return a JSON string containing:
+
+```typescript
+interface PdfExportResult {
+  pdf_base64: string; // Base64-encoded PDF data
+}
+```
+
+#### Example Usage
+
+```typescript
+import { odcsService } from '@/services/sdk/odcsService';
+import { odpsService } from '@/services/sdk/odpsService';
+import { cadsService } from '@/services/sdk/cadsService';
+
+// Export table to Markdown
+const markdown = await odcsService.exportTableToMarkdown(table);
+
+// Export data product to PDF with branding
+const branding = {
+  company_name: 'Acme Corp',
+  footer_text: 'Confidential',
+};
+const pdfResult = await odpsService.exportToPDF(product, branding);
+
+// Decode and download PDF
+const pdfBlob = new Blob([Uint8Array.from(atob(pdfResult.pdf_base64), (c) => c.charCodeAt(0))], {
+  type: 'application/pdf',
+});
+```
+
+---
+
 ## New in Version 1.13.6
 
 The following features were added/fixed in SDK 1.13.6:
@@ -440,5 +522,18 @@ if (sdkLoader.hasDecisionSupport()) {
 
 if (sdkLoader.hasKnowledgeSupport()) {
   // Use knowledge functions
+}
+
+// Check export support (SDK 1.14.1+)
+if (sdkLoader.hasODCSExport()) {
+  // Use ODCS markdown/PDF export
+}
+
+if (sdkLoader.hasODPSExport()) {
+  // Use ODPS markdown/PDF export
+}
+
+if (sdkLoader.hasCADSExport()) {
+  // Use CADS markdown/PDF export
 }
 ```

@@ -48,6 +48,8 @@ interface DecisionState {
   parseDecisionIndexYaml: (yaml: string) => Promise<DecisionIndex | null>;
   exportDecisionToYaml: (decision: Decision) => Promise<string | null>;
   exportDecisionToMarkdown: (decision: Decision) => Promise<string>;
+  exportDecisionToPDF: (decision: Decision) => Promise<void>;
+  hasPDFExport: () => boolean;
 
   // High-level creation/update using service
   createDecision: (data: {
@@ -203,6 +205,22 @@ export const useDecisionStore = create<DecisionState>()(
           });
           throw error;
         }
+      },
+
+      exportDecisionToPDF: async (decision) => {
+        try {
+          const pdfResult = await decisionService.exportDecisionToPDF(decision);
+          decisionService.downloadPDF(pdfResult);
+        } catch (error) {
+          set({
+            error: error instanceof Error ? error.message : 'Failed to export decision to PDF',
+          });
+          throw error;
+        }
+      },
+
+      hasPDFExport: () => {
+        return decisionService.hasPDFExport();
       },
 
       // High-level creation using service

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **SDK Version**: Upgraded to data-modelling-sdk 1.14.1 with Markdown/PDF export support
+  - ODCS: `exportTableToMarkdown()` and `exportTableToPDF()` for data contract documentation
+  - ODPS: `exportToMarkdown()` and `exportToPDF()` for data product documentation
+  - CADS: `exportToMarkdown()` and `exportToPDF()` for compute asset documentation
+  - PDF export supports optional branding (logo, company name, footer text)
+  - Feature detection via `hasODCSExport()`, `hasODPSExport()`, `hasCADSExport()` helpers
+
 ## [2.1.3] - 2026-01-08
 
 ### Added

@@ -88,9 +88,9 @@ export default defineConfig({
     },
   },
   // Optimize WASM handling
-  // Exclude DuckDB-WASM from pre-bundling (it needs to load WASM files dynamically)
+  // Exclude WASM packages from pre-bundling (they need to load WASM files dynamically)
   optimizeDeps: {
-    exclude: ['data-modelling-sdk', '@duckdb/duckdb-wasm'],
+    exclude: ['@offenedatenmodellierung/data-modelling-sdk', '@duckdb/duckdb-wasm'],
   },
   test: {
     globals: true,

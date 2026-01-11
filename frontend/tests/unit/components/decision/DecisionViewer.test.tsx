@@ -54,6 +54,8 @@ describe('DecisionViewer', () => {
       isSaving: false,
       changeDecisionStatus: vi.fn().mockReturnValue(mockDecision),
       exportDecisionToMarkdown: vi.fn().mockResolvedValue('# ADR-0001'),
+      exportDecisionToPDF: vi.fn().mockResolvedValue(undefined),
+      hasPDFExport: vi.fn().mockReturnValue(false),
       getDecisionById: vi.fn().mockReturnValue(mockDecision),
     } as any);
     vi.mocked(useKnowledgeStore).mockReturnValue({
@@ -197,6 +199,8 @@ describe('DecisionViewer', () => {
       isSaving: false,
       changeDecisionStatus: vi.fn().mockReturnValue(mockDecision),
       exportDecisionToMarkdown: exportMock,
+      exportDecisionToPDF: vi.fn().mockResolvedValue(undefined),
+      hasPDFExport: vi.fn().mockReturnValue(false),
       getDecisionById: vi.fn().mockReturnValue(mockDecision),
     } as any);
 
@@ -233,6 +237,8 @@ describe('DecisionViewer', () => {
       isSaving: false,
       changeDecisionStatus: vi.fn().mockReturnValue(supersededDecision),
       exportDecisionToMarkdown: vi.fn().mockResolvedValue('# ADR'),
+      exportDecisionToPDF: vi.fn().mockResolvedValue(undefined),
+      hasPDFExport: vi.fn().mockReturnValue(false),
       getDecisionById: vi
         .fn()
         .mockReturnValue({ id: 'decision-2', number: 2, title: 'New Decision' }),

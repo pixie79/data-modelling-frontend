@@ -755,8 +755,14 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
         {/* Basic Information */}
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+            <label
+              htmlFor="table-view-name"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Name
+            </label>
             <input
+              id="table-view-name"
               type="text"
               value={table.name}
               disabled
@@ -766,8 +772,14 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
 
           {table.alias && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Alias</label>
+              <label
+                htmlFor="table-view-alias"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Alias
+              </label>
               <input
+                id="table-view-alias"
                 type="text"
                 value={table.alias}
                 disabled
@@ -778,8 +790,14 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
 
           {table.description && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <label
+                htmlFor="table-view-description"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Description
+              </label>
               <textarea
+                id="table-view-description"
                 value={table.description}
                 disabled
                 rows={3}
@@ -790,8 +808,14 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
 
           {table.data_level && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Data Level</label>
+              <label
+                htmlFor="table-view-data-level"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Data Level
+              </label>
               <input
+                id="table-view-data-level"
                 type="text"
                 value={table.data_level}
                 disabled
@@ -802,8 +826,14 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
 
           {table.owner && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Owner</label>
+              <label
+                htmlFor="table-view-owner"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Owner
+              </label>
               <input
+                id="table-view-owner"
                 type="text"
                 value={table.owner.name || table.owner.email || 'Unknown'}
                 disabled
@@ -916,7 +946,7 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
         {/* Tags */}
         {table.tags && table.tags.length > 0 && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Tags</label>
+            <span className="block text-sm font-medium text-gray-700 mb-2">Tags</span>
             <div className="flex flex-wrap gap-2">
               {table.tags.map((tag, index) => (
                 <span key={index} className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">
@@ -1008,10 +1038,14 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
                         </button>
                         {showSqlDialectSelector && exportFormat === 'sql' && (
                           <div className="px-4 pb-2 pt-1 border-t border-gray-100">
-                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                            <label
+                              htmlFor="table-sql-dialect"
+                              className="block text-xs font-medium text-gray-600 mb-1"
+                            >
                               SQL Dialect:
                             </label>
                             <select
+                              id="table-sql-dialect"
                               value={sqlDialect}
                               onChange={(e) => setSqlDialect(e.target.value as typeof sqlDialect)}
                               className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500"

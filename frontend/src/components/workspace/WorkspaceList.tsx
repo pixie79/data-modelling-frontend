@@ -127,6 +127,9 @@ export const WorkspaceList: React.FC<WorkspaceListProps> = ({
                   Workspace
                 </span>
               </div>
+              {workspace.description && (
+                <p className="text-sm text-gray-600 mt-1 line-clamp-2">{workspace.description}</p>
+              )}
               <div className="flex items-center gap-4 mt-1">
                 <p className="text-sm text-gray-500">
                   Last modified: {new Date(workspace.last_modified_at).toLocaleDateString()}

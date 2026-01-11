@@ -1,14 +1,16 @@
 /**
  * Knowledge Service
- * Handles Knowledge Base articles via SDK 1.13.3+
+ * Handles Knowledge Base articles via SDK 1.14.0+
  *
- * SDK 1.13.3 WASM Methods:
+ * SDK 1.14.0 WASM Methods:
  * - parse_knowledge_yaml(yaml: string) -> JSON string
  * - parse_knowledge_index_yaml(yaml: string) -> JSON string
  * - export_knowledge_to_yaml(article_json: string) -> YAML string
  * - export_knowledge_to_markdown(article_json: string) -> Markdown string
+ * - export_knowledge_to_branded_markdown(article_json, branding_json?) -> Markdown string
+ * - export_knowledge_to_pdf(article_json, branding_json?) -> JSON with base64 PDF
  * - search_knowledge_articles(articles_json: string, query: string) -> JSON string
- * - create_knowledge_article(number, title, article_type, summary, content) -> JSON string
+ * - create_knowledge_article(number, title, summary, content, author) -> JSON string
  * - create_knowledge_index() -> JSON string
  * - add_article_to_knowledge_index(index_json, article_json, filename) -> JSON string
  *
@@ -17,6 +19,14 @@
  */
 
 import { sdkLoader } from './sdkLoader';
+import {
+  frontendKnowledgeToSDK,
+  sdkKnowledgeToFrontend,
+  sdkKnowledgeIndexToFrontend,
+  frontendKnowledgeIndexToSDK,
+} from './sdkTypeConverters';
+import type { BrandingConfig, PDFExportResult } from './decisionService';
+import { DEFAULT_BRANDING } from './decisionService';
 import type {
   KnowledgeArticle,
   KnowledgeIndex,
@@ -29,10 +39,11 @@ import {
   ArticleStatus,
   isValidArticleStatusTransition,
   formatArticleNumber,
+  generateArticleNumber,
 } from '@/types/knowledge';
 
 /**
- * Knowledge Service for SDK 1.13.3+ knowledge base management
+ * Knowledge Service for SDK 1.14.0+ knowledge base management
  *
  * This service provides methods to work with knowledge articles using the SDK.
  * In WASM mode, it works with YAML/JSON strings rather than file paths.
@@ -46,6 +57,20 @@ class KnowledgeService {
   }
 
   /**
+   * Check if PDF export is supported
+   */
+  hasPDFExport(): boolean {
+    return sdkLoader.hasPDFExport();
+  }
+
+  /**
+   * Check if markdown export is supported
+   */
+  hasMarkdownExport(): boolean {
+    return sdkLoader.hasMarkdownExport();
+  }
+
+  /**
    * Parse a knowledge article from YAML string
    */
   async parseKnowledgeYaml(yaml: string): Promise<KnowledgeArticle | null> {
@@ -55,13 +80,14 @@ class KnowledgeService {
       if (sdk.parse_knowledge_yaml) {
         try {
           const resultJson = sdk.parse_knowledge_yaml(yaml);
-          const result = JSON.parse(resultJson);
+          const sdkArticle = JSON.parse(resultJson);
 
-          if (result.error) {
-            throw new Error(result.error);
+          if (sdkArticle.error) {
+            throw new Error(sdkArticle.error);
           }
 
-          return result as KnowledgeArticle;
+          // Convert from SDK camelCase to frontend snake_case
+          return sdkKnowledgeToFrontend(sdkArticle);
         } catch (error) {
           console.warn('[KnowledgeService] SDK parse failed, trying fallback:', error);
         }
@@ -78,32 +104,37 @@ class KnowledgeService {
   private async parseKnowledgeYamlFallback(yamlContent: string): Promise<KnowledgeArticle | null> {
     try {
       const jsYaml = await import('js-yaml');
-      const parsed = jsYaml.load(yamlContent) as any;
+      const parsed = jsYaml.load(yamlContent) as Record<string, unknown>;
 
       if (!parsed || typeof parsed !== 'object') {
         console.error('[KnowledgeService] Invalid YAML content');
         return null;
       }
 
-      // Map YAML fields to KnowledgeArticle structure
+      // Handle both camelCase (SDK) and snake_case (legacy) field names
       const article: KnowledgeArticle = {
-        id: parsed.id || crypto.randomUUID(),
-        number: parsed.number || 0,
-        title: parsed.title || 'Untitled Article',
-        type: parsed.type || 'guide',
-        status: parsed.status || 'draft',
-        summary: parsed.summary || '',
-        content: parsed.content || '',
-        domain_id: parsed.domain_id,
-        workspace_id: parsed.workspace_id,
-        authors: Array.isArray(parsed.authors) ? parsed.authors : [],
-        reviewers: Array.isArray(parsed.reviewers) ? parsed.reviewers : [],
-        tags: parsed.tags,
-        created_at: parsed.created_at || new Date().toISOString(),
-        updated_at: parsed.updated_at || new Date().toISOString(),
-        published_at: parsed.published_at,
-        reviewed_at: parsed.reviewed_at,
-        archived_at: parsed.archived_at,
+        id: (parsed.id as string) || crypto.randomUUID(),
+        number: (parsed.number as number) || 0,
+        title: (parsed.title as string) || 'Untitled Article',
+        type: ((parsed.articleType as string) || (parsed.type as string) || 'guide') as ArticleType,
+        status: ((parsed.status as string) || 'draft') as ArticleStatus,
+        summary: (parsed.summary as string) || '',
+        content: (parsed.content as string) || '',
+        domain_id: (parsed.domainId as string) || (parsed.domain_id as string),
+        workspace_id: (parsed.workspaceId as string) || (parsed.workspace_id as string),
+        authors: Array.isArray(parsed.authors) ? (parsed.authors as string[]) : [],
+        reviewers: Array.isArray(parsed.reviewers) ? (parsed.reviewers as string[]) : [],
+        tags: (parsed.tags as string[]) || undefined,
+        created_at:
+          (parsed.createdAt as string) || (parsed.created_at as string) || new Date().toISOString(),
+        updated_at:
+          (parsed.updatedAt as string) || (parsed.updated_at as string) || new Date().toISOString(),
+        published_at: (parsed.publishedAt as string) || (parsed.published_at as string),
+        reviewed_at:
+          (parsed.reviewedAt as string) ||
+          (parsed.reviewed_at as string) ||
+          (parsed.lastReviewed as string),
+        archived_at: (parsed.archivedAt as string) || (parsed.archived_at as string),
       };
 
       console.log(`[KnowledgeService] Parsed article via fallback: ${article.title}`);
@@ -129,13 +160,14 @@ class KnowledgeService {
 
     try {
       const resultJson = sdk.parse_knowledge_index_yaml(yaml);
-      const result = JSON.parse(resultJson);
+      const sdkIndex = JSON.parse(resultJson);
 
-      if (result.error) {
-        throw new Error(result.error);
+      if (sdkIndex.error) {
+        throw new Error(sdkIndex.error);
       }
 
-      return result as KnowledgeIndex;
+      // Convert from SDK camelCase to frontend snake_case
+      return sdkKnowledgeIndexToFrontend(sdkIndex);
     } catch (error) {
       console.error('[KnowledgeService] Failed to parse knowledge index YAML:', error);
       return null;
@@ -147,7 +179,7 @@ class KnowledgeService {
    */
   async exportKnowledgeToYaml(article: KnowledgeArticle): Promise<string | null> {
     if (!this.isSupported()) {
-      throw new Error('Knowledge features require SDK 1.13.3+');
+      throw new Error('Knowledge features require SDK 1.14.0+');
     }
 
     const sdk = await sdkLoader.load();
@@ -156,7 +188,9 @@ class KnowledgeService {
     }
 
     try {
-      const articleJson = JSON.stringify(article);
+      // Convert from frontend snake_case to SDK camelCase
+      const sdkArticle = frontendKnowledgeToSDK(article);
+      const articleJson = JSON.stringify(sdkArticle);
       const yaml = sdk.export_knowledge_to_yaml(articleJson);
       return yaml;
     } catch (error) {
@@ -168,23 +202,82 @@ class KnowledgeService {
   /**
    * Export an article to Markdown string
    */
-  async exportKnowledgeToMarkdown(article: KnowledgeArticle): Promise<string> {
+  async exportKnowledgeToMarkdown(
+    article: KnowledgeArticle,
+    branding?: BrandingConfig
+  ): Promise<string> {
     // Try SDK export first
-    if (this.isSupported()) {
+    if (this.hasMarkdownExport()) {
       const sdk = await sdkLoader.load();
-      if (sdk.export_knowledge_to_markdown) {
-        try {
-          const articleJson = JSON.stringify(article);
-          const markdown = sdk.export_knowledge_to_markdown(articleJson);
-          return markdown;
-        } catch {
-          console.warn('[KnowledgeService] SDK markdown export failed, using fallback');
+
+      try {
+        // Convert from frontend snake_case to SDK camelCase
+        const sdkArticle = frontendKnowledgeToSDK(article);
+        const articleJson = JSON.stringify(sdkArticle);
+
+        // Use branded markdown if branding provided
+        if (branding && sdk.export_knowledge_to_branded_markdown) {
+          const brandingJson = JSON.stringify(branding);
+          return sdk.export_knowledge_to_branded_markdown(articleJson, brandingJson);
         }
+
+        // Use standard markdown
+        if (sdk.export_knowledge_to_markdown) {
+          return sdk.export_knowledge_to_markdown(articleJson);
+        }
+      } catch (error) {
+        console.warn('[KnowledgeService] SDK markdown export failed, using fallback:', error);
       }
     }
 
     // Fallback to client-side markdown generation
     return this.generateMarkdown(article);
+  }
+
+  /**
+   * Export an article to PDF (SDK 1.14.0+)
+   * Returns base64-encoded PDF data
+   */
+  async exportKnowledgeToPDF(
+    article: KnowledgeArticle,
+    branding?: BrandingConfig
+  ): Promise<PDFExportResult> {
+    if (!this.hasPDFExport()) {
+      throw new Error('PDF export requires SDK 1.14.0+');
+    }
+
+    const sdk = await sdkLoader.load();
+    if (!sdk.export_knowledge_to_pdf) {
+      throw new Error('export_knowledge_to_pdf method not available in SDK');
+    }
+
+    try {
+      // Convert from frontend snake_case to SDK camelCase
+      const sdkArticle = frontendKnowledgeToSDK(article);
+      const articleJson = JSON.stringify(sdkArticle);
+
+      // Use provided branding or default
+      const brandingToUse = branding || DEFAULT_BRANDING;
+      const brandingJson = JSON.stringify(brandingToUse);
+
+      const resultJson = sdk.export_knowledge_to_pdf(articleJson, brandingJson);
+      const result = JSON.parse(resultJson);
+
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      return {
+        data: result.data || result.pdf_data || result.pdfData,
+        filename:
+          result.filename ||
+          `KB-${formatArticleNumber(article.number)}-${article.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.pdf`,
+        mimeType: 'application/pdf',
+      };
+    } catch (error) {
+      console.error('[KnowledgeService] Failed to export knowledge to PDF:', error);
+      throw error;
+    }
   }
 
   /**
@@ -204,7 +297,9 @@ class KnowledgeService {
     }
 
     try {
-      const articlesJson = JSON.stringify(articles);
+      // Convert to SDK format
+      const sdkArticles = articles.map((article) => frontendKnowledgeToSDK(article));
+      const articlesJson = JSON.stringify(sdkArticles);
       const resultJson = sdk.search_knowledge_articles(articlesJson, query);
       const result = JSON.parse(resultJson);
 
@@ -212,7 +307,12 @@ class KnowledgeService {
         throw new Error(result.error);
       }
 
-      return (result.results ?? result) as KnowledgeSearchResult[];
+      // Convert results back to frontend format
+      const sdkResults = result.results ?? result;
+      return (sdkResults as Array<{ article: unknown; score: number }>).map((r) => ({
+        article: sdkKnowledgeToFrontend(r.article as Parameters<typeof sdkKnowledgeToFrontend>[0]),
+        score: r.score,
+      }));
     } catch (error) {
       console.error('[KnowledgeService] SDK search failed:', error);
       return this.clientSideSearch(articles, query);
@@ -225,9 +325,9 @@ class KnowledgeService {
   async createArticleViaSDK(
     number: number,
     title: string,
-    articleType: string,
     summary: string,
-    content: string
+    content: string,
+    author: string
   ): Promise<KnowledgeArticle | null> {
     if (!this.isSupported()) {
       return null;
@@ -239,14 +339,15 @@ class KnowledgeService {
     }
 
     try {
-      const resultJson = sdk.create_knowledge_article(number, title, articleType, summary, content);
-      const result = JSON.parse(resultJson);
+      const resultJson = sdk.create_knowledge_article(number, title, summary, content, author);
+      const sdkArticle = JSON.parse(resultJson);
 
-      if (result.error) {
-        throw new Error(result.error);
+      if (sdkArticle.error) {
+        throw new Error(sdkArticle.error);
       }
 
-      return result as KnowledgeArticle;
+      // Convert from SDK camelCase to frontend snake_case
+      return sdkKnowledgeToFrontend(sdkArticle);
     } catch (error) {
       console.error('[KnowledgeService] Failed to create article via SDK:', error);
       return null;
@@ -268,13 +369,14 @@ class KnowledgeService {
 
     try {
       const resultJson = sdk.create_knowledge_index();
-      const result = JSON.parse(resultJson);
+      const sdkIndex = JSON.parse(resultJson);
 
-      if (result.error) {
-        throw new Error(result.error);
+      if (sdkIndex.error) {
+        throw new Error(sdkIndex.error);
       }
 
-      return result as KnowledgeIndex;
+      // Convert from SDK camelCase to frontend snake_case
+      return sdkKnowledgeIndexToFrontend(sdkIndex);
     } catch (error) {
       console.error('[KnowledgeService] Failed to create knowledge index via SDK:', error);
       return null;
@@ -299,8 +401,12 @@ class KnowledgeService {
     }
 
     try {
-      const indexJson = JSON.stringify(index);
-      const articleJson = JSON.stringify(article);
+      // Convert to SDK format
+      const sdkIndex = frontendKnowledgeIndexToSDK(index);
+      const sdkArticle = frontendKnowledgeToSDK(article);
+
+      const indexJson = JSON.stringify(sdkIndex);
+      const articleJson = JSON.stringify(sdkArticle);
       const resultJson = sdk.add_article_to_knowledge_index(indexJson, articleJson, filename);
       const result = JSON.parse(resultJson);
 
@@ -308,9 +414,33 @@ class KnowledgeService {
         throw new Error(result.error);
       }
 
-      return result as KnowledgeIndex;
+      // Convert back to frontend format
+      return sdkKnowledgeIndexToFrontend(result);
     } catch (error) {
       console.error('[KnowledgeService] Failed to add article to index:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Export knowledge index to YAML
+   */
+  async exportKnowledgeIndexToYaml(index: KnowledgeIndex): Promise<string | null> {
+    if (!this.isSupported()) {
+      return null;
+    }
+
+    const sdk = await sdkLoader.load();
+    if (!sdk.export_knowledge_index_to_yaml) {
+      return null;
+    }
+
+    try {
+      const sdkIndex = frontendKnowledgeIndexToSDK(index);
+      const indexJson = JSON.stringify(sdkIndex);
+      return sdk.export_knowledge_index_to_yaml(indexJson);
+    } catch (error) {
+      console.error('[KnowledgeService] Failed to export knowledge index to YAML:', error);
       return null;
     }
   }
@@ -430,6 +560,8 @@ class KnowledgeService {
 
   /**
    * Create a new article object (client-side)
+   * @param data Article data
+   * @param number Optional timestamp-based number (YYMMDDHHmm). If not provided, generates one.
    */
   createArticle(
     data: {
@@ -440,12 +572,12 @@ class KnowledgeService {
       domain_id?: string;
       authors?: string[];
     },
-    nextNumber: number = 1
+    number?: number
   ): KnowledgeArticle {
     const now = new Date().toISOString();
     return {
       id: crypto.randomUUID(),
-      number: nextNumber,
+      number: number ?? generateArticleNumber(),
       title: data.title,
       type: data.type,
       status: ArticleStatus.Draft,
@@ -588,6 +720,29 @@ class KnowledgeService {
    */
   getDraftArticles(articles: KnowledgeArticle[]): KnowledgeArticle[] {
     return this.getArticlesByStatus(articles, ArticleStatus.Draft);
+  }
+
+  /**
+   * Download a PDF from base64 data
+   * Utility method for UI components
+   */
+  downloadPDF(pdfResult: PDFExportResult): void {
+    const byteCharacters = atob(pdfResult.data);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: pdfResult.mimeType });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = pdfResult.filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   }
 }
 

@@ -317,11 +317,11 @@ describe('useKnowledgeStore', () => {
     });
 
     it('should update knowledge index when creating', () => {
-      const newArticle = { ...mockArticle, id: 'new-article', number: 3 };
+      const newArticle = { ...mockArticle, id: 'new-article', number: 2601101234 };
       vi.mocked(knowledgeService.createArticle).mockReturnValue(newArticle);
       vi.mocked(knowledgeService.createIndexEntry).mockReturnValue({
         id: 'new-article',
-        number: 3,
+        number: 2601101234,
         title: 'New Article',
         type: ArticleType.Tutorial,
         status: ArticleStatus.Draft,
@@ -340,8 +340,9 @@ describe('useKnowledgeStore', () => {
       });
 
       const state = useKnowledgeStore.getState();
-      expect(state.knowledgeIndex?.next_number).toBe(4);
+      // next_number is deprecated - timestamp-based numbers are used instead
       expect(state.knowledgeIndex?.articles).toHaveLength(1);
+      expect(state.knowledgeIndex?.last_updated).toBeDefined();
     });
   });
 

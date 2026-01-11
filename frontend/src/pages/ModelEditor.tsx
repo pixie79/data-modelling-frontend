@@ -30,7 +30,7 @@ import { useCollaborationStore } from '@/stores/collaborationStore';
 import { WorkspaceSettings } from '@/components/workspace/WorkspaceSettings';
 import { VersionHistory } from '@/components/workspace/VersionHistory';
 import { ImportExportDialog } from '@/components/common/ImportExportDialog';
-import { ModelNavbar } from '@/components/navbar/ModelNavbar';
+import { getAssetPath } from '@/services/platform/platform';
 import { TagFilter } from '@/components/common/TagFilter';
 import { filterService } from '@/services/sdk/filterService';
 import { SharedResourcePicker } from '@/components/domain/SharedResourcePicker';
@@ -501,32 +501,26 @@ const ModelEditor: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
-      {/* Navbar */}
-      <ModelNavbar
-        onShowSettings={() => setShowWorkspaceSettings(!showWorkspaceSettings)}
-        onShowVersionHistory={
-          mode === 'online' && workspaceId
-            ? () => setShowVersionHistory(!showVersionHistory)
-            : undefined
-        }
-        workspaceId={workspaceId}
-        domainId={selectedDomainId}
-      />
-
-      {/* Collaboration Status - moved below navbar */}
-      {mode === 'online' && workspaceId && (
-        <div className="bg-gray-50 border-b border-gray-200 px-4 py-1">
-          <div className="flex items-center gap-4">
-            <CollaborationStatus workspaceId={workspaceId} />
-            <PresenceIndicator workspaceId={workspaceId} />
-          </div>
-        </div>
-      )}
-
-      {/* Domain Selector and Tag Filter */}
-      <div className="bg-gray-50 border-b border-gray-200 px-4 py-2">
+      {/* Domain Selector, Tag Filter, and Settings - combined header row with logo */}
+      <div className="bg-white border-b border-gray-200 px-4 py-2 shadow-sm">
         <div className="flex items-center gap-4">
+          {/* Logo */}
+          <img
+            src={getAssetPath('/logo.svg')}
+            alt="Open Data Modelling"
+            className="h-8 w-auto flex-shrink-0"
+            style={{ maxHeight: '32px' }}
+          />
+
           <DomainSelector workspaceId={workspaceId ?? ''} />
+
+          {/* Collaboration Status - inline when online */}
+          {mode === 'online' && workspaceId && (
+            <div className="flex items-center gap-2">
+              <CollaborationStatus workspaceId={workspaceId} />
+              <PresenceIndicator workspaceId={workspaceId} />
+            </div>
+          )}
           <div className="flex-1">
             <TagFilter
               onFilterChange={handleTagFilterChange}
@@ -541,7 +535,7 @@ const ModelEditor: React.FC = () => {
                   setCanvasRefreshKey((prev) => prev + 1);
                   console.log('[ModelEditor] Refresh button clicked - forcing canvas re-render');
                 }}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 whitespace-nowrap"
+                className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 whitespace-nowrap"
                 title="Refresh canvas and reload all resources"
               >
                 <svg
@@ -561,13 +555,33 @@ const ModelEditor: React.FC = () => {
               </button>
               <button
                 onClick={() => setShowSharedResourcePicker(true)}
-                className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 whitespace-nowrap"
+                className="px-3 py-1.5 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 whitespace-nowrap"
                 title="Share resources from other domains"
               >
                 Share Resources
               </button>
             </>
           )}
+
+          {/* Settings and History buttons */}
+          <div className="flex items-center gap-2 ml-auto">
+            <button
+              onClick={() => setShowWorkspaceSettings(!showWorkspaceSettings)}
+              className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+              aria-label="Workspace Settings"
+            >
+              Settings
+            </button>
+            {mode === 'online' && workspaceId && (
+              <button
+                onClick={() => setShowVersionHistory(!showVersionHistory)}
+                className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                aria-label="Version History"
+              >
+                History
+              </button>
+            )}
+          </div>
         </div>
         {isFiltering && <div className="mt-1 text-xs text-gray-500">Filtering resources...</div>}
         {tagFilter.length > 0 && !isFiltering && (

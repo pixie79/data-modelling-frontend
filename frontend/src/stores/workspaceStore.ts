@@ -380,6 +380,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             workspaces: state.workspaces.map((w) =>
               w.id === workspaceId ? { ...w, ...updates } : w
             ),
+            pendingChanges: true, // Mark as needing save
           }));
           return updates as Workspace;
         },

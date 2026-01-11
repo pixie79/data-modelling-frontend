@@ -1,7 +1,8 @@
 /**
  * Unit tests for Knowledge Service
- * Tests Knowledge Base articles via SDK 1.13.3+
+ * Tests Knowledge Base articles via SDK 1.14.0+
  * Updated for in-memory API (WASM works with YAML strings, not file paths)
+ * Updated for type converter patterns (SDK camelCase ↔ frontend snake_case)
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -14,11 +15,14 @@ import type { KnowledgeArticle, KnowledgeIndex } from '@/types/knowledge';
 vi.mock('@/services/sdk/sdkLoader', () => ({
   sdkLoader: {
     hasKnowledgeSupport: vi.fn(),
+    hasMarkdownExport: vi.fn(),
+    hasPDFExport: vi.fn(),
     load: vi.fn(),
   },
 }));
 
 describe('KnowledgeService', () => {
+  // Frontend format (snake_case) - what the service returns
   const mockArticle: KnowledgeArticle = {
     id: 'article-1',
     number: 1,
@@ -35,9 +39,41 @@ describe('KnowledgeService', () => {
     published_at: '2024-01-02T00:00:00Z',
   };
 
+  // SDK format (camelCase) - what the SDK returns
+  const mockSDKArticle = {
+    id: 'article-1',
+    number: 1,
+    title: 'Getting Started Guide',
+    articleType: 'guide', // SDK uses articleType, not type
+    status: 'published',
+    summary: 'A comprehensive guide to getting started',
+    content: '# Getting Started\n\nThis guide will help you get started.',
+    domainId: 'domain-1',
+    workspaceId: null,
+    authors: ['Jane Doe'],
+    reviewers: ['John Smith'],
+    audience: [],
+    skillLevel: null,
+    reviewFrequency: null,
+    linkedAssets: [],
+    linkedDecisions: [],
+    relatedArticles: [],
+    relatedDecisions: [],
+    prerequisites: [],
+    seeAlso: [],
+    tags: [],
+    notes: null,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+    publishedAt: '2024-01-02T00:00:00Z',
+    reviewedAt: null,
+    lastReviewed: null,
+    archivedAt: null,
+  };
+
+  // Frontend format (snake_case)
   const mockKnowledgeIndex: KnowledgeIndex = {
     workspace_id: 'workspace-1',
-    next_number: 2,
     articles: [
       {
         id: 'article-1',
@@ -51,6 +87,25 @@ describe('KnowledgeService', () => {
       },
     ],
     last_updated: '2024-01-02T00:00:00Z',
+  };
+
+  // SDK format (camelCase)
+  const mockSDKKnowledgeIndex = {
+    workspaceId: 'workspace-1',
+    articles: [
+      {
+        id: 'article-1',
+        number: 1,
+        title: 'Getting Started Guide',
+        articleType: 'guide', // SDK uses articleType, not type
+        status: 'published',
+        domainId: null,
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+        publishedAt: '2024-01-02T00:00:00Z',
+      },
+    ],
+    lastUpdated: '2024-01-02T00:00:00Z',
   };
 
   beforeEach(() => {
@@ -84,13 +139,19 @@ describe('KnowledgeService', () => {
 
     it('should parse knowledge YAML successfully', async () => {
       vi.mocked(sdkLoader.hasKnowledgeSupport).mockReturnValue(true);
+      // SDK returns camelCase data
       vi.mocked(sdkLoader.load).mockResolvedValue({
-        parse_knowledge_yaml: vi.fn().mockReturnValue(JSON.stringify(mockArticle)),
+        parse_knowledge_yaml: vi.fn().mockReturnValue(JSON.stringify(mockSDKArticle)),
       } as unknown as ReturnType<typeof sdkLoader.load>);
 
       const result = await knowledgeService.parseKnowledgeYaml('yaml content');
 
-      expect(result).toEqual(mockArticle);
+      // Service converts to snake_case
+      expect(result?.id).toBe('article-1');
+      expect(result?.title).toBe('Getting Started Guide');
+      expect(result?.type).toBe(ArticleType.Guide);
+      expect(result?.domain_id).toBe('domain-1');
+      expect(result?.created_at).toBe('2024-01-01T00:00:00Z');
     });
 
     it('should return null when parse method is not available', async () => {
@@ -127,13 +188,18 @@ describe('KnowledgeService', () => {
 
     it('should parse knowledge index YAML successfully', async () => {
       vi.mocked(sdkLoader.hasKnowledgeSupport).mockReturnValue(true);
+      // SDK returns camelCase data
       vi.mocked(sdkLoader.load).mockResolvedValue({
-        parse_knowledge_index_yaml: vi.fn().mockReturnValue(JSON.stringify(mockKnowledgeIndex)),
+        parse_knowledge_index_yaml: vi.fn().mockReturnValue(JSON.stringify(mockSDKKnowledgeIndex)),
       } as unknown as ReturnType<typeof sdkLoader.load>);
 
       const result = await knowledgeService.parseKnowledgeIndexYaml('yaml content');
 
-      expect(result).toEqual(mockKnowledgeIndex);
+      // Service converts to snake_case
+      expect(result?.workspace_id).toBe('workspace-1');
+      expect(result?.last_updated).toBe('2024-01-02T00:00:00Z');
+      expect(result?.articles).toHaveLength(1);
+      expect(result?.articles[0]?.id).toBe('article-1');
     });
   });
 
@@ -142,7 +208,7 @@ describe('KnowledgeService', () => {
       vi.mocked(sdkLoader.hasKnowledgeSupport).mockReturnValue(false);
 
       await expect(knowledgeService.exportKnowledgeToYaml(mockArticle)).rejects.toThrow(
-        'Knowledge features require SDK 1.13.3+'
+        'Knowledge features require SDK 1.14.0+'
       );
     });
 
@@ -156,13 +222,19 @@ describe('KnowledgeService', () => {
       const result = await knowledgeService.exportKnowledgeToYaml(mockArticle);
 
       expect(result).toBe('article: yaml');
-      expect(mockExport).toHaveBeenCalledWith(JSON.stringify(mockArticle));
+      // Service converts to camelCase for SDK
+      expect(mockExport).toHaveBeenCalled();
+      // Verify it was called with a JSON string containing camelCase keys
+      const calledArg = mockExport.mock.calls[0][0];
+      const parsedArg = JSON.parse(calledArg);
+      expect(parsedArg.domainId).toBeDefined(); // camelCase key
     });
   });
 
   describe('exportKnowledgeToMarkdown', () => {
     it('should use SDK export when available', async () => {
       vi.mocked(sdkLoader.hasKnowledgeSupport).mockReturnValue(true);
+      vi.mocked(sdkLoader.hasMarkdownExport).mockReturnValue(true);
       const mockExport = vi.fn().mockReturnValue('# Article Markdown');
       vi.mocked(sdkLoader.load).mockResolvedValue({
         export_knowledge_to_markdown: mockExport,
@@ -175,6 +247,7 @@ describe('KnowledgeService', () => {
 
     it('should fallback to client-side markdown generation when SDK not available', async () => {
       vi.mocked(sdkLoader.hasKnowledgeSupport).mockReturnValue(false);
+      vi.mocked(sdkLoader.hasMarkdownExport).mockReturnValue(false);
 
       const result = await knowledgeService.exportKnowledgeToMarkdown(mockArticle);
 
@@ -186,6 +259,7 @@ describe('KnowledgeService', () => {
 
     it('should fallback to client-side on SDK export failure', async () => {
       vi.mocked(sdkLoader.hasKnowledgeSupport).mockReturnValue(true);
+      vi.mocked(sdkLoader.hasMarkdownExport).mockReturnValue(true);
       vi.mocked(sdkLoader.load).mockResolvedValue({
         export_knowledge_to_markdown: vi.fn().mockImplementation(() => {
           throw new Error('SDK error');
@@ -202,17 +276,22 @@ describe('KnowledgeService', () => {
     const mockArticles = [mockArticle, { ...mockArticle, id: 'article-2', title: 'API Reference' }];
 
     it('should use SDK search when available', async () => {
-      const mockResults = [{ article: mockArticle, score: 0.9 }];
+      // SDK returns camelCase articles in search results
+      const mockSDKResults = [{ article: mockSDKArticle, score: 0.9 }];
       vi.mocked(sdkLoader.hasKnowledgeSupport).mockReturnValue(true);
       vi.mocked(sdkLoader.load).mockResolvedValue({
         search_knowledge_articles: vi
           .fn()
-          .mockReturnValue(JSON.stringify({ results: mockResults })),
+          .mockReturnValue(JSON.stringify({ results: mockSDKResults })),
       } as unknown as ReturnType<typeof sdkLoader.load>);
 
       const result = await knowledgeService.searchKnowledgeViaSDK(mockArticles, 'Getting');
 
-      expect(result).toEqual(mockResults);
+      // Service converts to snake_case
+      expect(result).toHaveLength(1);
+      expect(result[0]?.article.id).toBe('article-1');
+      expect(result[0]?.article.domain_id).toBe('domain-1');
+      expect(result[0]?.score).toBe(0.9);
     });
 
     it('should fallback to client-side search when SDK not available', async () => {
@@ -348,7 +427,7 @@ describe('KnowledgeService', () => {
       expect(result.updated_at).toBeDefined();
     });
 
-    it('should use default number of 1 when not provided', () => {
+    it('should generate timestamp-based number when not provided', () => {
       const result = knowledgeService.createArticle({
         title: 'New Article',
         type: ArticleType.Tutorial,
@@ -356,7 +435,9 @@ describe('KnowledgeService', () => {
         content: 'Test content',
       });
 
-      expect(result.number).toBe(1);
+      // Number should be timestamp-based (YYMMDDHHmm format - 10 digits)
+      expect(result.number).toBeGreaterThan(2000000000);
+      expect(result.number.toString()).toHaveLength(10);
     });
   });
 
@@ -486,8 +567,9 @@ describe('KnowledgeService', () => {
 
       it('should create article via SDK', async () => {
         vi.mocked(sdkLoader.hasKnowledgeSupport).mockReturnValue(true);
+        // SDK returns camelCase
         vi.mocked(sdkLoader.load).mockResolvedValue({
-          create_knowledge_article: vi.fn().mockReturnValue(JSON.stringify(mockArticle)),
+          create_knowledge_article: vi.fn().mockReturnValue(JSON.stringify(mockSDKArticle)),
         } as unknown as ReturnType<typeof sdkLoader.load>);
 
         const result = await knowledgeService.createArticleViaSDK(
@@ -498,7 +580,10 @@ describe('KnowledgeService', () => {
           'Content'
         );
 
-        expect(result).toEqual(mockArticle);
+        // Service converts to snake_case
+        expect(result?.id).toBe('article-1');
+        expect(result?.domain_id).toBe('domain-1');
+        expect(result?.created_at).toBe('2024-01-01T00:00:00Z');
       });
     });
 
@@ -516,10 +601,11 @@ describe('KnowledgeService', () => {
       });
 
       it('should add article to index via SDK', async () => {
-        const updatedIndex = { ...mockKnowledgeIndex, next_number: 3 };
+        // SDK returns camelCase
+        const updatedSDKIndex = { ...mockSDKKnowledgeIndex };
         vi.mocked(sdkLoader.hasKnowledgeSupport).mockReturnValue(true);
         vi.mocked(sdkLoader.load).mockResolvedValue({
-          add_article_to_knowledge_index: vi.fn().mockReturnValue(JSON.stringify(updatedIndex)),
+          add_article_to_knowledge_index: vi.fn().mockReturnValue(JSON.stringify(updatedSDKIndex)),
         } as unknown as ReturnType<typeof sdkLoader.load>);
 
         const result = await knowledgeService.addArticleToIndex(
@@ -528,7 +614,9 @@ describe('KnowledgeService', () => {
           'kb-0001.yaml'
         );
 
-        expect(result).toEqual(updatedIndex);
+        // Service converts to snake_case
+        expect(result?.workspace_id).toBe('workspace-1');
+        expect(result?.last_updated).toBe('2024-01-02T00:00:00Z');
       });
     });
   });

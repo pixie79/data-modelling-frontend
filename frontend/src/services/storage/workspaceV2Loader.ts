@@ -52,11 +52,12 @@ export class WorkspaceV2Loader {
   /**
    * Load workspace from flat file format (v2)
    * Matches SDK workspace-schema.json format
+   * Supports both flat files and subdirectory organization
    */
   static async loadFromFiles(files: FileList): Promise<Workspace> {
     const fileArray = Array.from(files);
 
-    // 1. Find and parse workspace.yaml
+    // 1. Find and parse workspace.yaml (could be at root or have path prefix from directory picker)
     const workspaceFile = fileArray.find((f) => f.name.endsWith('.workspace.yaml'));
 
     if (!workspaceFile) {
@@ -71,9 +72,27 @@ export class WorkspaceV2Loader {
     const workspaceId = workspaceV2.id;
     console.log('[WorkspaceV2Loader] Loaded workspace.yaml:', workspaceName);
 
-    // 2. Categorize remaining files by pattern
-    const fileNames = fileArray.map((f) => f.name);
-    const categorized = FileMigration.categorizeFiles(fileNames);
+    // 1.5. Try to load README.md and extract description
+    const readmeFile = fileArray.find(
+      (f) => f.name === 'README.md' || f.name.endsWith('/README.md')
+    );
+    if (readmeFile) {
+      try {
+        const readmeContent = await browserFileService.readFile(readmeFile);
+        const extractedDescription = this.extractDescriptionFromReadme(readmeContent);
+        if (extractedDescription && !workspaceV2.description) {
+          workspaceV2.description = extractedDescription;
+          console.log('[WorkspaceV2Loader] Extracted description from README.md');
+        }
+      } catch (error) {
+        console.warn('[WorkspaceV2Loader] Failed to read README.md:', error);
+      }
+    }
+
+    // 2. Categorize remaining files by pattern (handles both flat and subdirectory structures)
+    // For subdirectory structure, webkitRelativePath contains the path
+    const fileNames = fileArray.map((f) => (f as any).webkitRelativePath || f.name);
+    const categorized = this.categorizeFilesWithPaths(fileNames);
 
     console.log('[WorkspaceV2Loader] Categorized files:', {
       odcs: categorized.odcs.length,
@@ -175,6 +194,7 @@ export class WorkspaceV2Loader {
     } = {
       id: workspaceId,
       name: workspaceName,
+      description: workspaceV2.description, // From workspace.yaml or extracted from README.md
       owner_id: workspaceV2.owner_id || 'offline-user',
       created_at: workspaceV2.created_at || new Date().toISOString(),
       last_modified_at: workspaceV2.last_modified_at || new Date().toISOString(),
@@ -337,6 +357,16 @@ export class WorkspaceV2Loader {
       }
     }
 
+    // 5.5. Try to load README.md and extract description (for string files)
+    const readmeFile = files.find((f) => f.name === 'README.md');
+    if (readmeFile && !workspaceV2.description) {
+      const extractedDescription = this.extractDescriptionFromReadme(readmeFile.content);
+      if (extractedDescription) {
+        workspaceV2.description = extractedDescription;
+        console.log('[WorkspaceV2Loader] Extracted description from README.md (strings)');
+      }
+    }
+
     // 6. Build workspace object
     const workspace: Workspace & {
       tables?: Table[];
@@ -351,6 +381,7 @@ export class WorkspaceV2Loader {
     } = {
       id: workspaceId,
       name: workspaceName,
+      description: workspaceV2.description, // From workspace.yaml or extracted from README.md
       owner_id: workspaceV2.owner_id || 'example-user',
       created_at: workspaceV2.created_at || new Date().toISOString(),
       last_modified_at: workspaceV2.last_modified_at || new Date().toISOString(),
@@ -899,6 +930,7 @@ export class WorkspaceV2Loader {
 
   /**
    * Filter files by domain using naming convention
+   * Handles both flat files and subdirectory structure
    */
   private static filterFilesByDomain(
     fileArray: File[],
@@ -908,10 +940,26 @@ export class WorkspaceV2Loader {
   ): DomainFiles {
     const prefix = `${workspaceName}_${domainName}_`.toLowerCase();
 
-    const filterByPrefix = (fileNames: string[]): File[] => {
-      return fileArray.filter(
-        (f) => fileNames.includes(f.name) && f.name.toLowerCase().startsWith(prefix)
-      );
+    // Helper to get filename from path or file.name
+    const getFileName = (path: string) => {
+      const parts = path.split('/');
+      return parts[parts.length - 1];
+    };
+
+    const filterByPrefix = (filePaths: string[]): File[] => {
+      return fileArray.filter((f) => {
+        // Get the path (webkitRelativePath for directory picker, or name for file picker)
+        const filePath = (f as any).webkitRelativePath || f.name;
+        const fileName = getFileName(filePath);
+
+        if (!fileName) return false;
+
+        // Check if this file path is in our categorized list and matches the domain prefix
+        const isInCategory = filePaths.some((p) => getFileName(p) === fileName);
+        const matchesPrefix = fileName.toLowerCase().startsWith(prefix);
+
+        return isInCategory && matchesPrefix;
+      });
     };
 
     return {
@@ -1110,5 +1158,72 @@ export class WorkspaceV2Loader {
     }
 
     return decisions;
+  }
+
+  /**
+   * Categorize files by type, handling both flat and subdirectory structures
+   * Supports paths like "odcs/file.odcs.yaml" or just "file.odcs.yaml"
+   */
+  private static categorizeFilesWithPaths(filePaths: string[]): CategorizedFiles {
+    const workspacePattern = /\.workspace\.yaml$/;
+    const odcsPattern = /\.odcs\.yaml$/;
+    const odpsPattern = /\.odps\.yaml$/;
+    const cadsPattern = /\.cads\.yaml$/;
+    const bpmnPattern = /\.bpmn$/;
+    const dmnPattern = /\.dmn$/;
+    const kbPattern = /\.kb\.yaml$/;
+    const adrPattern = /\.adr\.yaml$/;
+
+    // Extract just the filename from paths for matching
+    const getFileName = (path: string): string => {
+      const parts = path.split('/');
+      return parts[parts.length - 1] || path;
+    };
+
+    return {
+      workspace: filePaths.find((f) => workspacePattern.test(getFileName(f))),
+      odcs: filePaths.filter((f) => odcsPattern.test(getFileName(f))),
+      odps: filePaths.filter((f) => odpsPattern.test(getFileName(f))),
+      cads: filePaths.filter((f) => cadsPattern.test(getFileName(f))),
+      bpmn: filePaths.filter((f) => bpmnPattern.test(getFileName(f))),
+      dmn: filePaths.filter((f) => dmnPattern.test(getFileName(f))),
+      kb: filePaths.filter((f) => kbPattern.test(getFileName(f))),
+      adr: filePaths.filter((f) => adrPattern.test(getFileName(f))),
+    };
+  }
+
+  /**
+   * Extract description from README.md content
+   * Looks for the first paragraph after the title (# Title) and before ## Overview
+   */
+  private static extractDescriptionFromReadme(content: string): string | null {
+    const lines = content.split('\n');
+    let inDescription = false;
+    const descriptionLines: string[] = [];
+
+    for (const line of lines) {
+      // Skip the title line
+      if (line.startsWith('# ')) {
+        inDescription = true;
+        continue;
+      }
+
+      // Stop at ## Overview or any other heading
+      if (line.startsWith('## ')) {
+        break;
+      }
+
+      // Collect non-empty lines as description
+      if (inDescription) {
+        const trimmed = line.trim();
+        // Skip placeholder text
+        if (trimmed && trimmed !== '_No description provided._') {
+          descriptionLines.push(trimmed);
+        }
+      }
+    }
+
+    const description = descriptionLines.join('\n').trim();
+    return description || null;
   }
 }

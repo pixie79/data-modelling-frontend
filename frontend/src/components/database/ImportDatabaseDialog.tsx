@@ -144,7 +144,7 @@ export const ImportDatabaseDialog: React.FC<ImportDatabaseDialogProps> = ({
       <div className="space-y-6">
         {/* File Upload Area */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Select File</label>
+          <span className="block text-sm font-medium text-gray-700 mb-2">Select File</span>
           <div
             onDrop={handleDrop}
             onDragOver={handleDragOver}
@@ -221,7 +221,7 @@ export const ImportDatabaseDialog: React.FC<ImportDatabaseDialogProps> = ({
 
         {/* Merge Strategy */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Merge Strategy</label>
+          <span className="block text-sm font-medium text-gray-700 mb-2">Merge Strategy</span>
           <div className="space-y-2">
             {(['replace', 'merge', 'skip-existing'] as MergeStrategy[]).map((strategy) => (
               <label

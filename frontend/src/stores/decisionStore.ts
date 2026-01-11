@@ -13,7 +13,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { decisionService } from '@/services/sdk/decisionService';
 import type { Decision, DecisionIndex, DecisionFilter, DecisionOption } from '@/types/decision';
-import { DecisionStatus, DecisionCategory } from '@/types/decision';
+import { DecisionStatus, DecisionCategory, generateDecisionNumber } from '@/types/decision';
 
 interface DecisionState {
   // State
@@ -48,6 +48,8 @@ interface DecisionState {
   parseDecisionIndexYaml: (yaml: string) => Promise<DecisionIndex | null>;
   exportDecisionToYaml: (decision: Decision) => Promise<string | null>;
   exportDecisionToMarkdown: (decision: Decision) => Promise<string>;
+  exportDecisionToPDF: (decision: Decision) => Promise<void>;
+  hasPDFExport: () => boolean;
 
   // High-level creation/update using service
   createDecision: (data: {
@@ -205,10 +207,27 @@ export const useDecisionStore = create<DecisionState>()(
         }
       },
 
+      exportDecisionToPDF: async (decision) => {
+        try {
+          const pdfResult = await decisionService.exportDecisionToPDF(decision);
+          decisionService.downloadPDF(pdfResult);
+        } catch (error) {
+          set({
+            error: error instanceof Error ? error.message : 'Failed to export decision to PDF',
+          });
+          throw error;
+        }
+      },
+
+      hasPDFExport: () => {
+        return decisionService.hasPDFExport();
+      },
+
       // High-level creation using service
       createDecision: (data) => {
-        const nextNumber = get().getNextDecisionNumber();
-        const decision = decisionService.createDecision(data, nextNumber);
+        // Use timestamp-based number (YYMMDDHHmm) for unique IDs across systems
+        const timestampNumber = generateDecisionNumber();
+        const decision = decisionService.createDecision(data, timestampNumber);
 
         // Add to store
         get().addDecision(decision);
@@ -221,7 +240,6 @@ export const useDecisionStore = create<DecisionState>()(
           const updatedIndex: DecisionIndex = {
             ...index,
             decisions: [...index.decisions, entry],
-            next_number: nextNumber + 1,
             last_updated: new Date().toISOString(),
           };
           set({ decisionIndex: updatedIndex });
@@ -323,14 +341,10 @@ export const useDecisionStore = create<DecisionState>()(
         return get().decisions.filter((d) => d.status === DecisionStatus.Proposed);
       },
 
+      /** @deprecated Use generateDecisionNumber() from types/decision instead */
       getNextDecisionNumber: () => {
-        const index = get().decisionIndex;
-        if (index?.next_number) {
-          return index.next_number;
-        }
-        const decisions = get().decisions;
-        if (decisions.length === 0) return 1;
-        return Math.max(...decisions.map((d) => d.number)) + 1;
+        // Now uses timestamp-based numbers (YYMMDDHHmm)
+        return generateDecisionNumber();
       },
 
       // Reset

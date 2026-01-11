@@ -1,7 +1,8 @@
 /**
  * Unit tests for Decision Service
- * Tests MADR Architecture Decision Records via SDK 1.13.3+
+ * Tests MADR Architecture Decision Records via SDK 1.14.0+
  * Updated for in-memory API (WASM works with YAML strings, not file paths)
+ * Updated for type converter patterns (SDK camelCase ↔ frontend snake_case)
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -14,11 +15,14 @@ import type { Decision, DecisionIndex } from '@/types/decision';
 vi.mock('@/services/sdk/sdkLoader', () => ({
   sdkLoader: {
     hasDecisionSupport: vi.fn(),
+    hasMarkdownExport: vi.fn(),
+    hasPDFExport: vi.fn(),
     load: vi.fn(),
   },
 }));
 
 describe('DecisionService', () => {
+  // Frontend format (snake_case) - what the service returns
   const mockDecision: Decision = {
     id: 'decision-1',
     number: 1,
@@ -42,9 +46,43 @@ describe('DecisionService', () => {
     updated_at: '2024-01-01T00:00:00Z',
   };
 
+  // SDK format (camelCase) - what the SDK returns
+  const mockSDKDecision = {
+    id: 'decision-1',
+    number: 1,
+    title: 'Use React for Frontend',
+    status: 'accepted',
+    category: 'technology',
+    context: 'We need to choose a frontend framework',
+    decision: 'We will use React for our frontend',
+    consequences: 'Need to train team on React',
+    options: [
+      {
+        name: 'React',
+        description: 'Popular component library',
+        pros: ['Large ecosystem', 'Good documentation'],
+        cons: ['Learning curve'],
+      },
+    ],
+    domainId: 'domain-1',
+    workspaceId: null,
+    supersededBy: null,
+    supersedes: null,
+    relatedDecisions: [],
+    relatedKnowledge: [],
+    authors: ['John Doe'],
+    deciders: [],
+    consulted: [],
+    informed: [],
+    tags: [],
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+    decidedAt: null,
+  };
+
+  // Frontend format (snake_case)
   const mockDecisionIndex: DecisionIndex = {
     workspace_id: 'workspace-1',
-    next_number: 2,
     decisions: [
       {
         id: 'decision-1',
@@ -57,6 +95,24 @@ describe('DecisionService', () => {
       },
     ],
     last_updated: '2024-01-01T00:00:00Z',
+  };
+
+  // SDK format (camelCase)
+  const mockSDKDecisionIndex = {
+    workspaceId: 'workspace-1',
+    decisions: [
+      {
+        id: 'decision-1',
+        number: 1,
+        title: 'Use React for Frontend',
+        status: 'accepted',
+        category: 'technology',
+        domainId: null,
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+      },
+    ],
+    lastUpdated: '2024-01-01T00:00:00Z',
   };
 
   beforeEach(() => {
@@ -90,13 +146,19 @@ describe('DecisionService', () => {
 
     it('should parse decision YAML successfully', async () => {
       vi.mocked(sdkLoader.hasDecisionSupport).mockReturnValue(true);
+      // SDK returns camelCase data
       vi.mocked(sdkLoader.load).mockResolvedValue({
-        parse_decision_yaml: vi.fn().mockReturnValue(JSON.stringify(mockDecision)),
+        parse_decision_yaml: vi.fn().mockReturnValue(JSON.stringify(mockSDKDecision)),
       } as unknown as ReturnType<typeof sdkLoader.load>);
 
       const result = await decisionService.parseDecisionYaml('yaml content');
 
-      expect(result).toEqual(mockDecision);
+      // Service converts to snake_case
+      expect(result?.id).toBe('decision-1');
+      expect(result?.title).toBe('Use React for Frontend');
+      expect(result?.status).toBe(DecisionStatus.Accepted);
+      expect(result?.domain_id).toBe('domain-1');
+      expect(result?.created_at).toBe('2024-01-01T00:00:00Z');
     });
 
     it('should return null when parse method is not available', async () => {
@@ -133,13 +195,18 @@ describe('DecisionService', () => {
 
     it('should parse decision index YAML successfully', async () => {
       vi.mocked(sdkLoader.hasDecisionSupport).mockReturnValue(true);
+      // SDK returns camelCase data
       vi.mocked(sdkLoader.load).mockResolvedValue({
-        parse_decision_index_yaml: vi.fn().mockReturnValue(JSON.stringify(mockDecisionIndex)),
+        parse_decision_index_yaml: vi.fn().mockReturnValue(JSON.stringify(mockSDKDecisionIndex)),
       } as unknown as ReturnType<typeof sdkLoader.load>);
 
       const result = await decisionService.parseDecisionIndexYaml('yaml content');
 
-      expect(result).toEqual(mockDecisionIndex);
+      // Service converts to snake_case
+      expect(result?.workspace_id).toBe('workspace-1');
+      expect(result?.last_updated).toBe('2024-01-01T00:00:00Z');
+      expect(result?.decisions).toHaveLength(1);
+      expect(result?.decisions[0]?.id).toBe('decision-1');
     });
   });
 
@@ -148,7 +215,7 @@ describe('DecisionService', () => {
       vi.mocked(sdkLoader.hasDecisionSupport).mockReturnValue(false);
 
       await expect(decisionService.exportDecisionToYaml(mockDecision)).rejects.toThrow(
-        'Decision features require SDK 1.13.3+'
+        'Decision features require SDK 1.14.0+'
       );
     });
 
@@ -162,13 +229,19 @@ describe('DecisionService', () => {
       const result = await decisionService.exportDecisionToYaml(mockDecision);
 
       expect(result).toBe('decision: yaml');
-      expect(mockExport).toHaveBeenCalledWith(JSON.stringify(mockDecision));
+      // Service converts to camelCase for SDK
+      expect(mockExport).toHaveBeenCalled();
+      // Verify it was called with a JSON string containing camelCase keys
+      const calledArg = mockExport.mock.calls[0][0];
+      const parsedArg = JSON.parse(calledArg);
+      expect(parsedArg.domainId).toBeDefined(); // camelCase key
     });
   });
 
   describe('exportDecisionToMarkdown', () => {
     it('should use SDK export when available', async () => {
       vi.mocked(sdkLoader.hasDecisionSupport).mockReturnValue(true);
+      vi.mocked(sdkLoader.hasMarkdownExport).mockReturnValue(true);
       const mockExport = vi.fn().mockReturnValue('# ADR Markdown');
       vi.mocked(sdkLoader.load).mockResolvedValue({
         export_decision_to_markdown: mockExport,
@@ -181,6 +254,7 @@ describe('DecisionService', () => {
 
     it('should fallback to client-side markdown generation when SDK not available', async () => {
       vi.mocked(sdkLoader.hasDecisionSupport).mockReturnValue(false);
+      vi.mocked(sdkLoader.hasMarkdownExport).mockReturnValue(false);
 
       const result = await decisionService.exportDecisionToMarkdown(mockDecision);
 
@@ -192,6 +266,7 @@ describe('DecisionService', () => {
 
     it('should fallback to client-side on SDK export failure', async () => {
       vi.mocked(sdkLoader.hasDecisionSupport).mockReturnValue(true);
+      vi.mocked(sdkLoader.hasMarkdownExport).mockReturnValue(true);
       vi.mocked(sdkLoader.load).mockResolvedValue({
         export_decision_to_markdown: vi.fn().mockImplementation(() => {
           throw new Error('SDK error');
@@ -309,7 +384,7 @@ describe('DecisionService', () => {
       expect(result.updated_at).toBeDefined();
     });
 
-    it('should use default number of 1 when not provided', () => {
+    it('should generate timestamp-based number when not provided', () => {
       const result = decisionService.createDecision({
         title: 'New Decision',
         category: DecisionCategory.Architecture,
@@ -317,7 +392,9 @@ describe('DecisionService', () => {
         decision: 'Test decision',
       });
 
-      expect(result.number).toBe(1);
+      // Number should be timestamp-based (YYMMDDHHmm format - 10 digits)
+      expect(result.number).toBeGreaterThan(2000000000);
+      expect(result.number.toString()).toHaveLength(10);
     });
   });
 
@@ -443,8 +520,9 @@ describe('DecisionService', () => {
 
       it('should create decision via SDK', async () => {
         vi.mocked(sdkLoader.hasDecisionSupport).mockReturnValue(true);
+        // SDK returns camelCase
         vi.mocked(sdkLoader.load).mockResolvedValue({
-          create_decision: vi.fn().mockReturnValue(JSON.stringify(mockDecision)),
+          create_decision: vi.fn().mockReturnValue(JSON.stringify(mockSDKDecision)),
         } as unknown as ReturnType<typeof sdkLoader.load>);
 
         const result = await decisionService.createDecisionViaSDK(
@@ -454,7 +532,10 @@ describe('DecisionService', () => {
           'Decision'
         );
 
-        expect(result).toEqual(mockDecision);
+        // Service converts to snake_case
+        expect(result?.id).toBe('decision-1');
+        expect(result?.domain_id).toBe('domain-1');
+        expect(result?.created_at).toBe('2024-01-01T00:00:00Z');
       });
     });
 
@@ -472,10 +553,11 @@ describe('DecisionService', () => {
       });
 
       it('should add decision to index via SDK', async () => {
-        const updatedIndex = { ...mockDecisionIndex, next_number: 3 };
+        // SDK returns camelCase
+        const updatedSDKIndex = { ...mockSDKDecisionIndex };
         vi.mocked(sdkLoader.hasDecisionSupport).mockReturnValue(true);
         vi.mocked(sdkLoader.load).mockResolvedValue({
-          add_decision_to_index: vi.fn().mockReturnValue(JSON.stringify(updatedIndex)),
+          add_decision_to_index: vi.fn().mockReturnValue(JSON.stringify(updatedSDKIndex)),
         } as unknown as ReturnType<typeof sdkLoader.load>);
 
         const result = await decisionService.addDecisionToIndex(
@@ -484,7 +566,9 @@ describe('DecisionService', () => {
           'adr-0001.yaml'
         );
 
-        expect(result).toEqual(updatedIndex);
+        // Service converts to snake_case
+        expect(result?.workspace_id).toBe('workspace-1');
+        expect(result?.last_updated).toBe('2024-01-01T00:00:00Z');
       });
     });
   });

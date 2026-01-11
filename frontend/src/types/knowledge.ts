@@ -1,15 +1,16 @@
 /**
  * Type definitions for Knowledge Base articles
- * SDK 1.13.1+
+ * SDK 1.14.0+
  */
 
-import type { Tag } from './decision';
+import type { Tag, LinkedAsset } from './decision';
 
 // Re-export Tag for convenience
 export type { Tag };
 
 /**
- * Knowledge article type classification
+ * Knowledge article type classification (SDK 1.14.0+)
+ * Extended with additional types from SDK schema
  */
 export enum ArticleType {
   Guide = 'guide',
@@ -18,6 +19,11 @@ export enum ArticleType {
   Tutorial = 'tutorial',
   Troubleshooting = 'troubleshooting',
   Runbook = 'runbook',
+  Faq = 'faq',
+  Glossary = 'glossary',
+  Architecture = 'architecture',
+  Api = 'api',
+  ReleaseNotes = 'releaseNotes',
 }
 
 /**
@@ -32,30 +38,56 @@ export enum ArticleStatus {
 }
 
 /**
- * Knowledge article entity
+ * Skill level for article audience (SDK 1.14.0+)
+ */
+export enum SkillLevel {
+  Beginner = 'beginner',
+  Intermediate = 'intermediate',
+  Advanced = 'advanced',
+}
+
+/**
+ * Review frequency for articles (SDK 1.14.0+)
+ */
+export enum ReviewFrequency {
+  Monthly = 'monthly',
+  Quarterly = 'quarterly',
+  Yearly = 'yearly',
+}
+
+/**
+ * Knowledge article entity (SDK 1.14.0+)
  */
 export interface KnowledgeArticle {
-  id: string; // UUID
-  number: number; // Auto-generated article number (e.g., 0001)
-  title: string; // Article title (max 255 chars)
+  id: string; // UUID - unique identifier, must be preserved
+  number: number; // Timestamp-based number (YYMMDDHHmm format, e.g., 2601101806)
+  title: string; // Article title (max 200 chars)
   type: ArticleType;
   status: ArticleStatus;
-  summary: string; // Brief summary/abstract
+  summary: string; // Brief summary/abstract (max 500 chars)
   content: string; // Full article content (markdown)
+  domain?: string; // Optional domain name
   domain_id?: string; // UUID - optional domain association
   workspace_id?: string; // UUID - workspace this article belongs to
-  authors: string[]; // List of author names/emails
+  authors: string[]; // List of author names/emails (required, min 1)
   reviewers: string[]; // List of reviewer names/emails
+  audience?: string[]; // Target audience (SDK 1.14.0+)
+  skill_level?: SkillLevel; // Required skill level (SDK 1.14.0+)
+  review_frequency?: ReviewFrequency; // How often to review (SDK 1.14.0+)
+  linked_assets?: LinkedAsset[]; // References to data assets (SDK 1.14.0+)
+  linked_decisions?: string[]; // UUIDs of linked decisions (SDK 1.14.0+)
   related_articles?: string[]; // UUIDs of related knowledge articles
   related_decisions?: string[]; // UUIDs of related decisions
   prerequisites?: string[]; // UUIDs of prerequisite articles
   see_also?: string[]; // UUIDs of related articles for "See Also" section
   tags?: Tag[];
+  notes?: string; // Additional notes
   custom_properties?: Record<string, unknown>;
   created_at: string; // ISO timestamp
   updated_at: string; // ISO timestamp
   published_at?: string; // ISO timestamp when article was published
   reviewed_at?: string; // ISO timestamp when article was last reviewed
+  last_reviewed?: string; // Alternative field for last review date
   archived_at?: string; // ISO timestamp when article was archived
 }
 
@@ -79,7 +111,8 @@ export interface KnowledgeIndexEntry {
  */
 export interface KnowledgeIndex {
   workspace_id: string;
-  next_number: number;
+  /** @deprecated No longer used - numbers are now timestamp-based */
+  next_number?: number;
   articles: KnowledgeIndexEntry[];
   last_updated: string; // ISO timestamp
 }
@@ -94,6 +127,7 @@ export interface KnowledgeFilter {
   search?: string;
   tags?: string[];
   author?: string;
+  skill_level?: SkillLevel;
 }
 
 /**
@@ -142,6 +176,11 @@ export function getArticleTypeLabel(type: ArticleType): string {
     [ArticleType.Tutorial]: 'Tutorial',
     [ArticleType.Troubleshooting]: 'Troubleshooting',
     [ArticleType.Runbook]: 'Runbook',
+    [ArticleType.Faq]: 'FAQ',
+    [ArticleType.Glossary]: 'Glossary',
+    [ArticleType.Architecture]: 'Architecture',
+    [ArticleType.Api]: 'API',
+    [ArticleType.ReleaseNotes]: 'Release Notes',
   };
   return labels[type];
 }
@@ -161,6 +200,18 @@ export function getArticleStatusLabel(status: ArticleStatus): string {
 }
 
 /**
+ * Get display label for skill level
+ */
+export function getSkillLevelLabel(level: SkillLevel): string {
+  const labels: Record<SkillLevel, string> = {
+    [SkillLevel.Beginner]: 'Beginner',
+    [SkillLevel.Intermediate]: 'Intermediate',
+    [SkillLevel.Advanced]: 'Advanced',
+  };
+  return labels[level];
+}
+
+/**
  * Get color for article type (for UI badges)
  */
 export function getArticleTypeColor(type: ArticleType): string {
@@ -171,6 +222,11 @@ export function getArticleTypeColor(type: ArticleType): string {
     [ArticleType.Tutorial]: 'green',
     [ArticleType.Troubleshooting]: 'orange',
     [ArticleType.Runbook]: 'red',
+    [ArticleType.Faq]: 'yellow',
+    [ArticleType.Glossary]: 'indigo',
+    [ArticleType.Architecture]: 'violet',
+    [ArticleType.Api]: 'teal',
+    [ArticleType.ReleaseNotes]: 'slate',
   };
   return colors[type];
 }
@@ -190,6 +246,18 @@ export function getArticleStatusColor(status: ArticleStatus): string {
 }
 
 /**
+ * Get color for skill level (for UI badges)
+ */
+export function getSkillLevelColor(level: SkillLevel): string {
+  const colors: Record<SkillLevel, string> = {
+    [SkillLevel.Beginner]: 'green',
+    [SkillLevel.Intermediate]: 'yellow',
+    [SkillLevel.Advanced]: 'red',
+  };
+  return colors[level];
+}
+
+/**
  * Get icon name for article type
  */
 export function getArticleTypeIcon(type: ArticleType): string {
@@ -200,15 +268,41 @@ export function getArticleTypeIcon(type: ArticleType): string {
     [ArticleType.Tutorial]: 'academic-cap',
     [ArticleType.Troubleshooting]: 'wrench-screwdriver',
     [ArticleType.Runbook]: 'clipboard-document-list',
+    [ArticleType.Faq]: 'question-mark-circle',
+    [ArticleType.Glossary]: 'book-open',
+    [ArticleType.Architecture]: 'cube-transparent',
+    [ArticleType.Api]: 'code-bracket',
+    [ArticleType.ReleaseNotes]: 'document-plus',
   };
   return icons[type];
 }
 
 /**
- * Format article number as padded string (e.g., "0001")
+ * Generate a timestamp-based article number in YYMMDDHHmm format
+ * This ensures unique numbers even when multiple users create articles
+ * on different systems and merge via Git
+ */
+export function generateArticleNumber(): number {
+  const now = new Date();
+  const yy = String(now.getFullYear()).slice(-2);
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  const hh = String(now.getHours()).padStart(2, '0');
+  const min = String(now.getMinutes()).padStart(2, '0');
+  return parseInt(`${yy}${mm}${dd}${hh}${min}`, 10);
+}
+
+/**
+ * Format article number for display (e.g., "2601101806")
+ * For timestamp-based numbers, just return the number as string
  */
 export function formatArticleNumber(num: number): string {
-  return num.toString().padStart(4, '0');
+  // Timestamp-based numbers are 10 digits (YYMMDDHHmm)
+  // Legacy 4-digit numbers should still be padded
+  if (num < 10000) {
+    return num.toString().padStart(4, '0');
+  }
+  return num.toString();
 }
 
 /**

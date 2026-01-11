@@ -43,6 +43,8 @@ describe('ArticleViewer', () => {
       isSaving: false,
       changeArticleStatus: vi.fn().mockReturnValue(mockArticle),
       exportKnowledgeToMarkdown: vi.fn().mockResolvedValue('# KB-0001'),
+      exportKnowledgeToPDF: vi.fn().mockResolvedValue(undefined),
+      hasPDFExport: vi.fn().mockReturnValue(false),
       getArticleById: vi.fn().mockReturnValue(mockArticle),
     } as any);
     vi.mocked(useDecisionStore).mockReturnValue({
@@ -214,6 +216,8 @@ describe('ArticleViewer', () => {
       isSaving: false,
       changeArticleStatus: vi.fn().mockReturnValue(mockArticle),
       exportKnowledgeToMarkdown: exportMock,
+      exportKnowledgeToPDF: vi.fn().mockResolvedValue(undefined),
+      hasPDFExport: vi.fn().mockReturnValue(false),
       getArticleById: vi.fn().mockReturnValue(mockArticle),
     } as any);
 
@@ -226,8 +230,13 @@ describe('ArticleViewer', () => {
       />
     );
 
-    const exportButton = screen.getByRole('button', { name: /export|markdown/i });
-    fireEvent.click(exportButton);
+    // Click the Export dropdown button first
+    const exportDropdownButton = screen.getByRole('button', { name: /export/i });
+    fireEvent.click(exportDropdownButton);
+
+    // Then click the Markdown option in the dropdown
+    const markdownOption = await screen.findByRole('button', { name: /markdown/i });
+    fireEvent.click(markdownOption);
 
     await waitFor(() => {
       expect(exportMock).toHaveBeenCalledWith(mockArticle);

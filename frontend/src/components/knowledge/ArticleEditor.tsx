@@ -271,10 +271,11 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
         {/* Title & Type */}
         <div className="grid grid-cols-3 gap-4">
           <div className="col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="article-title" className="block text-sm font-medium text-gray-700 mb-1">
               Title <span className="text-red-500">*</span>
             </label>
             <input
+              id="article-title"
               type="text"
               value={formData.title}
               onChange={(e) => handleInputChange('title', e.target.value)}
@@ -284,8 +285,11 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+            <label htmlFor="article-type" className="block text-sm font-medium text-gray-700 mb-1">
+              Type
+            </label>
             <select
+              id="article-type"
               value={formData.type}
               onChange={(e) => handleInputChange('type', e.target.value as ArticleType)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -301,11 +305,14 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
 
         {/* Summary */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Summary</label>
+          <label htmlFor="article-summary" className="block text-sm font-medium text-gray-700 mb-1">
+            Summary
+          </label>
           <p className="text-xs text-gray-500 mb-2">
             A brief description of what this article covers.
           </p>
           <textarea
+            id="article-summary"
             value={formData.summary}
             onChange={(e) => handleInputChange('summary', e.target.value)}
             placeholder="Brief summary of the article content..."
@@ -316,9 +323,32 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
 
         {/* Content */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
-          <p className="text-xs text-gray-500 mb-2">Full article content. Markdown is supported.</p>
+          <div className="flex items-center justify-between mb-1">
+            <label htmlFor="article-content" className="block text-sm font-medium text-gray-700">
+              Content
+            </label>
+            <a
+              href="https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              Markdown guide
+            </a>
+          </div>
+          <p className="text-xs text-gray-500 mb-2">
+            Supports GitHub Flavored Markdown including tables, task lists, and code blocks.
+          </p>
           <textarea
+            id="article-content"
             value={formData.content}
             onChange={(e) => handleInputChange('content', e.target.value)}
             placeholder="Write your article content here (Markdown supported)..."
@@ -331,9 +361,15 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
         <div className="grid grid-cols-2 gap-6">
           {/* Authors */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Authors</label>
+            <label
+              htmlFor="article-authors"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Authors
+            </label>
             <div className="flex items-center gap-2 mb-2">
               <input
+                id="article-authors"
                 type="text"
                 value={newAuthor}
                 onChange={(e) => setNewAuthor(e.target.value)}
@@ -380,9 +416,15 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
 
           {/* Reviewers */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Reviewers</label>
+            <label
+              htmlFor="article-reviewers"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Reviewers
+            </label>
             <div className="flex items-center gap-2 mb-2">
               <input
+                id="article-reviewers"
                 type="text"
                 value={newReviewer}
                 onChange={(e) => setNewReviewer(e.target.value)}

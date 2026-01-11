@@ -3,12 +3,13 @@
  * Read-only display of a knowledge article with markdown rendering
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useKnowledgeStore } from '@/stores/knowledgeStore';
 import { useDecisionStore } from '@/stores/decisionStore';
 import { ArticleTypeBadge } from './ArticleTypeBadge';
 import { ArticleStatusBadge } from './ArticleStatusBadge';
 import { MarkdownRenderer } from '@/components/common/MarkdownRenderer';
+import { ExportDropdown, MarkdownIcon, PDFIcon } from '@/components/common/ExportDropdown';
 import type { KnowledgeArticle } from '@/types/knowledge';
 import {
   ArticleStatus,
@@ -33,8 +34,14 @@ export const ArticleViewer: React.FC<ArticleViewerProps> = ({
   onClose,
   className = '',
 }) => {
-  const { isSaving, changeArticleStatus, exportKnowledgeToMarkdown, getArticleById } =
-    useKnowledgeStore();
+  const {
+    isSaving,
+    changeArticleStatus,
+    exportKnowledgeToMarkdown,
+    exportKnowledgeToPDF,
+    hasPDFExport,
+    getArticleById,
+  } = useKnowledgeStore();
   const { getDecisionById } = useDecisionStore();
 
   const [showStatusChange, setShowStatusChange] = useState(false);
@@ -68,6 +75,41 @@ export const ArticleViewer: React.FC<ArticleViewerProps> = ({
       setIsExporting(false);
     }
   };
+
+  const handleExportPDF = async () => {
+    setIsExporting(true);
+    try {
+      await exportKnowledgeToPDF(article);
+    } catch {
+      // Error handled by store
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const pdfExportAvailable = hasPDFExport();
+
+  const exportOptions = useMemo(
+    () => [
+      {
+        id: 'markdown',
+        label: 'Markdown (.md)',
+        description: 'Export as formatted markdown document',
+        icon: <MarkdownIcon />,
+        onClick: handleExportMarkdown,
+      },
+      {
+        id: 'pdf',
+        label: 'PDF Document',
+        description: 'Branded PDF with OpenDataModelling logo',
+        icon: <PDFIcon />,
+        onClick: handleExportPDF,
+        disabled: !pdfExportAvailable,
+        comingSoon: !pdfExportAvailable,
+      },
+    ],
+    [pdfExportAvailable]
+  );
 
   const availableTransitions = VALID_ARTICLE_STATUS_TRANSITIONS[article.status];
 
@@ -110,25 +152,7 @@ export const ArticleViewer: React.FC<ArticleViewerProps> = ({
               )}
             </div>
           )}
-          <button
-            onClick={handleExportMarkdown}
-            disabled={isExporting}
-            className="inline-flex items-center gap-1 px-3 py-1.5 text-sm text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-          >
-            {isExporting ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
-            ) : (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
-              </svg>
-            )}
-            Export
-          </button>
+          <ExportDropdown options={exportOptions} isExporting={isExporting} />
           {onEdit && (
             <button
               onClick={onEdit}

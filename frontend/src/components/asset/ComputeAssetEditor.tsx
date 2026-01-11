@@ -11,6 +11,8 @@ import { AssetMetadataForm } from './AssetMetadataForm';
 import { BPMNLink } from './BPMNLink';
 import { DMNLink } from './DMNLink';
 import { OpenAPILink } from './OpenAPILink';
+import { cadsService } from '@/services/sdk/cadsService';
+import { sdkLoader } from '@/services/sdk/sdkLoader';
 import type { ComputeAsset, Tag, CADSOpenAPISpec } from '@/types/cads';
 
 /**
@@ -65,6 +67,8 @@ export const ComputeAssetEditor: React.FC<ComputeAssetEditorProps> = ({
   const [status, setStatus] = useState<'development' | 'production' | 'deprecated'>('development');
   const [tags, setTags] = useState<string[]>([]);
   const [tagsInput, setTagsInput] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
 
   // Initialize form when dialog opens or asset changes
   React.useEffect(() => {
@@ -160,6 +164,77 @@ export const ComputeAssetEditor: React.FC<ComputeAssetEditorProps> = ({
     onClose();
   };
 
+  const handleExport = async (format: 'yaml' | 'markdown' | 'pdf') => {
+    if (!asset) return;
+
+    setIsExporting(true);
+    setShowExportMenu(false);
+
+    try {
+      switch (format) {
+        case 'yaml': {
+          const content = await cadsService.toYAML(asset);
+          const blob = new Blob([content], { type: 'text/yaml' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${asset.name}.cads.yaml`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          addToast({
+            type: 'success',
+            message: `Compute asset "${asset.name}" exported as YAML`,
+          });
+          break;
+        }
+        case 'markdown': {
+          const content = await cadsService.exportToMarkdown(asset);
+          const blob = new Blob([content], { type: 'text/markdown' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${asset.name}.md`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          addToast({
+            type: 'success',
+            message: `Compute asset "${asset.name}" exported as Markdown`,
+          });
+          break;
+        }
+        case 'pdf': {
+          const pdfResult = await cadsService.exportToPDF(asset);
+          const pdfBytes = Uint8Array.from(atob(pdfResult.pdf_base64), (c) => c.charCodeAt(0));
+          const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${asset.name}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          addToast({
+            type: 'success',
+            message: `Compute asset "${asset.name}" exported as PDF`,
+          });
+          break;
+        }
+      }
+    } catch (error) {
+      addToast({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Failed to export compute asset',
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   // Read-only view for shared assets
   if (!isEditable && asset) {
     return (
@@ -201,8 +276,14 @@ export const ComputeAssetEditor: React.FC<ComputeAssetEditorProps> = ({
 
           {/* Basic Information */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
+            <label
+              htmlFor="readonly-asset-name"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Name
+            </label>
             <input
+              id="readonly-asset-name"
               type="text"
               value={asset.name}
               disabled
@@ -211,8 +292,14 @@ export const ComputeAssetEditor: React.FC<ComputeAssetEditorProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
+            <label
+              htmlFor="readonly-asset-type"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Type
+            </label>
             <input
+              id="readonly-asset-type"
               type="text"
               value={
                 asset.type === 'ai'
@@ -228,8 +315,14 @@ export const ComputeAssetEditor: React.FC<ComputeAssetEditorProps> = ({
 
           {asset.description && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+              <label
+                htmlFor="readonly-asset-description"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Description
+              </label>
               <textarea
+                id="readonly-asset-description"
                 value={asset.description}
                 disabled
                 rows={3}
@@ -240,8 +333,14 @@ export const ComputeAssetEditor: React.FC<ComputeAssetEditorProps> = ({
 
           {asset.owner && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Owner</label>
+              <label
+                htmlFor="readonly-asset-owner"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Owner
+              </label>
               <input
+                id="readonly-asset-owner"
                 type="text"
                 value={asset.owner.name || asset.owner.email || 'Unknown'}
                 disabled
@@ -252,10 +351,14 @@ export const ComputeAssetEditor: React.FC<ComputeAssetEditorProps> = ({
 
           {asset.engineering_team && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="readonly-asset-team"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Engineering Team
               </label>
               <input
+                id="readonly-asset-team"
                 type="text"
                 value={asset.engineering_team}
                 disabled
@@ -266,10 +369,14 @@ export const ComputeAssetEditor: React.FC<ComputeAssetEditorProps> = ({
 
           {asset.source_repo && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="readonly-asset-repo"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Source Repository
               </label>
               <input
+                id="readonly-asset-repo"
                 type="text"
                 value={asset.source_repo}
                 disabled
@@ -280,8 +387,14 @@ export const ComputeAssetEditor: React.FC<ComputeAssetEditorProps> = ({
 
           {asset.status && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+              <label
+                htmlFor="readonly-asset-status"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Status
+              </label>
               <input
+                id="readonly-asset-status"
                 type="text"
                 value={asset.status.charAt(0).toUpperCase() + asset.status.slice(1)}
                 disabled
@@ -292,7 +405,7 @@ export const ComputeAssetEditor: React.FC<ComputeAssetEditorProps> = ({
 
           {asset.tags && asset.tags.length > 0 && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Tags</label>
+              <span className="block text-sm font-medium text-gray-700 mb-2">Tags</span>
               <div className="flex flex-wrap gap-2">
                 {tagsToStrings(asset.tags).map((tag, index) => (
                   <span key={index} className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">
@@ -305,9 +418,9 @@ export const ComputeAssetEditor: React.FC<ComputeAssetEditorProps> = ({
 
           {asset.custom_properties && Object.keys(asset.custom_properties).length > 0 && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <span className="block text-sm font-medium text-gray-700 mb-2">
                 Custom Properties
-              </label>
+              </span>
               <div className="border border-gray-300 rounded-lg p-3 bg-gray-50">
                 <pre className="text-xs text-gray-700 overflow-auto max-h-40">
                   {JSON.stringify(asset.custom_properties, null, 2)}
@@ -502,19 +615,113 @@ export const ComputeAssetEditor: React.FC<ComputeAssetEditorProps> = ({
         />
 
         {/* Actions */}
-        <div className="flex justify-end gap-2 pt-4 border-t border-gray-200">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
-          >
-            {asset ? 'Update' : 'Create'}
-          </button>
+        <div className="flex justify-between pt-4 border-t border-gray-200">
+          {/* Export Menu - only show when editing existing asset */}
+          {asset && (
+            <div className="relative">
+              <button
+                onClick={() => setShowExportMenu(!showExportMenu)}
+                disabled={isExporting}
+                className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-1"
+              >
+                {isExporting ? (
+                  <>
+                    <svg
+                      className="animate-spin h-4 w-4"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    Exporting...
+                  </>
+                ) : (
+                  <>
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                      />
+                    </svg>
+                    Export
+                  </>
+                )}
+              </button>
+              {showExportMenu && (
+                <>
+                  <div
+                    className="fixed inset-0 z-10"
+                    onClick={() => setShowExportMenu(false)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') setShowExportMenu(false);
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    aria-label="Close export menu"
+                  />
+                  <div className="absolute left-0 bottom-full mb-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-20">
+                    <div className="py-1">
+                      <button
+                        onClick={() => handleExport('yaml')}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        CADS YAML
+                      </button>
+                      <div className="border-t border-gray-100">
+                        <div className="px-4 py-1 text-xs font-medium text-gray-500 uppercase">
+                          Documentation
+                        </div>
+                        <button
+                          onClick={() => handleExport('markdown')}
+                          disabled={!sdkLoader.hasCADSExport()}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Markdown (.md)
+                        </button>
+                        <button
+                          onClick={() => handleExport('pdf')}
+                          disabled={!sdkLoader.hasCADSExport()}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          PDF Document
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+          {!asset && <div />}
+          <div className="flex gap-2">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+            >
+              {asset ? 'Update' : 'Create'}
+            </button>
+          </div>
         </div>
       </div>
     </DraggableModal>

@@ -27,9 +27,9 @@ class ODPSService {
     console.log('[ODPSService] Raw YAML has support:', !!rawParsed?.support);
     console.log('[ODPSService] Raw YAML has team:', !!rawParsed?.team);
     console.log('[ODPSService] Raw YAML has productCreatedTs:', !!rawParsed?.productCreatedTs);
-    
+
     const isOnline = await sdkModeDetector.checkOnlineMode();
-    
+
     if (isOnline) {
       try {
         const response = await apiClient.getClient().post('/api/v1/import/odps', {
@@ -97,24 +97,30 @@ class ODPSService {
 
     // Convert input_ports to inputPorts with proper structure
     // InputPort requires: name, version, contractId
-    const inputPorts = product.input_ports?.filter(port => port.name && port.table_id).map(port => ({
-      name: port.name,
-      version: '1.0.0', // Default version if not provided
-      contractId: port.table_id,
-      ...(port.description && { description: port.description }),
-    })) || [];
+    const inputPorts =
+      product.input_ports
+        ?.filter((port) => port.name && port.table_id)
+        .map((port) => ({
+          name: port.name,
+          version: '1.0.0', // Default version if not provided
+          contractId: port.table_id,
+          ...(port.description && { description: port.description }),
+        })) || [];
 
     // Convert output_ports to outputPorts with proper structure
     // OutputPort requires: name, version (contractId is optional)
-    const outputPorts = product.output_ports?.filter(port => port.name).map(port => ({
-      name: port.name,
-      version: '1.0.0', // Default version if not provided
-      ...(port.table_id && { contractId: port.table_id }),
-      ...(port.description && { description: port.description }),
-    })) || [];
+    const outputPorts =
+      product.output_ports
+        ?.filter((port) => port.name)
+        .map((port) => ({
+          name: port.name,
+          version: '1.0.0', // Default version if not provided
+          ...(port.table_id && { contractId: port.table_id }),
+          ...(port.description && { description: port.description }),
+        })) || [];
 
     // Convert custom_properties Record to array format
-    const customProperties = product.custom_properties 
+    const customProperties = product.custom_properties
       ? Object.entries(product.custom_properties).map(([property, value]) => ({
           property,
           value,
@@ -123,12 +129,21 @@ class ODPSService {
 
     // Convert support object to array format
     // Support requires: channel, url
-    const support = product.support && (product.support.slack_channel || product.support.documentation_url) ? [{
-      channel: product.support.slack_channel || 'general',
-      url: product.support.documentation_url || (product.support.slack_channel ? `https://slack.com/channels/${product.support.slack_channel}` : 'https://example.com'),
-      ...(product.support.contact && { description: product.support.contact }),
-      ...(product.support.slack_channel && { tool: 'slack' }),
-    }] : undefined;
+    const support =
+      product.support && (product.support.slack_channel || product.support.documentation_url)
+        ? [
+            {
+              channel: product.support.slack_channel || 'general',
+              url:
+                product.support.documentation_url ||
+                (product.support.slack_channel
+                  ? `https://slack.com/channels/${product.support.slack_channel}`
+                  : 'https://example.com'),
+              ...(product.support.contact && { description: product.support.contact }),
+              ...(product.support.slack_channel && { tool: 'slack' }),
+            },
+          ]
+        : undefined;
 
     // Build ODPS-compliant product
     const odpsProduct: any = {
@@ -184,23 +199,28 @@ class ODPSService {
     if (product._odps_raw) {
       // Use raw ODPS data as base, preserving all original fields
       const odpsProduct = JSON.parse(JSON.stringify(product._odps_raw)); // Deep clone
-      
+
       // Only update fields that may have changed in the UI
       if (product.id) odpsProduct.id = product.id;
       if (product.name) odpsProduct.name = product.name;
-      
+
       // Update domain only if explicitly provided and different from original
       const originalDomain = odpsProduct.domain;
-      if (domainName && domainName !== 'Default' && domainName !== 'unknown' && domainName !== originalDomain) {
+      if (
+        domainName &&
+        domainName !== 'Default' &&
+        domainName !== 'unknown' &&
+        domainName !== originalDomain
+      ) {
         odpsProduct.domain = domainName;
       }
-      
+
       // Map status values if changed
       if (product.status) {
         const statusMap: Record<string, string> = {
-          'published': 'active',
-          'draft': 'draft',
-          'deprecated': 'deprecated',
+          published: 'active',
+          draft: 'draft',
+          deprecated: 'deprecated',
         };
         const mappedStatus = statusMap[product.status] || product.status;
         // Only update if status actually changed
@@ -208,18 +228,18 @@ class ODPSService {
           odpsProduct.status = mappedStatus;
         }
       }
-      
+
       // Ensure required fields are present (but preserve original apiVersion)
       if (!odpsProduct.apiVersion) odpsProduct.apiVersion = 'v1.0.0';
       if (!odpsProduct.kind) odpsProduct.kind = 'DataProduct';
-      
+
       // Update description only if it was modified in the UI
       // (preserve original structure if unchanged)
       if (product.description && typeof product.description === 'string') {
         // Check if description was modified by comparing with original
         const originalDesc = odpsProduct.description;
         let descriptionChanged = false;
-        
+
         if (!originalDesc || typeof originalDesc === 'string') {
           descriptionChanged = originalDesc !== product.description;
         } else if (typeof originalDesc === 'object') {
@@ -228,20 +248,23 @@ class ODPSService {
             originalDesc.purpose && `Purpose: ${originalDesc.purpose}`,
             originalDesc.limitations && `Limitations: ${originalDesc.limitations}`,
             originalDesc.usage && `Usage: ${originalDesc.usage}`,
-          ].filter(Boolean).join('\n\n');
+          ]
+            .filter(Boolean)
+            .join('\n\n');
           descriptionChanged = formatted !== product.description;
         }
-        
+
         if (descriptionChanged) {
           // Try to parse the formatted description back to object
           const purposeMatch = product.description.match(/Purpose:\s*(.+?)(?:\n\n|$)/s);
           const limitationsMatch = product.description.match(/Limitations:\s*(.+?)(?:\n\n|$)/s);
           const usageMatch = product.description.match(/Usage:\s*(.+?)(?:\n\n|$)/s);
-          
+
           if (purposeMatch || limitationsMatch || usageMatch) {
             odpsProduct.description = {
               ...(purposeMatch && purposeMatch[1] && { purpose: purposeMatch[1].trim() }),
-              ...(limitationsMatch && limitationsMatch[1] && { limitations: limitationsMatch[1].trim() }),
+              ...(limitationsMatch &&
+                limitationsMatch[1] && { limitations: limitationsMatch[1].trim() }),
               ...(usageMatch && usageMatch[1] && { usage: usageMatch[1].trim() }),
             };
           } else {
@@ -249,18 +272,38 @@ class ODPSService {
           }
         }
       }
-      
+
       // Log what we're about to export
       console.log('[ODPSService] Exporting ODPS product with fields:', Object.keys(odpsProduct));
       console.log('[ODPSService] Has tenant:', !!odpsProduct.tenant);
-      console.log('[ODPSService] Has tags:', !!odpsProduct.tags, Array.isArray(odpsProduct.tags) ? odpsProduct.tags.length : 'N/A');
-      console.log('[ODPSService] Has inputPorts:', !!odpsProduct.inputPorts, Array.isArray(odpsProduct.inputPorts) ? odpsProduct.inputPorts.length : 'N/A');
-      console.log('[ODPSService] Has outputPorts:', !!odpsProduct.outputPorts, Array.isArray(odpsProduct.outputPorts) ? odpsProduct.outputPorts.length : 'N/A');
-      console.log('[ODPSService] Has managementPorts:', !!odpsProduct.managementPorts, Array.isArray(odpsProduct.managementPorts) ? odpsProduct.managementPorts.length : 'N/A');
-      console.log('[ODPSService] Has support:', !!odpsProduct.support, Array.isArray(odpsProduct.support) ? odpsProduct.support.length : 'N/A');
+      console.log(
+        '[ODPSService] Has tags:',
+        !!odpsProduct.tags,
+        Array.isArray(odpsProduct.tags) ? odpsProduct.tags.length : 'N/A'
+      );
+      console.log(
+        '[ODPSService] Has inputPorts:',
+        !!odpsProduct.inputPorts,
+        Array.isArray(odpsProduct.inputPorts) ? odpsProduct.inputPorts.length : 'N/A'
+      );
+      console.log(
+        '[ODPSService] Has outputPorts:',
+        !!odpsProduct.outputPorts,
+        Array.isArray(odpsProduct.outputPorts) ? odpsProduct.outputPorts.length : 'N/A'
+      );
+      console.log(
+        '[ODPSService] Has managementPorts:',
+        !!odpsProduct.managementPorts,
+        Array.isArray(odpsProduct.managementPorts) ? odpsProduct.managementPorts.length : 'N/A'
+      );
+      console.log(
+        '[ODPSService] Has support:',
+        !!odpsProduct.support,
+        Array.isArray(odpsProduct.support) ? odpsProduct.support.length : 'N/A'
+      );
       console.log('[ODPSService] Has team:', !!odpsProduct.team);
       console.log('[ODPSService] Has productCreatedTs:', !!odpsProduct.productCreatedTs);
-      
+
       // When we have raw data, serialize directly to YAML to preserve everything
       // Skip SDK/API to avoid any field loss
       const yamlOutput = yaml.dump(odpsProduct, {
@@ -271,19 +314,19 @@ class ODPSService {
         forceQuotes: false,
         skipInvalid: false,
       });
-      
+
       console.log('[ODPSService] YAML output length:', yamlOutput.length);
       console.log('[ODPSService] YAML output preview:', yamlOutput.substring(0, 500));
       return yamlOutput;
     }
-    
+
     console.log('[ODPSService] No _odps_raw found, converting from DataProduct');
-    
+
     // No raw data available, convert from DataProduct and use SDK/API
     const odpsProduct = this.convertToODPSFormat(product, domainName);
-    
+
     const isOnline = await sdkModeDetector.checkOnlineMode();
-    
+
     if (isOnline) {
       try {
         const response = await apiClient.getClient().post('/api/v1/export/odps', {
@@ -315,6 +358,64 @@ class ODPSService {
   }
 
   /**
+   * Export a data product to Markdown format
+   * Uses SDK 1.14.1+ export_odps_to_markdown method
+   */
+  async exportToMarkdown(product: DataProduct): Promise<string> {
+    if (!sdkLoader.hasODPSExport()) {
+      throw new Error('ODPS Markdown export requires SDK 1.14.1 or later');
+    }
+
+    try {
+      const sdk = await sdkLoader.load();
+
+      if (sdk && typeof sdk.export_odps_to_markdown === 'function') {
+        // Convert to ODPS format before passing to SDK
+        const odpsProduct = this.convertToODPSFormat(product);
+        const productJson = JSON.stringify(odpsProduct);
+        return sdk.export_odps_to_markdown(productJson);
+      }
+
+      throw new Error('SDK export_odps_to_markdown method not available');
+    } catch (error) {
+      console.error('[ODPSService] Failed to export data product to Markdown:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Export a data product to PDF format
+   * Uses SDK 1.14.1+ export_odps_to_pdf method
+   * Returns base64-encoded PDF data
+   */
+  async exportToPDF(
+    product: DataProduct,
+    branding?: { logo_base64?: string; company_name?: string; footer_text?: string }
+  ): Promise<{ pdf_base64: string }> {
+    if (!sdkLoader.hasODPSExport()) {
+      throw new Error('ODPS PDF export requires SDK 1.14.1 or later');
+    }
+
+    try {
+      const sdk = await sdkLoader.load();
+
+      if (sdk && typeof sdk.export_odps_to_pdf === 'function') {
+        // Convert to ODPS format before passing to SDK
+        const odpsProduct = this.convertToODPSFormat(product);
+        const productJson = JSON.stringify(odpsProduct);
+        const brandingJson = branding ? JSON.stringify(branding) : null;
+        const resultJson = sdk.export_odps_to_pdf(productJson, brandingJson);
+        return JSON.parse(resultJson);
+      }
+
+      throw new Error('SDK export_odps_to_pdf method not available');
+    } catch (error) {
+      console.error('[ODPSService] Failed to export data product to PDF:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Map parsed YAML to DataProduct type
    */
   private mapToDataProduct(parsed: any): DataProduct {
@@ -326,7 +427,8 @@ class ODPSService {
       // Convert object description to formatted string
       const parts: string[] = [];
       if (parsed.description.purpose) parts.push(`Purpose: ${parsed.description.purpose}`);
-      if (parsed.description.limitations) parts.push(`Limitations: ${parsed.description.limitations}`);
+      if (parsed.description.limitations)
+        parts.push(`Limitations: ${parsed.description.limitations}`);
       if (parsed.description.usage) parts.push(`Usage: ${parsed.description.usage}`);
       description = parts.length > 0 ? parts.join('\n\n') : undefined;
     }
@@ -344,7 +446,7 @@ class ODPSService {
 
     // Extract input ports from inputPorts (camelCase) or input_ports (snake_case)
     const inputPorts = parsed.inputPorts || parsed.input_ports;
-    
+
     // Extract output ports from outputPorts (camelCase) or output_ports (snake_case)
     const outputPorts = parsed.outputPorts || parsed.output_ports;
 
@@ -355,7 +457,8 @@ class ODPSService {
         // ODPS format: array of support objects, convert to simplified format
         const firstSupport = parsed.support[0];
         support = {
-          slack_channel: firstSupport.channel === 'Data Team Slack' ? firstSupport.channel : undefined,
+          slack_channel:
+            firstSupport.channel === 'Data Team Slack' ? firstSupport.channel : undefined,
           documentation_url: firstSupport.url,
           contact: firstSupport.description,
         };
@@ -389,16 +492,22 @@ class ODPSService {
       name: parsed.name || '',
       description,
       linked_tables: parsed.linked_tables || linkedTables,
-      input_ports: Array.isArray(inputPorts) && inputPorts.length > 0 ? inputPorts.map((port: any) => ({
-        name: port.name,
-        table_id: port.contractId || port.contract_id || port.table_id,
-        description: port.description,
-      })) : undefined,
-      output_ports: Array.isArray(outputPorts) && outputPorts.length > 0 ? outputPorts.map((port: any) => ({
-        name: port.name,
-        table_id: port.contractId || port.contract_id || port.table_id,
-        description: port.description,
-      })) : undefined,
+      input_ports:
+        Array.isArray(inputPorts) && inputPorts.length > 0
+          ? inputPorts.map((port: any) => ({
+              name: port.name,
+              table_id: port.contractId || port.contract_id || port.table_id,
+              description: port.description,
+            }))
+          : undefined,
+      output_ports:
+        Array.isArray(outputPorts) && outputPorts.length > 0
+          ? outputPorts.map((port: any) => ({
+              name: port.name,
+              table_id: port.contractId || port.contract_id || port.table_id,
+              description: port.description,
+            }))
+          : undefined,
       support,
       team,
       status: parsed.status || 'draft',
@@ -410,4 +519,3 @@ class ODPSService {
 }
 
 export const odpsService = new ODPSService();
-

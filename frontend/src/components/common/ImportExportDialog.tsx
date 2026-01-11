@@ -641,8 +641,14 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({ isOpen, 
         {activeTab === 'import' && (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Import Format</label>
+              <label
+                htmlFor="import-format"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Import Format
+              </label>
               <select
+                id="import-format"
                 value={importFormat}
                 onChange={(e) => setImportFormat(e.target.value as ImportFormat)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -663,8 +669,14 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({ isOpen, 
 
             {importFormat === 'sql' && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">SQL Dialect</label>
+                <label
+                  htmlFor="import-sql-dialect"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  SQL Dialect
+                </label>
                 <select
+                  id="import-sql-dialect"
                   value={sqlDialect}
                   onChange={(e) => setSqlDialect(e.target.value as SQLDialect)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -706,8 +718,14 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({ isOpen, 
         {activeTab === 'export' && (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Export Format</label>
+              <label
+                htmlFor="export-format"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Export Format
+              </label>
               <select
+                id="export-format"
                 value={exportFormat}
                 onChange={(e) => setExportFormat(e.target.value as ExportFormat)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -727,8 +745,14 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({ isOpen, 
 
             {exportFormat === 'sql' && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">SQL Dialect</label>
+                <label
+                  htmlFor="export-sql-dialect"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  SQL Dialect
+                </label>
                 <select
+                  id="export-sql-dialect"
                   value={sqlDialect}
                   onChange={(e) => setSqlDialect(e.target.value as SQLDialect)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"

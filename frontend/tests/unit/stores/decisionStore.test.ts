@@ -234,11 +234,11 @@ describe('useDecisionStore', () => {
     });
 
     it('should update decision index when creating', () => {
-      const newDecision = { ...mockDecision, id: 'new-decision', number: 3 };
+      const newDecision = { ...mockDecision, id: 'new-decision', number: 2601101234 };
       vi.mocked(decisionService.createDecision).mockReturnValue(newDecision);
       vi.mocked(decisionService.createIndexEntry).mockReturnValue({
         id: 'new-decision',
-        number: 3,
+        number: 2601101234,
         title: 'New Decision',
         status: DecisionStatus.Draft,
         category: DecisionCategory.Architecture,
@@ -257,8 +257,9 @@ describe('useDecisionStore', () => {
       });
 
       const state = useDecisionStore.getState();
-      expect(state.decisionIndex?.next_number).toBe(4);
+      // next_number is deprecated - timestamp-based numbers are used instead
       expect(state.decisionIndex?.decisions).toHaveLength(1);
+      expect(state.decisionIndex?.last_updated).toBeDefined();
     });
   });
 

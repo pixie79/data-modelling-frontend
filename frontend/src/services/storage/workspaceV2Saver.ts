@@ -27,6 +27,7 @@ import type { Decision } from '@/types/decision';
 export interface SavedFile {
   name: string;
   content: string;
+  directory?: string; // Subdirectory for organizing files by type
 }
 
 export class WorkspaceV2Saver {
@@ -51,16 +52,27 @@ export class WorkspaceV2Saver {
     // Sanitize workspace name for filenames
     const workspaceName = FileMigration.sanitizeFileName(workspace.name);
 
-    // 1. Generate workspace.yaml (v2 format)
+    // 1. Generate workspace.yaml (v2 format) - at root level
     const workspaceV2 = this.convertToWorkspaceV2(workspace, domains, allSystems, allRelationships);
     files.push({
       name: `${workspaceName}.workspace.yaml`,
       content: yaml.dump(workspaceV2, { lineWidth: -1, noRefs: true }),
+      directory: '', // Root directory
     });
 
-    console.log(`[WorkspaceV2Saver] Generated workspace.yaml for "${workspace.name}"`);
+    // 2. Generate README.md with workspace description
+    const readmeContent = this.generateReadme(workspace, workspaceV2);
+    files.push({
+      name: 'README.md',
+      content: readmeContent,
+      directory: '', // Root directory
+    });
 
-    // 2. Generate individual resource files
+    console.log(
+      `[WorkspaceV2Saver] Generated workspace.yaml and README.md for "${workspace.name}"`
+    );
+
+    // 3. Generate individual resource files in type-specific subdirectories
     for (const domain of domains) {
       const domainName = FileMigration.sanitizeFileName(domain.name);
 
@@ -74,7 +86,7 @@ export class WorkspaceV2Saver {
       const domainKnowledge = allKnowledgeArticles.filter((k) => k.domain_id === domain.id);
       const domainADRs = allDecisionRecords.filter((d) => d.domain_id === domain.id);
 
-      // Generate ODCS table files
+      // Generate ODCS table files in odcs/ directory
       for (const table of domainTables) {
         const systemName = FileMigration.getSystemName(table, domainSystems);
         const fileName = FileMigration.generateFileName(
@@ -89,13 +101,13 @@ export class WorkspaceV2Saver {
           // Wrap single table in workspace format expected by SDK
           const tableWorkspace = { tables: [table], relationships: [] };
           const content = await odcsService.toYAML(tableWorkspace as any);
-          files.push({ name: fileName, content });
+          files.push({ name: fileName, content, directory: 'odcs' });
         } catch (error) {
           console.error(`[WorkspaceV2Saver] Failed to export table ${table.name}:`, error);
         }
       }
 
-      // Generate ODPS product files
+      // Generate ODPS product files in odps/ directory
       for (const product of domainProducts) {
         const fileName = FileMigration.generateFileName(
           workspaceName,
@@ -107,13 +119,13 @@ export class WorkspaceV2Saver {
 
         try {
           const content = await odpsService.toYAML(product);
-          files.push({ name: fileName, content });
+          files.push({ name: fileName, content, directory: 'odps' });
         } catch (error) {
           console.error(`[WorkspaceV2Saver] Failed to export product ${product.name}:`, error);
         }
       }
 
-      // Generate CADS asset files
+      // Generate CADS asset files in cads/ directory
       for (const asset of domainAssets) {
         const systemName = FileMigration.getSystemName(asset, domainSystems);
         const fileName = FileMigration.generateFileName(
@@ -126,13 +138,13 @@ export class WorkspaceV2Saver {
 
         try {
           const content = await cadsService.toYAML(asset);
-          files.push({ name: fileName, content });
+          files.push({ name: fileName, content, directory: 'cads' });
         } catch (error) {
           console.error(`[WorkspaceV2Saver] Failed to export asset ${asset.name}:`, error);
         }
       }
 
-      // Generate BPMN process files
+      // Generate BPMN process files in bpmn/ directory
       for (const process of domainProcesses) {
         const fileName = FileMigration.generateFileName(
           workspaceName,
@@ -144,13 +156,13 @@ export class WorkspaceV2Saver {
 
         try {
           const content = await bpmnService.toXML(process);
-          files.push({ name: fileName, content });
+          files.push({ name: fileName, content, directory: 'bpmn' });
         } catch (error) {
           console.error(`[WorkspaceV2Saver] Failed to export process ${process.name}:`, error);
         }
       }
 
-      // Generate DMN decision files
+      // Generate DMN decision files in dmn/ directory
       for (const decision of domainDecisions) {
         const fileName = FileMigration.generateFileName(
           workspaceName,
@@ -162,13 +174,13 @@ export class WorkspaceV2Saver {
 
         try {
           const content = await dmnService.toXML(decision);
-          files.push({ name: fileName, content });
+          files.push({ name: fileName, content, directory: 'dmn' });
         } catch (error) {
           console.error(`[WorkspaceV2Saver] Failed to export decision ${decision.name}:`, error);
         }
       }
 
-      // Generate KB article files (.kb.yaml)
+      // Generate KB article files (.kb.yaml) in kb/ directory
       for (const article of domainKnowledge) {
         const articleName = FileMigration.sanitizeFileName(article.title || `kb_${article.id}`);
         const fileName = FileMigration.generateFileName(
@@ -185,20 +197,20 @@ export class WorkspaceV2Saver {
           if (!content) {
             content = yaml.dump(article, { lineWidth: -1, noRefs: true });
           }
-          files.push({ name: fileName, content });
+          files.push({ name: fileName, content, directory: 'kb' });
         } catch (error) {
           console.error(`[WorkspaceV2Saver] Failed to export KB article ${article.title}:`, error);
           // Fallback to js-yaml
           try {
             const content = yaml.dump(article, { lineWidth: -1, noRefs: true });
-            files.push({ name: fileName, content });
+            files.push({ name: fileName, content, directory: 'kb' });
           } catch (fallbackError) {
             console.error(`[WorkspaceV2Saver] Fallback also failed for KB article:`, fallbackError);
           }
         }
       }
 
-      // Generate ADR decision record files (.adr.yaml)
+      // Generate ADR decision record files (.adr.yaml) in adr/ directory
       for (const adr of domainADRs) {
         const adrName = FileMigration.sanitizeFileName(adr.title || `adr_${adr.id}`);
         const fileName = FileMigration.generateFileName(
@@ -215,13 +227,13 @@ export class WorkspaceV2Saver {
           if (!content) {
             content = yaml.dump(adr, { lineWidth: -1, noRefs: true });
           }
-          files.push({ name: fileName, content });
+          files.push({ name: fileName, content, directory: 'adr' });
         } catch (error) {
           console.error(`[WorkspaceV2Saver] Failed to export ADR ${adr.title}:`, error);
           // Fallback to js-yaml
           try {
             const content = yaml.dump(adr, { lineWidth: -1, noRefs: true });
-            files.push({ name: fileName, content });
+            files.push({ name: fileName, content, directory: 'adr' });
           } catch (fallbackError) {
             console.error(`[WorkspaceV2Saver] Fallback also failed for ADR:`, fallbackError);
           }
@@ -254,6 +266,7 @@ export class WorkspaceV2Saver {
       created_at: workspace.created_at,
       last_modified_at: now,
       // Optional fields
+      description: workspace.description,
       domains: domains.map((domain) => {
         const domainSystems = allSystems.filter((s) => (s as any).domain_id === domain.id);
 
@@ -301,6 +314,57 @@ export class WorkspaceV2Saver {
   }
 
   /**
+   * Generate README.md content for the workspace
+   */
+  private static generateReadme(workspace: Workspace, workspaceV2: WorkspaceV2): string {
+    const description = workspaceV2.description || '';
+    const domainCount = workspaceV2.domains?.length || 0;
+    const relationshipCount = workspaceV2.relationships?.length || 0;
+
+    return `# ${workspace.name}
+
+${description || '_No description provided._'}
+
+## Overview
+
+This workspace was created with the Data Modelling tool.
+
+- **Domains**: ${domainCount}
+- **Relationships**: ${relationshipCount}
+- **Created**: ${workspace.created_at}
+- **Last Modified**: ${workspaceV2.last_modified_at}
+
+## Directory Structure
+
+\`\`\`
+.
+├── ${FileMigration.sanitizeFileName(workspace.name)}.workspace.yaml  # Workspace definition
+├── README.md                    # This file
+├── odcs/                        # Data contracts (ODCS)
+├── odps/                        # Data products (ODPS)
+├── cads/                        # Compute assets (CADS)
+├── bpmn/                        # Business processes (BPMN)
+├── dmn/                         # Decision models (DMN)
+├── kb/                          # Knowledge base articles
+└── adr/                         # Architecture decision records
+\`\`\`
+
+## Usage
+
+To load this workspace:
+1. Open the Data Modelling application
+2. Click "Open" and select this directory
+3. All files will be loaded automatically
+
+## Editing
+
+The \`description\` field in this README can be edited directly. The first paragraph
+after the title (before "## Overview") is treated as the workspace description and
+will be synchronized with the workspace settings.
+`;
+  }
+
+  /**
    * Save files as ZIP download (browser)
    */
   static async saveAsZip(files: SavedFile[], zipName: string): Promise<void> {
@@ -308,7 +372,9 @@ export class WorkspaceV2Saver {
     const zip = new JSZip();
 
     for (const file of files) {
-      zip.file(file.name, file.content);
+      // Handle directory structure
+      const filePath = file.directory ? `${file.directory}/${file.name}` : file.name;
+      zip.file(filePath, file.content);
     }
 
     const blob = await zip.generateAsync({ type: 'blob' });
@@ -328,11 +394,15 @@ export class WorkspaceV2Saver {
     files: SavedFile[],
     directoryHandle: FileSystemDirectoryHandle
   ): Promise<void> {
-    // Build set of expected file names
-    const expectedFiles = new Set(files.map((f) => f.name));
+    // Build set of expected file paths (directory/filename or just filename for root)
+    const expectedFilePaths = new Set(
+      files.map((f) => (f.directory ? `${f.directory}/${f.name}` : f.name))
+    );
 
-    // First, find and delete files that shouldn't exist anymore
-    // These are workspace-related files (.odcs.yaml, .cads.yaml, .odps.yaml, .bpmn, .dmn, .kb.yaml, .adr.yaml, .workspace.yaml)
+    // Subdirectories we manage
+    const managedDirectories = ['odcs', 'odps', 'cads', 'bpmn', 'dmn', 'kb', 'adr'];
+
+    // Workspace-related file extensions
     const workspaceFileExtensions = [
       '.odcs.yaml',
       '.cads.yaml',
@@ -344,29 +414,28 @@ export class WorkspaceV2Saver {
       '.workspace.yaml',
     ];
 
+    // Clean up stale files in root directory
     try {
       const filesToDelete: string[] = [];
-
-      // Iterate through all files in the directory
-      // Use type assertion for FileSystemDirectoryHandle.entries() which returns AsyncIterableIterator
       const entries = (directoryHandle as any).entries() as AsyncIterableIterator<
         [string, FileSystemHandle]
       >;
+
       for await (const [name, handle] of entries) {
         if (handle.kind === 'file') {
-          // Check if this is a workspace-managed file type
+          // Check if this is a workspace-managed file type in root
           const isWorkspaceFile = workspaceFileExtensions.some((ext) =>
             name.toLowerCase().endsWith(ext)
           );
 
           // If it's a workspace file but not in our expected files, mark for deletion
-          if (isWorkspaceFile && !expectedFiles.has(name)) {
+          if (isWorkspaceFile && !expectedFilePaths.has(name)) {
             filesToDelete.push(name);
           }
         }
       }
 
-      // Delete stale files
+      // Delete stale files from root
       for (const fileName of filesToDelete) {
         try {
           await directoryHandle.removeEntry(fileName);
@@ -377,24 +446,69 @@ export class WorkspaceV2Saver {
       }
 
       if (filesToDelete.length > 0) {
-        console.log(`[WorkspaceV2Saver] Cleaned up ${filesToDelete.length} stale file(s)`);
+        console.log(
+          `[WorkspaceV2Saver] Cleaned up ${filesToDelete.length} stale file(s) from root`
+        );
       }
     } catch (listError) {
-      console.warn('[WorkspaceV2Saver] Could not list directory for cleanup:', listError);
-      // Continue with saving even if cleanup fails
+      console.warn('[WorkspaceV2Saver] Could not list root directory for cleanup:', listError);
+    }
+
+    // Clean up stale files in subdirectories
+    for (const dir of managedDirectories) {
+      try {
+        const subDirHandle = await directoryHandle.getDirectoryHandle(dir, { create: false });
+        const subEntries = (subDirHandle as any).entries() as AsyncIterableIterator<
+          [string, FileSystemHandle]
+        >;
+        const filesToDelete: string[] = [];
+
+        for await (const [name, handle] of subEntries) {
+          if (handle.kind === 'file') {
+            const fullPath = `${dir}/${name}`;
+            if (!expectedFilePaths.has(fullPath)) {
+              filesToDelete.push(name);
+            }
+          }
+        }
+
+        for (const fileName of filesToDelete) {
+          try {
+            await subDirHandle.removeEntry(fileName);
+            console.log(`[WorkspaceV2Saver] Deleted stale file: ${dir}/${fileName}`);
+          } catch (deleteError) {
+            console.warn(
+              `[WorkspaceV2Saver] Failed to delete stale file ${dir}/${fileName}:`,
+              deleteError
+            );
+          }
+        }
+      } catch {
+        // Directory doesn't exist yet, that's fine
+      }
     }
 
     // Now write all current files
     for (const file of files) {
       try {
-        const fileHandle = await directoryHandle.getFileHandle(file.name, { create: true });
+        let targetHandle: FileSystemDirectoryHandle = directoryHandle;
+
+        // If file has a directory, get or create the subdirectory
+        if (file.directory) {
+          targetHandle = await directoryHandle.getDirectoryHandle(file.directory, { create: true });
+        }
+
+        const fileHandle = await targetHandle.getFileHandle(file.name, { create: true });
         const writable = await fileHandle.createWritable();
         await writable.write(file.content);
         await writable.close();
       } catch (error) {
-        console.error(`[WorkspaceV2Saver] Failed to save ${file.name}:`, error);
+        const filePath = file.directory ? `${file.directory}/${file.name}` : file.name;
+        console.error(`[WorkspaceV2Saver] Failed to save ${filePath}:`, error);
         throw error;
       }
     }
+
+    console.log(`[WorkspaceV2Saver] Saved ${files.length} files with directory structure`);
   }
 }

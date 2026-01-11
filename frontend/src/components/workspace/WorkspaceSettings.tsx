@@ -29,6 +29,7 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({
   const { addToast } = useUIStore();
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [workspaceName, setWorkspaceName] = useState('');
+  const [workspaceDescription, setWorkspaceDescription] = useState('');
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [newCollaboratorEmail, setNewCollaboratorEmail] = useState('');
@@ -39,6 +40,7 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({
     if (ws) {
       setWorkspace(ws);
       setWorkspaceName(ws.name);
+      setWorkspaceDescription(ws.description || '');
     }
 
     // Load collaborators (if needed in future)
@@ -73,6 +75,30 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({
         message: 'Failed to update workspace name',
       });
       setWorkspaceName(workspace?.name || '');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDescriptionChange = async (newDescription: string) => {
+    // Allow empty description (to clear it)
+    if (newDescription === (workspace?.description || '')) {
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await updateWorkspaceRemote(workspaceId, { description: newDescription });
+      addToast({
+        type: 'success',
+        message: 'Workspace description updated',
+      });
+    } catch {
+      addToast({
+        type: 'error',
+        message: 'Failed to update workspace description',
+      });
+      setWorkspaceDescription(workspace?.description || '');
     } finally {
       setIsLoading(false);
     }
@@ -167,6 +193,29 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({
             disabled={isLoading}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
+        </div>
+
+        {/* Workspace Description */}
+        <div className="mb-6">
+          <label
+            htmlFor="workspace-description"
+            className="block text-sm font-medium text-gray-700 mb-2"
+          >
+            Description
+          </label>
+          <textarea
+            id="workspace-description"
+            value={workspaceDescription}
+            onChange={(e) => setWorkspaceDescription(e.target.value)}
+            onBlur={() => handleDescriptionChange(workspaceDescription)}
+            disabled={isLoading}
+            rows={4}
+            placeholder="Describe the purpose of this workspace..."
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+          />
+          <p className="mt-1 text-sm text-gray-500">
+            This description is saved in the README.md file when the workspace is exported.
+          </p>
         </div>
 
         {/* Domain Information */}

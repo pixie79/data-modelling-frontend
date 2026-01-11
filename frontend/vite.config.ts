@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config';
+import { defineConfig, Plugin } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import packageJson from './package.json';
@@ -10,9 +10,28 @@ import packageJson from './package.json';
 const basePath =
   process.env.VITE_BASE_PATH || (process.env.VITE_ELECTRON_BUILD === 'true' ? './' : '/');
 
+/**
+ * Plugin to ensure WASM files are served with correct MIME type
+ * Fixes: "WebAssembly.instantiateStreaming failed because your server
+ * does not serve Wasm with application/wasm MIME type"
+ */
+function wasmMimeTypePlugin(): Plugin {
+  return {
+    name: 'wasm-mime-type',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (req.url?.endsWith('.wasm')) {
+          res.setHeader('Content-Type', 'application/wasm');
+        }
+        next();
+      });
+    },
+  };
+}
+
 export default defineConfig({
   base: basePath,
-  plugins: [react()],
+  plugins: [react(), wasmMimeTypePlugin()],
   define: {
     __APP_VERSION__: JSON.stringify(packageJson.version),
   },
@@ -69,9 +88,9 @@ export default defineConfig({
     },
   },
   // Optimize WASM handling
-  // Exclude DuckDB-WASM from pre-bundling (it needs to load WASM files dynamically)
+  // Exclude WASM packages from pre-bundling (they need to load WASM files dynamically)
   optimizeDeps: {
-    exclude: ['data-modelling-sdk', '@duckdb/duckdb-wasm'],
+    exclude: ['@offenedatenmodellierung/data-modelling-sdk', '@duckdb/duckdb-wasm'],
   },
   test: {
     globals: true,

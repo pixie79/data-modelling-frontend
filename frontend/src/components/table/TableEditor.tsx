@@ -16,6 +16,7 @@ import { isValidTableName } from '@/utils/validation';
 import { odcsService } from '@/services/sdk/odcsService';
 import { browserFileService } from '@/services/platform/browser';
 import { importExportService } from '@/services/sdk/importExportService';
+import { sdkLoader } from '@/services/sdk/sdkLoader';
 import type { Column, Table, CompoundKey, TableIndex } from '@/types/table';
 import type { DataLevel } from '@/stores/modelStore';
 
@@ -65,7 +66,7 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
   const [isExporting, setIsExporting] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [exportFormat, setExportFormat] = useState<
-    'odcs' | 'avro' | 'protobuf' | 'json-schema' | 'sql'
+    'odcs' | 'avro' | 'protobuf' | 'json-schema' | 'sql' | 'markdown' | 'pdf'
   >('odcs');
   const [sqlDialect, setSqlDialect] = useState<
     'postgresql' | 'mysql' | 'sqlite' | 'mssql' | 'databricks'
@@ -577,6 +578,31 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
           filename = `${systemPrefix}${table.name}.${sqlDialect}.sql`;
           mimeType = 'text/sql';
           break;
+        case 'markdown':
+          content = await odcsService.exportTableToMarkdown(table);
+          filename = `${systemPrefix}${table.name}.md`;
+          mimeType = 'text/markdown';
+          break;
+        case 'pdf': {
+          const pdfResult = await odcsService.exportTableToPDF(table);
+          // Decode base64 PDF and download
+          const pdfBytes = Uint8Array.from(atob(pdfResult.pdf_base64), (c) => c.charCodeAt(0));
+          const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${systemPrefix}${table.name}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          addToast({
+            type: 'success',
+            message: `Table "${table.name}" exported as PDF successfully`,
+          });
+          setIsExporting(false);
+          return; // Early return since we handled the download differently
+        }
         default:
           throw new Error(`Unsupported export format: ${format}`);
       }
@@ -729,8 +755,14 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
         {/* Basic Information */}
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+            <label
+              htmlFor="table-view-name"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Name
+            </label>
             <input
+              id="table-view-name"
               type="text"
               value={table.name}
               disabled
@@ -740,8 +772,14 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
 
           {table.alias && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Alias</label>
+              <label
+                htmlFor="table-view-alias"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Alias
+              </label>
               <input
+                id="table-view-alias"
                 type="text"
                 value={table.alias}
                 disabled
@@ -752,8 +790,14 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
 
           {table.description && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <label
+                htmlFor="table-view-description"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Description
+              </label>
               <textarea
+                id="table-view-description"
                 value={table.description}
                 disabled
                 rows={3}
@@ -764,8 +808,14 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
 
           {table.data_level && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Data Level</label>
+              <label
+                htmlFor="table-view-data-level"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Data Level
+              </label>
               <input
+                id="table-view-data-level"
                 type="text"
                 value={table.data_level}
                 disabled
@@ -776,8 +826,14 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
 
           {table.owner && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Owner</label>
+              <label
+                htmlFor="table-view-owner"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Owner
+              </label>
               <input
+                id="table-view-owner"
                 type="text"
                 value={table.owner.name || table.owner.email || 'Unknown'}
                 disabled
@@ -890,7 +946,7 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
         {/* Tags */}
         {table.tags && table.tags.length > 0 && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Tags</label>
+            <span className="block text-sm font-medium text-gray-700 mb-2">Tags</span>
             <div className="flex flex-wrap gap-2">
               {table.tags.map((tag, index) => (
                 <span key={index} className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">
@@ -982,10 +1038,14 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
                         </button>
                         {showSqlDialectSelector && exportFormat === 'sql' && (
                           <div className="px-4 pb-2 pt-1 border-t border-gray-100">
-                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                            <label
+                              htmlFor="table-sql-dialect"
+                              className="block text-xs font-medium text-gray-600 mb-1"
+                            >
                               SQL Dialect:
                             </label>
                             <select
+                              id="table-sql-dialect"
                               value={sqlDialect}
                               onChange={(e) => setSqlDialect(e.target.value as typeof sqlDialect)}
                               className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500"
@@ -1007,6 +1067,34 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
                           </div>
                         )}
                       </div>
+                      {/* Documentation Export */}
+                      <div className="border-t border-gray-200 pt-1">
+                        <div className="px-4 py-1 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                          Documentation
+                        </div>
+                        <button
+                          onClick={() => handleExportTable('markdown')}
+                          disabled={isExporting || !sdkLoader.hasODCSExport()}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between"
+                        >
+                          <span>Markdown (.md)</span>
+                          {exportFormat === 'markdown' && <span className="text-green-600">✓</span>}
+                        </button>
+                        <button
+                          onClick={() => handleExportTable('pdf')}
+                          disabled={isExporting || !sdkLoader.hasODCSExport()}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between"
+                        >
+                          <span>PDF Document</span>
+                          {exportFormat === 'pdf' && <span className="text-green-600">✓</span>}
+                        </button>
+                      </div>
+                    </div>
+                    {/* Branding footer */}
+                    <div className="border-t border-gray-100 px-4 py-2 bg-gray-50">
+                      <p className="text-xs text-gray-400 text-center">
+                        Powered by opendatamodelling.com
+                      </p>
                     </div>
                   </div>
                 </>

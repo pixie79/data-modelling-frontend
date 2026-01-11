@@ -17,7 +17,7 @@ class CADSService {
    */
   async parseYAML(yamlContent: string): Promise<ComputeAsset> {
     const isOnline = await sdkModeDetector.checkOnlineMode();
-    
+
     if (isOnline) {
       try {
         const response = await apiClient.getClient().post('/api/v1/import/cads', {
@@ -52,7 +52,7 @@ class CADSService {
    */
   async toYAML(asset: ComputeAsset): Promise<string> {
     const isOnline = await sdkModeDetector.checkOnlineMode();
-    
+
     if (isOnline) {
       try {
         const response = await apiClient.getClient().post('/api/v1/export/cads', {
@@ -77,6 +77,106 @@ class CADSService {
 
     // Fallback: Use js-yaml serializer
     return yaml.dump(asset);
+  }
+
+  /**
+   * Convert a frontend ComputeAsset to CADS format for SDK export
+   * The SDK expects CADS-compliant format
+   */
+  private convertToCADSFormat(asset: ComputeAsset): Record<string, unknown> {
+    // Map type to kind if not present
+    const kind =
+      asset.kind ||
+      (asset.type === 'ai' ? 'AIModel' : asset.type === 'ml' ? 'MLPipeline' : 'Application');
+
+    const cadsAsset: Record<string, unknown> = {
+      apiVersion: 'v1.0.0',
+      kind: kind,
+      id: asset.id,
+      name: asset.name,
+      type: asset.type,
+      status: asset.status || 'development',
+
+      // Optional fields
+      ...(asset.description && { description: asset.description }),
+      ...(asset.owner && { owner: asset.owner }),
+      ...(asset.engineering_team && { engineeringTeam: asset.engineering_team }),
+      ...(asset.source_repo && { sourceRepo: asset.source_repo }),
+      ...(asset.tags && asset.tags.length > 0 && { tags: asset.tags }),
+
+      // Models and specs
+      ...(asset.bpmn_models && asset.bpmn_models.length > 0 && { bpmnModels: asset.bpmn_models }),
+      ...(asset.dmn_models && asset.dmn_models.length > 0 && { dmnModels: asset.dmn_models }),
+      ...(asset.openapi_specs &&
+        asset.openapi_specs.length > 0 && { openapiSpecs: asset.openapi_specs }),
+
+      // Custom properties
+      ...(asset.custom_properties && { customProperties: asset.custom_properties }),
+
+      // Timestamps
+      createdAt: asset.created_at,
+      lastModifiedAt: asset.last_modified_at,
+    };
+
+    return cadsAsset;
+  }
+
+  /**
+   * Export a compute asset to Markdown format
+   * Uses SDK 1.14.1+ export_cads_to_markdown method
+   */
+  async exportToMarkdown(asset: ComputeAsset): Promise<string> {
+    if (!sdkLoader.hasCADSExport()) {
+      throw new Error('CADS Markdown export requires SDK 1.14.1 or later');
+    }
+
+    try {
+      const sdk = await sdkLoader.load();
+
+      if (sdk && typeof sdk.export_cads_to_markdown === 'function') {
+        // Convert to CADS format before passing to SDK
+        const cadsAsset = this.convertToCADSFormat(asset);
+        const assetJson = JSON.stringify(cadsAsset);
+        return sdk.export_cads_to_markdown(assetJson);
+      }
+
+      throw new Error('SDK export_cads_to_markdown method not available');
+    } catch (error) {
+      console.error('[CADSService] Failed to export compute asset to Markdown:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Export a compute asset to PDF format
+   * Uses SDK 1.14.1+ export_cads_to_pdf method
+   * Returns base64-encoded PDF data
+   */
+  async exportToPDF(
+    asset: ComputeAsset,
+    branding?: { logo_base64?: string; company_name?: string; footer_text?: string }
+  ): Promise<{ pdf_base64: string }> {
+    if (!sdkLoader.hasCADSExport()) {
+      throw new Error('CADS PDF export requires SDK 1.14.1 or later');
+    }
+
+    try {
+      const sdk = await sdkLoader.load();
+
+      if (sdk && typeof sdk.export_cads_to_pdf === 'function') {
+        // Convert to CADS format before passing to SDK
+        const cadsAsset = this.convertToCADSFormat(asset);
+        const assetJson = JSON.stringify(cadsAsset);
+        const brandingJson = branding ? JSON.stringify(branding) : null;
+        const resultJson = sdk.export_cads_to_pdf(assetJson, brandingJson);
+        return JSON.parse(resultJson);
+      }
+
+      throw new Error('SDK export_cads_to_pdf method not available');
+    } catch (error) {
+      console.error('[CADSService] Failed to export compute asset to PDF:', error);
+      throw error;
+    }
   }
 
   /**
@@ -107,4 +207,3 @@ class CADSService {
 }
 
 export const cadsService = new CADSService();
-

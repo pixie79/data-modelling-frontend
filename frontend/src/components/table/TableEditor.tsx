@@ -16,6 +16,7 @@ import { isValidTableName } from '@/utils/validation';
 import { odcsService } from '@/services/sdk/odcsService';
 import { browserFileService } from '@/services/platform/browser';
 import { importExportService } from '@/services/sdk/importExportService';
+import { sdkLoader } from '@/services/sdk/sdkLoader';
 import type { Column, Table, CompoundKey, TableIndex } from '@/types/table';
 import type { DataLevel } from '@/stores/modelStore';
 
@@ -65,7 +66,7 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
   const [isExporting, setIsExporting] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [exportFormat, setExportFormat] = useState<
-    'odcs' | 'avro' | 'protobuf' | 'json-schema' | 'sql'
+    'odcs' | 'avro' | 'protobuf' | 'json-schema' | 'sql' | 'markdown' | 'pdf'
   >('odcs');
   const [sqlDialect, setSqlDialect] = useState<
     'postgresql' | 'mysql' | 'sqlite' | 'mssql' | 'databricks'
@@ -577,6 +578,31 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
           filename = `${systemPrefix}${table.name}.${sqlDialect}.sql`;
           mimeType = 'text/sql';
           break;
+        case 'markdown':
+          content = await odcsService.exportTableToMarkdown(table);
+          filename = `${systemPrefix}${table.name}.md`;
+          mimeType = 'text/markdown';
+          break;
+        case 'pdf': {
+          const pdfResult = await odcsService.exportTableToPDF(table);
+          // Decode base64 PDF and download
+          const pdfBytes = Uint8Array.from(atob(pdfResult.pdf_base64), (c) => c.charCodeAt(0));
+          const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${systemPrefix}${table.name}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          addToast({
+            type: 'success',
+            message: `Table "${table.name}" exported as PDF successfully`,
+          });
+          setIsExporting(false);
+          return; // Early return since we handled the download differently
+        }
         default:
           throw new Error(`Unsupported export format: ${format}`);
       }
@@ -1007,28 +1033,26 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
                           </div>
                         )}
                       </div>
-                      {/* Documentation Export - Coming Soon */}
+                      {/* Documentation Export */}
                       <div className="border-t border-gray-200 pt-1">
                         <div className="px-4 py-1 text-xs font-medium text-gray-500 uppercase tracking-wide">
                           Documentation
                         </div>
                         <button
-                          disabled
-                          className="w-full text-left px-4 py-2 text-sm text-gray-400 cursor-not-allowed flex items-center justify-between"
+                          onClick={() => handleExportTable('markdown')}
+                          disabled={isExporting || !sdkLoader.hasODCSExport()}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between"
                         >
                           <span>Markdown (.md)</span>
-                          <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">
-                            Coming Soon
-                          </span>
+                          {exportFormat === 'markdown' && <span className="text-green-600">✓</span>}
                         </button>
                         <button
-                          disabled
-                          className="w-full text-left px-4 py-2 text-sm text-gray-400 cursor-not-allowed flex items-center justify-between"
+                          onClick={() => handleExportTable('pdf')}
+                          disabled={isExporting || !sdkLoader.hasODCSExport()}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between"
                         >
                           <span>PDF Document</span>
-                          <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">
-                            Coming Soon
-                          </span>
+                          {exportFormat === 'pdf' && <span className="text-green-600">✓</span>}
                         </button>
                       </div>
                     </div>

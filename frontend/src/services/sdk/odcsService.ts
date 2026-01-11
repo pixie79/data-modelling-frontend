@@ -2070,7 +2070,7 @@ class ODCSService {
           name: table.name,
           ...(table.description && { description: table.description }),
           logicalType: 'object',
-          properties: schemaProperties,
+          columns: schemaProperties,
         },
       ],
 

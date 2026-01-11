@@ -127,7 +127,7 @@ export const ExportDatabaseDialog: React.FC<ExportDatabaseDialogProps> = ({
       <div className="space-y-6">
         {/* Format Selection */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Export Format</label>
+          <span className="block text-sm font-medium text-gray-700 mb-2">Export Format</span>
           <div className="space-y-2">
             {Object.values(ExportFormat).map((format) => {
               const isSupported = supportedFormats.includes(format);
@@ -170,7 +170,7 @@ export const ExportDatabaseDialog: React.FC<ExportDatabaseDialogProps> = ({
 
         {/* Table Selection */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Tables to Export</label>
+          <span className="block text-sm font-medium text-gray-700 mb-2">Tables to Export</span>
 
           <div className="mb-3">
             <label className="flex items-center">

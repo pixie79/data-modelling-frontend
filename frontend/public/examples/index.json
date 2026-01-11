@@ -23,6 +23,7 @@
         "jaffleshop_ecommerce_mart_products.odcs.yaml",
         "jaffleshop_ecommerce_mart_supplies.odcs.yaml",
         "jaffleshop_ecommerce_metricflow_guide.kb.yaml",
+        "jaffleshop_data_vault_2_modelling_guide.kb.yaml",
         "jaffleshop_ecommerce_raw_customers.odcs.yaml",
         "jaffleshop_ecommerce_raw_ingestion.bpmn",
         "jaffleshop_ecommerce_raw_items.odcs.yaml",
@@ -43,7 +44,7 @@
         "19 ODCS data contracts",
         "2 ODPS data products",
         "3 BPMN processes",
-        "3 Knowledge articles",
+        "4 Knowledge articles",
         "3 Architecture decision records",
         "Star schema relationships"
       ]

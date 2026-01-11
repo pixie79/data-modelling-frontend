@@ -285,10 +285,14 @@ export const DecisionEditor: React.FC<DecisionEditorProps> = ({
         {/* Title & Category */}
         <div className="grid grid-cols-3 gap-4">
           <div className="col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="decision-title"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Title <span className="text-red-500">*</span>
             </label>
             <input
+              id="decision-title"
               type="text"
               value={formData.title}
               onChange={(e) => handleInputChange('title', e.target.value)}
@@ -298,8 +302,14 @@ export const DecisionEditor: React.FC<DecisionEditorProps> = ({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+            <label
+              htmlFor="decision-category"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Category
+            </label>
             <select
+              id="decision-category"
               value={formData.category}
               onChange={(e) => handleInputChange('category', e.target.value as DecisionCategory)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -315,12 +325,18 @@ export const DecisionEditor: React.FC<DecisionEditorProps> = ({
 
         {/* Context */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Context</label>
+          <label
+            htmlFor="decision-context"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Context
+          </label>
           <p className="text-xs text-gray-500 mb-2">
             Describe the issue motivating this decision, including any technical, business, or
             political factors.
           </p>
           <textarea
+            id="decision-context"
             value={formData.context}
             onChange={(e) => handleInputChange('context', e.target.value)}
             placeholder="What is the issue that we're seeing that is motivating this decision or change?"
@@ -337,11 +353,17 @@ export const DecisionEditor: React.FC<DecisionEditorProps> = ({
 
         {/* Decision */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Decision</label>
+          <label
+            htmlFor="decision-decision"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Decision
+          </label>
           <p className="text-xs text-gray-500 mb-2">
             State the decision that was made. Use imperative voice: &quot;We will...&quot;
           </p>
           <textarea
+            id="decision-decision"
             value={formData.decision}
             onChange={(e) => handleInputChange('decision', e.target.value)}
             placeholder="This is the change that we're proposing or have decided to implement."
@@ -352,12 +374,18 @@ export const DecisionEditor: React.FC<DecisionEditorProps> = ({
 
         {/* Consequences */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Consequences</label>
+          <label
+            htmlFor="decision-consequences"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Consequences
+          </label>
           <p className="text-xs text-gray-500 mb-2">
             Describe the resulting context after applying the decision. Include positive and
             negative impacts.
           </p>
           <textarea
+            id="decision-consequences"
             value={formData.consequences}
             onChange={(e) => handleInputChange('consequences', e.target.value)}
             placeholder="What becomes easier or more difficult to do because of this change?"
@@ -372,9 +400,15 @@ export const DecisionEditor: React.FC<DecisionEditorProps> = ({
 
           {/* Authors */}
           <div className="mb-4">
-            <label className="block text-xs font-medium text-gray-600 mb-1">Authors</label>
+            <label
+              htmlFor="decision-authors"
+              className="block text-xs font-medium text-gray-600 mb-1"
+            >
+              Authors
+            </label>
             <div className="flex items-center gap-2 mb-2">
               <input
+                id="decision-authors"
                 type="text"
                 value={newAuthors}
                 onChange={(e) => setNewAuthors(e.target.value)}

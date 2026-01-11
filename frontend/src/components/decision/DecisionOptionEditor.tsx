@@ -168,8 +168,14 @@ export const DecisionOptionEditor: React.FC<DecisionOptionEditorProps> = ({
 
               {/* Option Description */}
               <div className="mb-4">
-                <label className="block text-xs font-medium text-gray-600 mb-1">Description</label>
+                <label
+                  htmlFor={`option-${optionIndex}-description`}
+                  className="block text-xs font-medium text-gray-600 mb-1"
+                >
+                  Description
+                </label>
                 <textarea
+                  id={`option-${optionIndex}-description`}
                   value={option.description}
                   onChange={(e) => handleOptionChange(optionIndex, 'description', e.target.value)}
                   disabled={disabled}

@@ -80,6 +80,48 @@ class CADSService {
   }
 
   /**
+   * Convert a frontend ComputeAsset to CADS format for SDK export
+   * The SDK expects CADS-compliant format
+   */
+  private convertToCADSFormat(asset: ComputeAsset): Record<string, unknown> {
+    // Map type to kind if not present
+    const kind =
+      asset.kind ||
+      (asset.type === 'ai' ? 'AIModel' : asset.type === 'ml' ? 'MLPipeline' : 'Application');
+
+    const cadsAsset: Record<string, unknown> = {
+      apiVersion: 'v1.0.0',
+      kind: kind,
+      id: asset.id,
+      name: asset.name,
+      type: asset.type,
+      status: asset.status || 'development',
+
+      // Optional fields
+      ...(asset.description && { description: asset.description }),
+      ...(asset.owner && { owner: asset.owner }),
+      ...(asset.engineering_team && { engineeringTeam: asset.engineering_team }),
+      ...(asset.source_repo && { sourceRepo: asset.source_repo }),
+      ...(asset.tags && asset.tags.length > 0 && { tags: asset.tags }),
+
+      // Models and specs
+      ...(asset.bpmn_models && asset.bpmn_models.length > 0 && { bpmnModels: asset.bpmn_models }),
+      ...(asset.dmn_models && asset.dmn_models.length > 0 && { dmnModels: asset.dmn_models }),
+      ...(asset.openapi_specs &&
+        asset.openapi_specs.length > 0 && { openapiSpecs: asset.openapi_specs }),
+
+      // Custom properties
+      ...(asset.custom_properties && { customProperties: asset.custom_properties }),
+
+      // Timestamps
+      createdAt: asset.created_at,
+      lastModifiedAt: asset.last_modified_at,
+    };
+
+    return cadsAsset;
+  }
+
+  /**
    * Export a compute asset to Markdown format
    * Uses SDK 1.14.1+ export_cads_to_markdown method
    */
@@ -92,7 +134,9 @@ class CADSService {
       const sdk = await sdkLoader.load();
 
       if (sdk && typeof sdk.export_cads_to_markdown === 'function') {
-        const assetJson = JSON.stringify(asset);
+        // Convert to CADS format before passing to SDK
+        const cadsAsset = this.convertToCADSFormat(asset);
+        const assetJson = JSON.stringify(cadsAsset);
         return sdk.export_cads_to_markdown(assetJson);
       }
 
@@ -120,7 +164,9 @@ class CADSService {
       const sdk = await sdkLoader.load();
 
       if (sdk && typeof sdk.export_cads_to_pdf === 'function') {
-        const assetJson = JSON.stringify(asset);
+        // Convert to CADS format before passing to SDK
+        const cadsAsset = this.convertToCADSFormat(asset);
+        const assetJson = JSON.stringify(cadsAsset);
         const brandingJson = branding ? JSON.stringify(branding) : null;
         const resultJson = sdk.export_cads_to_pdf(assetJson, brandingJson);
         return JSON.parse(resultJson);

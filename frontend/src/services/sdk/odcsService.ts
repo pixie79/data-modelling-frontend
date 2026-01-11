@@ -1997,6 +1997,91 @@ class ODCSService {
   }
 
   /**
+   * Convert a frontend Table object to ODCS v3.1.0 format for SDK export
+   * The SDK expects ODCS Data Contract format, not the internal frontend Table type
+   */
+  private tableToODCSFormat(table: Table): Record<string, unknown> {
+    const now = new Date().toISOString();
+
+    // Build schema properties from columns
+    const schemaProperties = (table.columns || []).map((col) => ({
+      name: col.name,
+      ...(col.description && { description: col.description }),
+      logicalType: this.mapDataTypeToLogicalType(col.data_type),
+      physicalType: col.data_type,
+      ...(col.is_primary_key && { primaryKey: true }),
+      ...(col.is_foreign_key && { foreignKey: true }),
+      ...(col.nullable === false && { required: true }),
+      ...(col.default_value && { default: col.default_value }),
+    }));
+
+    // Build ODCS v3.1.0 Data Contract structure
+    const odcsContract: Record<string, unknown> = {
+      apiVersion: 'v3.1.0',
+      kind: 'DataContract',
+      id: table.id,
+      version: '1.0.0',
+      status: (table as any).metadata?.status || 'active',
+      name: table.name,
+
+      // Optional description
+      ...(table.description && {
+        description: {
+          purpose: table.description,
+        },
+      }),
+
+      // Domain
+      ...(table.primary_domain_id && { domain: table.primary_domain_id }),
+
+      // Owner information
+      ...(table.owner && {
+        owner: {
+          ...(table.owner.name && { name: table.owner.name }),
+          ...(table.owner.email && { email: table.owner.email }),
+          ...(table.owner.team && { team: table.owner.team }),
+        },
+      }),
+
+      // Tags
+      ...(table.tags && table.tags.length > 0 && { tags: table.tags }),
+
+      // SLA
+      ...(table.sla && { sla: table.sla }),
+
+      // Team
+      ...(table.team && table.team.length > 0 && { team: table.team }),
+
+      // Roles
+      ...(table.roles && table.roles.length > 0 && { roles: table.roles }),
+
+      // Support channels
+      ...(table.support && table.support.length > 0 && { support: table.support }),
+
+      // Pricing
+      ...(table.pricing && { pricing: table.pricing }),
+
+      // Quality rules
+      ...(table.quality_rules && { quality: table.quality_rules }),
+
+      // Schema array with table definition
+      schema: [
+        {
+          name: table.name,
+          ...(table.description && { description: table.description }),
+          logicalType: 'object',
+          properties: schemaProperties,
+        },
+      ],
+
+      // Timestamps
+      contractCreatedTs: table.created_at || now,
+    };
+
+    return odcsContract;
+  }
+
+  /**
    * Export a table to Markdown format
    * Uses SDK 1.14.1+ export_table_to_markdown method
    */
@@ -2010,7 +2095,9 @@ class ODCSService {
       const sdk = sdkLoader.getModule();
 
       if (sdk && typeof (sdk as any).export_table_to_markdown === 'function') {
-        const tableJson = JSON.stringify(table);
+        // Convert to ODCS format before passing to SDK
+        const odcsContract = this.tableToODCSFormat(table);
+        const tableJson = JSON.stringify(odcsContract);
         return (sdk as any).export_table_to_markdown(tableJson);
       }
 
@@ -2039,7 +2126,9 @@ class ODCSService {
       const sdk = sdkLoader.getModule();
 
       if (sdk && typeof (sdk as any).export_table_to_pdf === 'function') {
-        const tableJson = JSON.stringify(table);
+        // Convert to ODCS format before passing to SDK
+        const odcsContract = this.tableToODCSFormat(table);
+        const tableJson = JSON.stringify(odcsContract);
         const brandingJson = branding ? JSON.stringify(branding) : null;
         const resultJson = (sdk as any).export_table_to_pdf(tableJson, brandingJson);
         return JSON.parse(resultJson);

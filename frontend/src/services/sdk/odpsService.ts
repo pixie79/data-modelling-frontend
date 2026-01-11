@@ -370,7 +370,9 @@ class ODPSService {
       const sdk = await sdkLoader.load();
 
       if (sdk && typeof sdk.export_odps_to_markdown === 'function') {
-        const productJson = JSON.stringify(product);
+        // Convert to ODPS format before passing to SDK
+        const odpsProduct = this.convertToODPSFormat(product);
+        const productJson = JSON.stringify(odpsProduct);
         return sdk.export_odps_to_markdown(productJson);
       }
 
@@ -398,7 +400,9 @@ class ODPSService {
       const sdk = await sdkLoader.load();
 
       if (sdk && typeof sdk.export_odps_to_pdf === 'function') {
-        const productJson = JSON.stringify(product);
+        // Convert to ODPS format before passing to SDK
+        const odpsProduct = this.convertToODPSFormat(product);
+        const productJson = JSON.stringify(odpsProduct);
         const brandingJson = branding ? JSON.stringify(branding) : null;
         const resultJson = sdk.export_odps_to_pdf(productJson, brandingJson);
         return JSON.parse(resultJson);

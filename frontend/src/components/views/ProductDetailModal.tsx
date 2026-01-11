@@ -3,11 +3,12 @@
  * Shows detailed information about a data product
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Dialog } from '@/components/common/Dialog';
 import { odpsService } from '@/services/sdk/odpsService';
 import { browserFileService } from '@/services/platform/browser';
 import { useUIStore } from '@/stores/uiStore';
+import { sdkLoader } from '@/services/sdk/sdkLoader';
 import {
   ExportDropdown,
   YAMLIcon,
@@ -31,6 +32,20 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 }) => {
   const { addToast } = useUIStore();
   const [isExporting, setIsExporting] = useState(false);
+  const [pdfExportAvailable, setPdfExportAvailable] = useState(false);
+
+  // Check if PDF export is available when component mounts
+  useEffect(() => {
+    const checkExportAvailability = async () => {
+      try {
+        await sdkLoader.load();
+        setPdfExportAvailable(sdkLoader.hasODPSExport());
+      } catch {
+        setPdfExportAvailable(false);
+      }
+    };
+    checkExportAvailability();
+  }, []);
 
   const handleExportYAML = async () => {
     setIsExporting(true);
@@ -59,11 +74,63 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   };
 
   const handleExportMarkdown = async () => {
-    // Markdown export - coming soon with SDK support
+    setIsExporting(true);
+    try {
+      const markdown = await odpsService.exportToMarkdown(product);
+
+      // Create a blob and download
+      const filename = `${product.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.md`;
+      browserFileService.downloadFile(filename, markdown, 'text/markdown');
+      addToast({
+        type: 'success',
+        message: `Product "${product.name}" exported to Markdown successfully`,
+      });
+    } catch (error) {
+      addToast({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Failed to export to Markdown',
+      });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const handleExportPDF = async () => {
-    // PDF export - coming soon with SDK support
+    setIsExporting(true);
+    try {
+      const result = await odpsService.exportToPDF(product);
+
+      // Decode base64 and create blob
+      const byteCharacters = atob(result.pdf_base64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: 'application/pdf' });
+
+      // Download
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${product.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      addToast({
+        type: 'success',
+        message: `Product "${product.name}" exported to PDF successfully`,
+      });
+    } catch (error) {
+      addToast({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Failed to export to PDF',
+      });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const exportOptions = useMemo(
@@ -81,7 +148,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
         description: 'Export as formatted documentation',
         icon: <MarkdownIcon />,
         onClick: handleExportMarkdown,
-        comingSoon: true,
+        disabled: !pdfExportAvailable,
+        comingSoon: !pdfExportAvailable,
       },
       {
         id: 'pdf',
@@ -89,10 +157,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
         description: 'Branded PDF with OpenDataModelling logo',
         icon: <PDFIcon />,
         onClick: handleExportPDF,
-        comingSoon: true,
+        disabled: !pdfExportAvailable,
+        comingSoon: !pdfExportAvailable,
       },
     ],
-    []
+    [pdfExportAvailable]
   );
 
   return (

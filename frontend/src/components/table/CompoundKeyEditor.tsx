@@ -27,7 +27,8 @@ export const CompoundKeyEditor: React.FC<CompoundKeyEditorProps> = ({
   const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
   const [keyName, setKeyName] = useState('');
   // Default to false if there's already a primary key (single-column or compound)
-  const hasExistingPK = columns.some(col => col.is_primary_key) || compoundKeys.some(ck => ck.is_primary);
+  const hasExistingPK =
+    columns.some((col) => col.is_primary_key) || compoundKeys.some((ck) => ck.is_primary);
   const [isPrimary, setIsPrimary] = useState(!hasExistingPK);
 
   const handleAddCompoundKey = () => {
@@ -51,16 +52,15 @@ export const CompoundKeyEditor: React.FC<CompoundKeyEditorProps> = ({
     setSelectedColumns([]);
     setKeyName('');
     // Reset to false if there's already a primary key, otherwise true
-    const hasExistingPK = columns.some(col => col.is_primary_key) || compoundKeys.some(ck => ck.is_primary);
+    const hasExistingPK =
+      columns.some((col) => col.is_primary_key) || compoundKeys.some((ck) => ck.is_primary);
     setIsPrimary(!hasExistingPK);
     setShowAddForm(false);
   };
 
   const handleColumnToggle = (columnId: string) => {
     setSelectedColumns((prev) =>
-      prev.includes(columnId)
-        ? prev.filter((id) => id !== columnId)
-        : [...prev, columnId]
+      prev.includes(columnId) ? prev.filter((id) => id !== columnId) : [...prev, columnId]
     );
   };
 
@@ -92,10 +92,14 @@ export const CompoundKeyEditor: React.FC<CompoundKeyEditorProps> = ({
         <div className="p-3 border border-gray-200 rounded-lg bg-gray-50">
           <div className="space-y-2">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="compound-key-name"
+                className="block text-xs font-medium text-gray-700 mb-1"
+              >
                 Key Name (Optional)
               </label>
               <input
+                id="compound-key-name"
                 type="text"
                 value={keyName}
                 onChange={(e) => setKeyName(e.target.value)}
@@ -123,9 +127,9 @@ export const CompoundKeyEditor: React.FC<CompoundKeyEditorProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
+              <span className="block text-xs font-medium text-gray-700 mb-1">
                 Select Columns (at least 2)
-              </label>
+              </span>
               <div className="space-y-1 max-h-32 overflow-y-auto border border-gray-200 rounded p-2 bg-white">
                 {columns.map((column) => (
                   <label
@@ -139,9 +143,7 @@ export const CompoundKeyEditor: React.FC<CompoundKeyEditorProps> = ({
                       className="rounded"
                     />
                     <span>{column.name}</span>
-                    {column.is_primary_key && (
-                      <span className="text-yellow-600 text-xs">PK</span>
-                    )}
+                    {column.is_primary_key && <span className="text-yellow-600 text-xs">PK</span>}
                   </label>
                 ))}
               </div>
@@ -166,10 +168,7 @@ export const CompoundKeyEditor: React.FC<CompoundKeyEditorProps> = ({
       {compoundKeys.length > 0 && (
         <div className="space-y-2">
           {compoundKeys.map((compoundKey) => (
-            <div
-              key={compoundKey.id}
-              className="p-2 border border-gray-200 rounded bg-white"
-            >
+            <div key={compoundKey.id} className="p-2 border border-gray-200 rounded bg-white">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-medium text-gray-700">
@@ -224,4 +223,3 @@ export const CompoundKeyEditor: React.FC<CompoundKeyEditorProps> = ({
     </div>
   );
 };
-

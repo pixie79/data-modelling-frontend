@@ -163,10 +163,14 @@ export const UnlinkedTablesDialog: React.FC<UnlinkedTablesDialogProps> = ({
                       {/* Link to existing system */}
                       {domainSystems.length > 0 && (
                         <div className="flex-1 min-w-[200px]">
-                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                          <label
+                            htmlFor={`link-system-${table.id}`}
+                            className="block text-xs font-medium text-gray-700 mb-1"
+                          >
                             Link to existing system:
                           </label>
                           <select
+                            id={`link-system-${table.id}`}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             onChange={(e) => {
                               if (e.target.value) {

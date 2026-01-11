@@ -412,10 +412,14 @@ export const CreateTableDialog: React.FC<CreateTableDialogProps> = ({
             /* Import Mode */
             <div className="space-y-4 pb-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="import-format"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Import Format
                 </label>
                 <select
+                  id="import-format"
                   value={importFormat}
                   onChange={(e) => {
                     setImportFormat(e.target.value as typeof importFormat);
@@ -435,10 +439,14 @@ export const CreateTableDialog: React.FC<CreateTableDialogProps> = ({
 
               {importFormat === 'sql' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label
+                    htmlFor="import-sql-dialect"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
                     SQL Dialect
                   </label>
                   <select
+                    id="import-sql-dialect"
                     value={sqlDialect}
                     onChange={(e) => setSqlDialect(e.target.value as typeof sqlDialect)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -454,10 +462,14 @@ export const CreateTableDialog: React.FC<CreateTableDialogProps> = ({
 
               {importFormat === 'openapi' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label
+                    htmlFor="import-openapi-format"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
                     OpenAPI Format
                   </label>
                   <select
+                    id="import-openapi-format"
                     value={openapiFormat}
                     onChange={(e) => setOpenapiFormat(e.target.value as 'yaml' | 'json')}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"

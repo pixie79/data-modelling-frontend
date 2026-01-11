@@ -293,43 +293,48 @@ class ODCSService {
               const workspaceId = normalized.workspace_id || generateUUID();
 
               // Clean tables (remove complex nested objects, but preserve metadata including system_id)
-              // SDK export_to_odcs_yaml expects snake_case field names
+              // SDK 1.14.2+ export_to_odcs_yaml expects camelCase field names
               const cleanedTables = Array.isArray(normalized.tables)
                 ? normalized.tables.map((table: any) => {
                     const cleaned: any = {
                       id: table.id,
-                      workspace_id: table.workspace_id,
+                      workspaceId: table.workspace_id,
                       name: table.name,
-                      model_type: table.model_type || 'conceptual',
+                      modelType: table.model_type || 'conceptual',
                       // Ensure status is present (required by ODCS schema)
                       status: table.status || table.metadata?.status || 'draft',
                       columns: Array.isArray(table.columns)
-                        ? table.columns.map((col: any) => ({
-                            id: col.id,
-                            table_id: col.table_id,
-                            name: col.name,
-                            data_type: col.data_type,
-                            nullable: col.nullable ?? false,
-                            is_primary_key: col.is_primary_key ?? false,
-                            is_foreign_key: col.is_foreign_key ?? false,
-                            order: col.order ?? 0,
-                            created_at: col.created_at || now,
-                            ...(col.description && { description: col.description }),
-                            ...(col.foreign_key_reference && {
-                              foreign_key_reference: col.foreign_key_reference,
-                            }),
-                            ...(col.default_value && { default_value: col.default_value }),
-                          }))
+                        ? table.columns.map((col: any) => {
+                            const column: any = {
+                              id: col.id,
+                              tableId: col.table_id,
+                              name: col.name,
+                              dataType: col.data_type || col.dataType || 'string',
+                              nullable: col.nullable ?? false,
+                              primaryKey: col.is_primary_key ?? col.primaryKey ?? false,
+                              order: col.order ?? 0,
+                              createdAt: col.created_at || col.createdAt || now,
+                            };
+                            // Only add foreignKey as an object if there's a reference
+                            if (col.is_foreign_key || col.foreignKey) {
+                              column.foreignKey = {
+                                columnId:
+                                  col.foreign_key_reference || col.foreignKeyReference || null,
+                              };
+                            }
+                            if (col.description) column.description = col.description;
+                            if (col.default_value) column.defaultValue = col.default_value;
+                            return column;
+                          })
                         : [],
-                      created_at: table.created_at || now,
-                      updated_at: table.last_modified_at || table.updated_at || now,
+                      createdAt: table.created_at || now,
+                      updatedAt: table.last_modified_at || table.updated_at || now,
                     };
-                    if (table.primary_domain_id)
-                      cleaned.primary_domain_id = table.primary_domain_id;
+                    if (table.primary_domain_id) cleaned.primaryDomainId = table.primary_domain_id;
                     if (table.alias) cleaned.alias = table.alias;
                     if (table.description) cleaned.description = table.description;
                     if (Array.isArray(table.tags)) cleaned.tags = table.tags;
-                    if (table.data_level) cleaned.data_level = table.data_level;
+                    if (table.data_level) cleaned.dataLevel = table.data_level;
                     // IMPORTANT: Preserve metadata (including system_id) when saving
                     if (table.metadata && typeof table.metadata === 'object') {
                       cleaned.metadata = { ...table.metadata };
@@ -341,24 +346,24 @@ class ODCSService {
                     }
                     // IMPORTANT: Preserve compound keys (composite primary/unique keys)
                     if (Array.isArray(table.compoundKeys) && table.compoundKeys.length > 0) {
-                      cleaned.compound_keys = table.compoundKeys.map((ck: any) => ({
+                      cleaned.compoundKeys = table.compoundKeys.map((ck: any) => ({
                         id: ck.id,
-                        table_id: ck.table_id || table.id,
-                        column_ids: ck.column_ids || ck.columnIds,
-                        is_primary: ck.is_primary ?? ck.isPrimary ?? false,
-                        created_at: ck.created_at || ck.createdAt || now,
+                        tableId: ck.table_id || table.id,
+                        columnIds: ck.column_ids || ck.columnIds,
+                        isPrimary: ck.is_primary ?? ck.isPrimary ?? false,
+                        createdAt: ck.created_at || ck.createdAt || now,
                         ...(ck.name && { name: ck.name }),
                       }));
                     } else if (
                       Array.isArray(table.compound_keys) &&
                       table.compound_keys.length > 0
                     ) {
-                      cleaned.compound_keys = table.compound_keys.map((ck: any) => ({
+                      cleaned.compoundKeys = table.compound_keys.map((ck: any) => ({
                         id: ck.id,
-                        table_id: ck.table_id || table.id,
-                        column_ids: ck.column_ids || ck.columnIds,
-                        is_primary: ck.is_primary ?? ck.isPrimary ?? false,
-                        created_at: ck.created_at || ck.createdAt || now,
+                        tableId: ck.table_id || table.id,
+                        columnIds: ck.column_ids || ck.columnIds,
+                        isPrimary: ck.is_primary ?? ck.isPrimary ?? false,
+                        createdAt: ck.created_at || ck.createdAt || now,
                         ...(ck.name && { name: ck.name }),
                       }));
                     }
@@ -366,16 +371,16 @@ class ODCSService {
                   })
                 : [];
 
-              // Clean relationships (SDK expects snake_case)
+              // Clean relationships (SDK 1.14.2+ expects camelCase)
               const cleanedRelationships = Array.isArray(normalized.relationships)
                 ? normalized.relationships.map((rel: any) => ({
                     id: rel.id,
-                    workspace_id: rel.workspace_id,
-                    source_table_id: rel.source_table_id || rel.source_id,
-                    target_table_id: rel.target_table_id || rel.target_id,
-                    created_at: rel.created_at || now,
-                    updated_at: rel.last_modified_at || rel.updated_at || now,
-                    ...(rel.domain_id && { domain_id: rel.domain_id }),
+                    workspaceId: rel.workspace_id,
+                    sourceTableId: rel.source_table_id || rel.source_id,
+                    targetTableId: rel.target_table_id || rel.target_id,
+                    createdAt: rel.created_at || now,
+                    updatedAt: rel.last_modified_at || rel.updated_at || now,
+                    ...(rel.domain_id && { domainId: rel.domain_id }),
                     ...(rel.cardinality && { cardinality: rel.cardinality }),
                     ...(rel.type && { type: rel.type }),
                     ...(rel.name && { name: rel.name }),
@@ -383,19 +388,19 @@ class ODCSService {
                   }))
                 : [];
 
-              // Create DataModel structure with all required fields (SDK expects snake_case)
+              // Create DataModel structure with all required fields (SDK 1.14.2+ expects camelCase)
               const dataModel = {
                 id: workspaceId,
                 name: (normalized as any).name || 'Workspace',
-                git_directory_path: (normalized as any).git_directory_path || '',
-                control_file_path: (normalized as any).control_file_path || '',
+                gitDirectoryPath: (normalized as any).git_directory_path || '',
+                controlFilePath: (normalized as any).control_file_path || '',
                 tables: cleanedTables,
                 relationships: cleanedRelationships,
                 domains: [],
-                created_at: (normalized as any).created_at || now,
-                updated_at:
+                createdAt: (normalized as any).created_at || now,
+                updatedAt:
                   (normalized as any).updated_at || (normalized as any).last_modified_at || now,
-                is_subfolder: (normalized as any).is_subfolder ?? false,
+                isSubfolder: (normalized as any).is_subfolder ?? false,
               };
 
               // Convert DataModel to JSON string
@@ -1997,10 +2002,78 @@ class ODCSService {
   }
 
   /**
+   * Convert a frontend Table object to SDK export format
+   * The SDK expects a specific Table structure with camelCase field names
+   */
+  private tableToSDKFormat(table: Table): Record<string, unknown> {
+    // Transform columns to SDK format
+    const sdkColumns = (table.columns || []).map((col) => ({
+      id: col.id,
+      name: col.name,
+      dataType: col.data_type,
+      ...(col.description && { description: col.description }),
+      nullable: col.nullable !== false, // Default to true if not specified
+      ...(col.is_primary_key && { primaryKey: true }),
+      ...(col.is_foreign_key && { foreignKey: true }),
+      ...(col.default_value && { defaultValue: col.default_value }),
+    }));
+
+    // Transform SLA to SDK format (array of {property, value, unit})
+    const sdkSla: Array<{ property: string; value: number | string; unit?: string }> = [];
+    if (table.sla) {
+      if (table.sla.latency !== undefined) {
+        sdkSla.push({ property: 'latency', value: table.sla.latency, unit: 'milliseconds' });
+      }
+      if (table.sla.uptime !== undefined) {
+        sdkSla.push({ property: 'uptime', value: table.sla.uptime, unit: 'percent' });
+      }
+      if (table.sla.response_time !== undefined) {
+        sdkSla.push({
+          property: 'response_time',
+          value: table.sla.response_time,
+          unit: 'milliseconds',
+        });
+      }
+      if (table.sla.error_rate !== undefined) {
+        sdkSla.push({ property: 'error_rate', value: table.sla.error_rate, unit: 'percent' });
+      }
+      if (table.sla.update_frequency) {
+        sdkSla.push({ property: 'update_frequency', value: table.sla.update_frequency });
+      }
+    }
+
+    // Transform owner to SDK format
+    const sdkOwner = table.owner
+      ? {
+          ...(table.owner.name && { name: table.owner.name }),
+          ...(table.owner.email && { email: table.owner.email }),
+        }
+      : undefined;
+
+    // Build SDK Table structure
+    const sdkTable: Record<string, unknown> = {
+      id: table.id,
+      name: table.name,
+      columns: sdkColumns,
+      ...(table.alias && { alias: table.alias }),
+      ...(table.description && { notes: table.description }),
+      ...(table.tags && table.tags.length > 0 && { tags: table.tags }),
+      ...(table.data_level && { medallionLayers: [table.data_level] }),
+      ...(sdkOwner && Object.keys(sdkOwner).length > 0 && { contactDetails: sdkOwner }),
+      ...(sdkSla.length > 0 && { sla: sdkSla }),
+      createdAt: table.created_at,
+      updatedAt: table.last_modified_at,
+    };
+
+    return sdkTable;
+  }
+
+  /**
    * Convert a frontend Table object to ODCS v3.1.0 format for SDK export
    * The SDK expects ODCS Data Contract format, not the internal frontend Table type
    */
-  private tableToODCSFormat(table: Table): Record<string, unknown> {
+  // @ts-expect-error - Method retained for potential future use with ODCS Data Contract export
+  private _tableToODCSFormat(table: Table): Record<string, unknown> {
     const now = new Date().toISOString();
 
     // Build schema properties from columns
@@ -2083,7 +2156,8 @@ class ODCSService {
 
   /**
    * Export a table to Markdown format
-   * Uses SDK 1.14.1+ export_table_to_markdown method
+   * Uses SDK 1.14.2+ export_odcs_yaml_to_markdown method
+   * Converts table to ODCS YAML first, then exports to Markdown
    */
   async exportTableToMarkdown(table: Table): Promise<string> {
     if (!sdkLoader.hasODCSExport()) {
@@ -2094,14 +2168,27 @@ class ODCSService {
       await sdkLoader.load();
       const sdk = sdkLoader.getModule();
 
+      // SDK 1.14.2+: Use export_odcs_yaml_to_markdown which accepts ODCS YAML directly
+      if (sdk && typeof (sdk as any).export_odcs_yaml_to_markdown === 'function') {
+        console.log('[ODCSService] Using export_odcs_yaml_to_markdown (SDK 1.14.2+)');
+        // Convert table to ODCS YAML using existing toYAML method
+        const odcsYaml = await this.toYAML({
+          tables: [table],
+          relationships: [],
+        });
+        console.log('[ODCSService] Markdown export - ODCS YAML length:', odcsYaml.length);
+        return (sdk as any).export_odcs_yaml_to_markdown(odcsYaml);
+      }
+
+      // Fallback to SDK 1.14.1 method if available
       if (sdk && typeof (sdk as any).export_table_to_markdown === 'function') {
-        // Convert to ODCS format before passing to SDK
-        const odcsContract = this.tableToODCSFormat(table);
-        const tableJson = JSON.stringify(odcsContract);
+        console.log('[ODCSService] Falling back to export_table_to_markdown (SDK 1.14.1)');
+        const sdkTable = this.tableToSDKFormat(table);
+        const tableJson = JSON.stringify(sdkTable);
         return (sdk as any).export_table_to_markdown(tableJson);
       }
 
-      throw new Error('SDK export_table_to_markdown method not available');
+      throw new Error('SDK export_odcs_yaml_to_markdown method not available');
     } catch (error) {
       console.error('[ODCSService] Failed to export table to Markdown:', error);
       throw error;
@@ -2110,7 +2197,8 @@ class ODCSService {
 
   /**
    * Export a table to PDF format
-   * Uses SDK 1.14.1+ export_table_to_pdf method
+   * Uses SDK 1.14.2+ export_odcs_yaml_to_pdf method
+   * Converts table to ODCS YAML first, then exports to PDF
    * Returns base64-encoded PDF data
    */
   async exportTableToPDF(
@@ -2125,16 +2213,32 @@ class ODCSService {
       await sdkLoader.load();
       const sdk = sdkLoader.getModule();
 
+      // SDK 1.14.2+: Use export_odcs_yaml_to_pdf which accepts ODCS YAML directly
+      if (sdk && typeof (sdk as any).export_odcs_yaml_to_pdf === 'function') {
+        console.log('[ODCSService] Using export_odcs_yaml_to_pdf (SDK 1.14.2+)');
+        // Convert table to ODCS YAML using existing toYAML method
+        const odcsYaml = await this.toYAML({
+          tables: [table],
+          relationships: [],
+        });
+        console.log('[ODCSService] PDF export - ODCS YAML length:', odcsYaml.length);
+        const brandingJson = branding ? JSON.stringify(branding) : null;
+        const resultJson = (sdk as any).export_odcs_yaml_to_pdf(odcsYaml, brandingJson);
+        return JSON.parse(resultJson);
+      }
+
+      // Fallback to SDK 1.14.1 method if available
       if (sdk && typeof (sdk as any).export_table_to_pdf === 'function') {
-        // Convert to ODCS format before passing to SDK
-        const odcsContract = this.tableToODCSFormat(table);
-        const tableJson = JSON.stringify(odcsContract);
+        console.log('[ODCSService] Falling back to export_table_to_pdf (SDK 1.14.1)');
+        const sdkTable = this.tableToSDKFormat(table);
+        const tableJson = JSON.stringify(sdkTable);
+        console.log('[ODCSService] PDF export - SDK Table JSON length:', tableJson.length);
         const brandingJson = branding ? JSON.stringify(branding) : null;
         const resultJson = (sdk as any).export_table_to_pdf(tableJson, brandingJson);
         return JSON.parse(resultJson);
       }
 
-      throw new Error('SDK export_table_to_pdf method not available');
+      throw new Error('SDK export_odcs_yaml_to_pdf method not available');
     } catch (error) {
       console.error('[ODCSService] Failed to export table to PDF:', error);
       throw error;

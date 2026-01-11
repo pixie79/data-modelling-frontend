@@ -501,13 +501,16 @@ class SDKLoader {
 
   /**
    * Check if SDK 1.14.1+ ODCS (table) markdown/PDF export is available
+   * SDK 1.14.2+ uses export_odcs_yaml_to_markdown/pdf
+   * SDK 1.14.1 uses export_table_to_markdown/pdf
    */
   hasODCSExport(): boolean {
+    if (!this.module || !this.initialized) return false;
+    const sdk = this.module as unknown as Record<string, unknown>;
+    // Check for SDK 1.14.2+ functions first, then fall back to SDK 1.14.1
     return (
-      this.module !== null &&
-      this.initialized &&
-      typeof (this.module as unknown as Record<string, unknown>).export_table_to_markdown ===
-        'function'
+      typeof sdk.export_odcs_yaml_to_markdown === 'function' ||
+      typeof sdk.export_table_to_markdown === 'function'
     );
   }
 

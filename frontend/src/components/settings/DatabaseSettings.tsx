@@ -291,8 +291,14 @@ export const DatabaseSettings: React.FC<DatabaseSettingsProps> = ({
       <div className="space-y-6">
         {/* Backend Selection */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Storage Backend</label>
+          <label
+            htmlFor="db-storage-backend"
+            className="block text-sm font-medium text-gray-700 mb-2"
+          >
+            Storage Backend
+          </label>
           <select
+            id="db-storage-backend"
             value={config.database.backend}
             onChange={(e) =>
               updateConfig({
@@ -321,8 +327,14 @@ export const DatabaseSettings: React.FC<DatabaseSettingsProps> = ({
         {/* DuckDB Path */}
         {config.database.backend === DatabaseBackend.DuckDB && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">DuckDB File Path</label>
+            <label
+              htmlFor="db-duckdb-path"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              DuckDB File Path
+            </label>
             <input
+              id="db-duckdb-path"
               type="text"
               value={config.database.path || ''}
               onChange={(e) =>
@@ -343,10 +355,14 @@ export const DatabaseSettings: React.FC<DatabaseSettingsProps> = ({
             <h4 className="font-medium text-gray-900">PostgreSQL Connection</h4>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="db-postgres-connection"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Connection String
               </label>
               <input
+                id="db-postgres-connection"
                 type="text"
                 value={config.postgres?.connection_string || ''}
                 onChange={(e) =>
@@ -364,8 +380,14 @@ export const DatabaseSettings: React.FC<DatabaseSettingsProps> = ({
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Pool Size</label>
+                <label
+                  htmlFor="db-postgres-pool-size"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Pool Size
+                </label>
                 <input
+                  id="db-postgres-pool-size"
                   type="number"
                   min="1"
                   max="50"
@@ -384,8 +406,14 @@ export const DatabaseSettings: React.FC<DatabaseSettingsProps> = ({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">SSL Mode</label>
+                <label
+                  htmlFor="db-postgres-ssl-mode"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  SSL Mode
+                </label>
                 <select
+                  id="db-postgres-ssl-mode"
                   value={config.postgres?.ssl_mode || 'prefer'}
                   onChange={(e) =>
                     updateConfig({
@@ -470,10 +498,14 @@ export const DatabaseSettings: React.FC<DatabaseSettingsProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="db-conflict-strategy"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Conflict Strategy
               </label>
               <select
+                id="db-conflict-strategy"
                 value={config.sync.conflict_strategy}
                 onChange={(e) =>
                   updateConfig({

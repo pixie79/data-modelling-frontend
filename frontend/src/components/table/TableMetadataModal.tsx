@@ -292,8 +292,14 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
           {isEditable ? (
             <div className="space-y-2">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Name</label>
+                <label
+                  htmlFor="owner-name"
+                  className="block text-xs font-medium text-gray-600 mb-1"
+                >
+                  Name
+                </label>
                 <input
+                  id="owner-name"
                   type="text"
                   value={owner?.name || ''}
                   onChange={(e) => {
@@ -305,8 +311,14 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
+                <label
+                  htmlFor="owner-email"
+                  className="block text-xs font-medium text-gray-600 mb-1"
+                >
+                  Email
+                </label>
                 <input
+                  id="owner-email"
                   type="email"
                   value={owner?.email || ''}
                   onChange={(e) => {
@@ -318,8 +330,14 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Team</label>
+                <label
+                  htmlFor="owner-team"
+                  className="block text-xs font-medium text-gray-600 mb-1"
+                >
+                  Team
+                </label>
                 <input
+                  id="owner-team"
                   type="text"
                   value={owner?.team || ''}
                   onChange={(e) => {
@@ -331,8 +349,14 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Role</label>
+                <label
+                  htmlFor="owner-role"
+                  className="block text-xs font-medium text-gray-600 mb-1"
+                >
+                  Role
+                </label>
                 <input
+                  id="owner-role"
                   type="text"
                   value={owner?.role || ''}
                   onChange={(e) => {
@@ -403,10 +427,14 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                   </div>
                   <div className="space-y-2">
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                      <label
+                        htmlFor={`role-${index}-name`}
+                        className="block text-xs font-medium text-gray-600 mb-1"
+                      >
                         Role Name <span className="text-red-500">*</span>
                       </label>
                       <input
+                        id={`role-${index}-name`}
                         type="text"
                         value={role.role || ''}
                         onChange={(e) => {
@@ -421,10 +449,14 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                      <label
+                        htmlFor={`role-${index}-description`}
+                        className="block text-xs font-medium text-gray-600 mb-1"
+                      >
                         Description
                       </label>
                       <textarea
+                        id={`role-${index}-description`}
                         value={role.description || ''}
                         onChange={(e) => {
                           const newRoles = [...roles];
@@ -438,10 +470,14 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                      <label
+                        htmlFor={`role-${index}-access`}
+                        className="block text-xs font-medium text-gray-600 mb-1"
+                      >
                         Access Type
                       </label>
                       <input
+                        id={`role-${index}-access`}
                         type="text"
                         value={role.access || ''}
                         onChange={(e) => {
@@ -455,10 +491,14 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                      <label
+                        htmlFor={`role-${index}-first-approvers`}
+                        className="block text-xs font-medium text-gray-600 mb-1"
+                      >
                         1st Level Approvers
                       </label>
                       <input
+                        id={`role-${index}-first-approvers`}
                         type="text"
                         value={
                           Array.isArray(role.firstLevelApprovers)
@@ -484,10 +524,14 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                      <label
+                        htmlFor={`role-${index}-second-approvers`}
+                        className="block text-xs font-medium text-gray-600 mb-1"
+                      >
                         2nd Level Approvers
                       </label>
                       <input
+                        id={`role-${index}-second-approvers`}
                         type="text"
                         value={
                           Array.isArray(role.secondLevelApprovers)
@@ -626,10 +670,14 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                   </div>
                   <div className="space-y-2">
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                      <label
+                        htmlFor={`channel-${index}-name`}
+                        className="block text-xs font-medium text-gray-600 mb-1"
+                      >
                         Channel Name <span className="text-red-500">*</span>
                       </label>
                       <input
+                        id={`channel-${index}-name`}
                         type="text"
                         value={channel.channel || ''}
                         onChange={(e) => {
@@ -644,10 +692,14 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                      <label
+                        htmlFor={`channel-${index}-url`}
+                        className="block text-xs font-medium text-gray-600 mb-1"
+                      >
                         URL <span className="text-red-500">*</span>
                       </label>
                       <input
+                        id={`channel-${index}-url`}
                         type="url"
                         value={channel.url || ''}
                         onChange={(e) => {
@@ -662,10 +714,14 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                      <label
+                        htmlFor={`channel-${index}-description`}
+                        className="block text-xs font-medium text-gray-600 mb-1"
+                      >
                         Description
                       </label>
                       <input
+                        id={`channel-${index}-description`}
                         type="text"
                         value={channel.description || ''}
                         onChange={(e) => {
@@ -683,8 +739,14 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Tool</label>
+                        <label
+                          htmlFor={`channel-${index}-tool`}
+                          className="block text-xs font-medium text-gray-600 mb-1"
+                        >
+                          Tool
+                        </label>
                         <select
+                          id={`channel-${index}-tool`}
                           value={channel.tool || ''}
                           onChange={(e) => {
                             const newSupport = [...support];
@@ -703,10 +765,14 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                         </select>
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                        <label
+                          htmlFor={`channel-${index}-scope`}
+                          className="block text-xs font-medium text-gray-600 mb-1"
+                        >
                           Scope
                         </label>
                         <select
+                          id={`channel-${index}-scope`}
                           value={channel.scope || ''}
                           onChange={(e) => {
                             const newSupport = [...support];
@@ -731,10 +797,14 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                      <label
+                        htmlFor={`channel-${index}-invitation`}
+                        className="block text-xs font-medium text-gray-600 mb-1"
+                      >
                         Invitation URL
                       </label>
                       <input
+                        id={`channel-${index}-invitation`}
                         type="url"
                         value={channel.invitationUrl || ''}
                         onChange={(e) => {
@@ -813,10 +883,14 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
             <div className="space-y-2">
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                  <label
+                    htmlFor="pricing-amount"
+                    className="block text-xs font-medium text-gray-600 mb-1"
+                  >
                     Price Amount
                   </label>
                   <input
+                    id="pricing-amount"
                     type="number"
                     step="0.01"
                     value={pricing?.priceAmount || ''}
@@ -832,8 +906,14 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Currency</label>
+                  <label
+                    htmlFor="pricing-currency"
+                    className="block text-xs font-medium text-gray-600 mb-1"
+                  >
+                    Currency
+                  </label>
                   <input
+                    id="pricing-currency"
                     type="text"
                     value={pricing?.priceCurrency || ''}
                     onChange={(e) => {
@@ -846,8 +926,14 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Price Unit</label>
+                <label
+                  htmlFor="pricing-unit"
+                  className="block text-xs font-medium text-gray-600 mb-1"
+                >
+                  Price Unit
+                </label>
                 <input
+                  id="pricing-unit"
                   type="text"
                   value={pricing?.priceUnit || ''}
                   onChange={(e) => {
@@ -905,10 +991,14 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                   <div className="space-y-2">
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                        <label
+                          htmlFor={`team-${index}-username`}
+                          className="block text-xs font-medium text-gray-600 mb-1"
+                        >
                           Username/Email
                         </label>
                         <input
+                          id={`team-${index}-username`}
                           type="text"
                           value={member.username || ''}
                           onChange={(e) => {
@@ -922,8 +1012,14 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Name</label>
+                        <label
+                          htmlFor={`team-${index}-name`}
+                          className="block text-xs font-medium text-gray-600 mb-1"
+                        >
+                          Name
+                        </label>
                         <input
+                          id={`team-${index}-name`}
                           type="text"
                           value={member.name || ''}
                           onChange={(e) => {
@@ -938,8 +1034,14 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Role</label>
+                      <label
+                        htmlFor={`team-${index}-role`}
+                        className="block text-xs font-medium text-gray-600 mb-1"
+                      >
+                        Role
+                      </label>
                       <input
+                        id={`team-${index}-role`}
                         type="text"
                         value={member.role || ''}
                         onChange={(e) => {
@@ -954,10 +1056,14 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                        <label
+                          htmlFor={`team-${index}-date-in`}
+                          className="block text-xs font-medium text-gray-600 mb-1"
+                        >
                           Date In
                         </label>
                         <input
+                          id={`team-${index}-date-in`}
                           type="date"
                           value={member.dateIn || ''}
                           onChange={(e) => {
@@ -970,10 +1076,14 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                        <label
+                          htmlFor={`team-${index}-date-out`}
+                          className="block text-xs font-medium text-gray-600 mb-1"
+                        >
                           Date Out
                         </label>
                         <input
+                          id={`team-${index}-date-out`}
                           type="date"
                           value={member.dateOut || ''}
                           onChange={(e) => {
@@ -987,10 +1097,14 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                      <label
+                        htmlFor={`team-${index}-replaced-by`}
+                        className="block text-xs font-medium text-gray-600 mb-1"
+                      >
                         Replaced By Username
                       </label>
                       <input
+                        id={`team-${index}-replaced-by`}
                         type="text"
                         value={member.replacedByUsername || ''}
                         onChange={(e) => {
@@ -1007,10 +1121,14 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                      <label
+                        htmlFor={`team-${index}-comment`}
+                        className="block text-xs font-medium text-gray-600 mb-1"
+                      >
                         Comment
                       </label>
                       <textarea
+                        id={`team-${index}-comment`}
                         value={member.comment || ''}
                         onChange={(e) => {
                           const newTeam = [...team];
@@ -1091,8 +1209,14 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
           {isEditable ? (
             <div className="space-y-2">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Latency (ms)</label>
+                <label
+                  htmlFor="sla-latency"
+                  className="block text-xs font-medium text-gray-600 mb-1"
+                >
+                  Latency (ms)
+                </label>
                 <input
+                  id="sla-latency"
                   type="number"
                   value={sla?.latency || ''}
                   onChange={(e) => {
@@ -1107,8 +1231,14 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Uptime (%)</label>
+                <label
+                  htmlFor="sla-uptime"
+                  className="block text-xs font-medium text-gray-600 mb-1"
+                >
+                  Uptime (%)
+                </label>
                 <input
+                  id="sla-uptime"
                   type="number"
                   min="0"
                   max="100"
@@ -1122,10 +1252,14 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
+                <label
+                  htmlFor="sla-response-time"
+                  className="block text-xs font-medium text-gray-600 mb-1"
+                >
                   Response Time (ms)
                 </label>
                 <input
+                  id="sla-response-time"
                   type="number"
                   value={sla?.response_time || ''}
                   onChange={(e) => {
@@ -1140,10 +1274,14 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
+                <label
+                  htmlFor="sla-error-rate"
+                  className="block text-xs font-medium text-gray-600 mb-1"
+                >
                   Error Rate (%)
                 </label>
                 <input
+                  id="sla-error-rate"
                   type="number"
                   min="0"
                   max="100"
@@ -1160,10 +1298,14 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
+                <label
+                  htmlFor="sla-update-frequency"
+                  className="block text-xs font-medium text-gray-600 mb-1"
+                >
                   Update Frequency
                 </label>
                 <input
+                  id="sla-update-frequency"
                   type="text"
                   value={sla?.update_frequency || ''}
                   onChange={(e) => {

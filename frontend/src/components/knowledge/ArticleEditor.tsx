@@ -33,6 +33,7 @@ interface FormData {
   content: string;
   authors: string[];
   reviewers: string[];
+  isCrossDomain: boolean;
 }
 
 const emptyFormData: FormData = {
@@ -42,6 +43,7 @@ const emptyFormData: FormData = {
   content: '',
   authors: [],
   reviewers: [],
+  isCrossDomain: false,
 };
 
 export const ArticleEditor: React.FC<ArticleEditorProps> = ({
@@ -82,6 +84,7 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
         content: article.content,
         authors: article.authors || [],
         reviewers: article.reviewers || [],
+        isCrossDomain: !article.domain_id,
       });
     } else {
       setFormData(emptyFormData);
@@ -90,7 +93,10 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
     clearError();
   }, [article, clearError]);
 
-  const handleInputChange = (field: keyof FormData, value: string | ArticleType | string[]) => {
+  const handleInputChange = (
+    field: keyof FormData,
+    value: string | ArticleType | string[] | boolean
+  ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setIsDirty(true);
   };
@@ -127,13 +133,14 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
     }
 
     try {
+      const effectiveDomainId = formData.isCrossDomain ? undefined : domainId;
       if (isNew) {
         const newArticle = createArticle({
           title: formData.title,
           type: formData.type,
           summary: formData.summary,
           content: formData.content,
-          domain_id: domainId,
+          domain_id: effectiveDomainId,
           authors: formData.authors,
         });
         onSave?.(newArticle);
@@ -143,6 +150,7 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
           type: formData.type,
           summary: formData.summary,
           content: formData.content,
+          domain_id: effectiveDomainId,
           authors: formData.authors,
           reviewers: formData.reviewers,
         });
@@ -301,6 +309,21 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
               ))}
             </select>
           </div>
+        </div>
+
+        {/* Cross-Domain Option */}
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="cross-domain"
+            checked={formData.isCrossDomain}
+            onChange={(e) => handleInputChange('isCrossDomain', e.target.checked)}
+            className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+          />
+          <label htmlFor="cross-domain" className="text-sm text-gray-700">
+            Cross-domain article
+          </label>
+          <span className="text-xs text-gray-500">(Visible in all domains)</span>
         </div>
 
         {/* Summary */}

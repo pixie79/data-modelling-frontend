@@ -1,6 +1,6 @@
 {
   "name": "open-data-modelling",
-  "version": "2.1.3",
+  "version": "2.2.0",
   "description": "Open Data Modelling - A domain-centric data modeling application",
   "main": "dist-electron/main.cjs",
   "directories": {
@@ -41,7 +41,7 @@
   "type": "module",
   "dependencies": {
     "@duckdb/duckdb-wasm": "1.32.0",
-    "@offenedatenmodellierung/data-modelling-sdk": "^1.14.3",
+    "@offenedatenmodellierung/data-modelling-sdk": "^2.0.0",
     "@tanstack/react-query": "^5.90.16",
     "@types/js-yaml": "^4.0.9",
     "@types/jszip": "^3.4.0",

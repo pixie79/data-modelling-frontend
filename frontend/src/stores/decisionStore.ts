@@ -368,7 +368,8 @@ function applyFilter(decisions: Decision[], filter: DecisionFilter): Decision[] 
   let filtered = [...decisions];
 
   if (filter.domain_id) {
-    filtered = filtered.filter((d) => d.domain_id === filter.domain_id);
+    // Include items matching the domain OR cross-domain items (no domain_id)
+    filtered = filtered.filter((d) => d.domain_id === filter.domain_id || !d.domain_id);
   }
 
   if (filter.status && filter.status.length > 0) {

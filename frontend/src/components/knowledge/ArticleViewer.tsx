@@ -9,7 +9,12 @@ import { useDecisionStore } from '@/stores/decisionStore';
 import { ArticleTypeBadge } from './ArticleTypeBadge';
 import { ArticleStatusBadge } from './ArticleStatusBadge';
 import { MarkdownRenderer } from '@/components/common/MarkdownRenderer';
-import { ExportDropdown, MarkdownIcon, PDFIcon } from '@/components/common/ExportDropdown';
+import {
+  ExportDropdown,
+  MarkdownIcon,
+  PDFIcon,
+  YAMLIcon,
+} from '@/components/common/ExportDropdown';
 import type { KnowledgeArticle } from '@/types/knowledge';
 import {
   ArticleStatus,
@@ -39,6 +44,7 @@ export const ArticleViewer: React.FC<ArticleViewerProps> = ({
     changeArticleStatus,
     exportKnowledgeToMarkdown,
     exportKnowledgeToPDF,
+    exportKnowledgeToYaml,
     hasPDFExport,
     getArticleById,
   } = useKnowledgeStore();
@@ -76,6 +82,28 @@ export const ArticleViewer: React.FC<ArticleViewerProps> = ({
     }
   };
 
+  const handleExportYAML = async () => {
+    setIsExporting(true);
+    try {
+      const yaml = await exportKnowledgeToYaml(article);
+      if (yaml) {
+        const blob = new Blob([yaml], { type: 'application/yaml' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `kb-${formatArticleNumber(article.number)}-${article.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.yaml`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    } catch {
+      // Error handled by store
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const handleExportPDF = async () => {
     setIsExporting(true);
     try {
@@ -91,6 +119,13 @@ export const ArticleViewer: React.FC<ArticleViewerProps> = ({
 
   const exportOptions = useMemo(
     () => [
+      {
+        id: 'yaml',
+        label: 'YAML (.yaml)',
+        description: 'Export as portable YAML for sharing',
+        icon: <YAMLIcon />,
+        onClick: handleExportYAML,
+      },
       {
         id: 'markdown',
         label: 'Markdown (.md)',

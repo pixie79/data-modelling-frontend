@@ -9,7 +9,12 @@ import { useKnowledgeStore } from '@/stores/knowledgeStore';
 import { DecisionStatusBadge } from './DecisionStatusBadge';
 import { DecisionCategoryBadge } from './DecisionCategoryBadge';
 import { MarkdownRenderer } from '@/components/common/MarkdownRenderer';
-import { ExportDropdown, MarkdownIcon, PDFIcon } from '@/components/common/ExportDropdown';
+import {
+  ExportDropdown,
+  MarkdownIcon,
+  PDFIcon,
+  YAMLIcon,
+} from '@/components/common/ExportDropdown';
 import type { Decision } from '@/types/decision';
 import {
   DecisionStatus,
@@ -39,6 +44,7 @@ export const DecisionViewer: React.FC<DecisionViewerProps> = ({
     changeDecisionStatus,
     exportDecisionToMarkdown,
     exportDecisionToPDF,
+    exportDecisionToYaml,
     hasPDFExport,
     getDecisionById,
   } = useDecisionStore();
@@ -82,6 +88,28 @@ export const DecisionViewer: React.FC<DecisionViewerProps> = ({
     }
   };
 
+  const handleExportYAML = async () => {
+    setIsExporting(true);
+    try {
+      const yaml = await exportDecisionToYaml(decision);
+      if (yaml) {
+        const blob = new Blob([yaml], { type: 'application/yaml' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `adr-${formatDecisionNumber(decision.number)}-${decision.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.yaml`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    } catch {
+      // Error handled by store
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const handleExportPDF = async () => {
     setIsExporting(true);
     try {
@@ -97,6 +125,13 @@ export const DecisionViewer: React.FC<DecisionViewerProps> = ({
 
   const exportOptions = useMemo(
     () => [
+      {
+        id: 'yaml',
+        label: 'YAML (.yaml)',
+        description: 'Export as portable YAML for sharing',
+        icon: <YAMLIcon />,
+        onClick: handleExportYAML,
+      },
       {
         id: 'markdown',
         label: 'Markdown (.md)',

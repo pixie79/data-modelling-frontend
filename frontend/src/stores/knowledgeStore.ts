@@ -398,7 +398,8 @@ function applyFilter(articles: KnowledgeArticle[], filter: KnowledgeFilter): Kno
   let filtered = [...articles];
 
   if (filter.domain_id) {
-    filtered = filtered.filter((a) => a.domain_id === filter.domain_id);
+    // Include items matching the domain OR cross-domain items (no domain_id)
+    filtered = filtered.filter((a) => a.domain_id === filter.domain_id || !a.domain_id);
   }
 
   if (filter.type && filter.type.length > 0) {

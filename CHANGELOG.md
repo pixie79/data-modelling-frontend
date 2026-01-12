@@ -7,13 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-01-12
+
 ### Added
-- **SDK Version**: Upgraded to data-modelling-sdk 1.14.1 with Markdown/PDF export support
-  - ODCS: `exportTableToMarkdown()` and `exportTableToPDF()` for data contract documentation
-  - ODPS: `exportToMarkdown()` and `exportToPDF()` for data product documentation
-  - CADS: `exportToMarkdown()` and `exportToPDF()` for compute asset documentation
-  - PDF export supports optional branding (logo, company name, footer text)
-  - Feature detection via `hasODCSExport()`, `hasODPSExport()`, `hasCADSExport()` helpers
+- **Cross-Domain Support**: Knowledge articles and decisions can now be marked as cross-domain
+  - Cross-domain items (no domain_id) are visible in all domains
+  - New checkbox in ArticleEditor and DecisionEditor to toggle cross-domain status
+  - Visual "CROSS-DOMAIN" label in list components for cross-domain items
+  - Store filters updated to always include cross-domain items when filtering by domain
+- **YAML Export**: Added YAML export option to ArticleViewer and DecisionViewer
+  - Export knowledge articles and decisions as portable YAML for sharing between systems
+- **YAML Import**: New import dialogs for knowledge articles and decisions
+  - ArticleImportDialog and DecisionImportDialog components
+  - Import via file upload, URL, or paste content
+  - Option to keep imported items as cross-domain
+  - New Article/Decision buttons converted to dropdowns with "Import from YAML" option
+- **SDK Version**: Upgraded to data-modelling-sdk 2.0.0
+
+### Fixed
+- **Example Workspace Loading**: Fixed Jaffleshop example not loading correctly on first open
+  - Tables, knowledge articles, and decisions were missing due to file path filtering issue
+  - Fixed `filterStringFilesByDomain` to correctly extract filename from paths with subdirectories (e.g., `odcs/filename.odcs.yaml`)
 
 ## [2.1.3] - 2026-01-08
 

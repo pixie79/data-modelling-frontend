@@ -250,7 +250,12 @@ describe('KnowledgeList', () => {
 
       render(<KnowledgeList workspacePath={mockWorkspacePath} onCreateArticle={mockOnCreate} />);
 
+      // Click dropdown button to open menu
       await userEvent.click(screen.getByText('New Article'));
+
+      // Click the "New Article" option in dropdown
+      const dropdownOptions = screen.getAllByText('New Article');
+      await userEvent.click(dropdownOptions[dropdownOptions.length - 1]);
 
       expect(mockOnCreate).toHaveBeenCalled();
     });

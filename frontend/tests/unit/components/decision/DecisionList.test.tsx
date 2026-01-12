@@ -241,7 +241,12 @@ describe('DecisionList', () => {
 
       render(<DecisionList workspacePath={mockWorkspacePath} onCreateDecision={mockOnCreate} />);
 
+      // Click dropdown button to open menu
       await userEvent.click(screen.getByText('New Decision'));
+
+      // Click the "New Decision" option in dropdown
+      const dropdownOptions = screen.getAllByText('New Decision');
+      await userEvent.click(dropdownOptions[dropdownOptions.length - 1]);
 
       expect(mockOnCreate).toHaveBeenCalled();
     });

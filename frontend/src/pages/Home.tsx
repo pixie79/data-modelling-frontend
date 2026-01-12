@@ -179,10 +179,18 @@ const Home: React.FC = () => {
 
       const workspace = await loadExampleWorkspace(example);
 
-      // Populate model store with loaded data
-      const { useModelStore } = await import('@/stores/modelStore');
-      const modelStore = useModelStore.getState();
+      // Pre-import all stores BEFORE populating data to avoid race conditions
+      const [{ useModelStore }, { useKnowledgeStore }, { useDecisionStore }] = await Promise.all([
+        import('@/stores/modelStore'),
+        import('@/stores/knowledgeStore'),
+        import('@/stores/decisionStore'),
+      ]);
 
+      const modelStore = useModelStore.getState();
+      const knowledgeStore = useKnowledgeStore.getState();
+      const decisionStore = useDecisionStore.getState();
+
+      // Now populate all stores synchronously
       if ((workspace as any).domains) {
         modelStore.setDomains((workspace as any).domains);
       }
@@ -208,12 +216,10 @@ const Home: React.FC = () => {
         modelStore.setDMNDecisions((workspace as any).dmnDecisions);
       }
       if ((workspace as any).knowledgeArticles) {
-        const { useKnowledgeStore } = await import('@/stores/knowledgeStore');
-        useKnowledgeStore.getState().setArticles((workspace as any).knowledgeArticles);
+        knowledgeStore.setArticles((workspace as any).knowledgeArticles);
       }
       if ((workspace as any).decisionRecords) {
-        const { useDecisionStore } = await import('@/stores/decisionStore');
-        useDecisionStore.getState().setDecisions((workspace as any).decisionRecords);
+        decisionStore.setDecisions((workspace as any).decisionRecords);
       }
 
       // Select first domain if available

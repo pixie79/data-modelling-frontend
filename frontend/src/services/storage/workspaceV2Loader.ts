@@ -597,10 +597,21 @@ export class WorkspaceV2Loader {
   } {
     const prefix = `${workspaceName}_${domainName}_`.toLowerCase();
 
+    // Helper to get just the filename from a path (handles odcs/filename.odcs.yaml)
+    const getFileName = (path: string): string => {
+      const parts = path.split('/');
+      return parts[parts.length - 1] || path;
+    };
+
     const filterByPrefix = (fileNames: string[]): Array<{ name: string; content: string }> => {
-      return files.filter(
-        (f) => fileNames.includes(f.name) && f.name.toLowerCase().startsWith(prefix)
-      );
+      return files.filter((f) => {
+        // Check if file is in the categorized list
+        const isInCategory = fileNames.includes(f.name);
+        // Extract just the filename (without directory path) for prefix matching
+        const fileName = getFileName(f.name);
+        const matchesPrefix = fileName.toLowerCase().startsWith(prefix);
+        return isInCategory && matchesPrefix;
+      });
     };
 
     return {

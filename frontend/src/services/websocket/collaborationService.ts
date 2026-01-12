@@ -15,8 +15,8 @@ export interface TableUpdateData {
 }
 
 export interface RelationshipUpdateData {
-  source_cardinality?: '0' | '1' | 'N';
-  target_cardinality?: '0' | '1' | 'N';
+  source_cardinality?: import('@/types/relationship').Cardinality;
+  target_cardinality?: import('@/types/relationship').Cardinality;
   label?: string;
   [key: string]: unknown;
 }
@@ -193,4 +193,3 @@ class CollaborationService {
 }
 
 export { CollaborationService };
-

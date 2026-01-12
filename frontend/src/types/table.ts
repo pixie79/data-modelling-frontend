@@ -135,6 +135,7 @@ export interface Column {
   nullable: boolean; // default false
   is_primary_key: boolean; // default false (single column primary key)
   is_foreign_key: boolean; // default false
+  is_unique?: boolean; // default false (single column unique index - IX if not PK)
   foreign_key_reference?: string; // UUID of referenced Column
   compound_key_id?: string; // UUID of compound key this column belongs to (for compound primary/unique keys)
   compound_key_order?: number; // Order within compound key (for compound primary/unique keys)

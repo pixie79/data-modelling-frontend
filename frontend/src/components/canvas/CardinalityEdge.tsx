@@ -577,9 +577,19 @@ export const CardinalityEdge: React.FC<EdgeProps<CardinalityEdgeData>> = ({
   let showEndLine = false; // One at target (mandatory)
   let showEndOptional = false; // Optional at target (circle)
 
-  // Get optionality flags from cardinality (if '0' then optional, otherwise mandatory)
-  const sourceOptional = relationship?.source_cardinality === '0';
-  const targetOptional = relationship?.target_cardinality === '0';
+  // Get optionality flags from cardinality
+  // New format: 'zeroOrOne', 'zeroOrMany' are optional; 'oneToOne', 'oneToMany' are mandatory
+  // Legacy format: '0' is optional, '1' and 'N' are mandatory
+  const sourceCardinality = relationship?.source_cardinality;
+  const targetCardinality = relationship?.target_cardinality;
+  const sourceOptional =
+    sourceCardinality === '0' ||
+    sourceCardinality === 'zeroOrOne' ||
+    sourceCardinality === 'zeroOrMany';
+  const targetOptional =
+    targetCardinality === '0' ||
+    targetCardinality === 'zeroOrOne' ||
+    targetCardinality === 'zeroOrMany';
 
   if (cardinality === RelationshipCardinality.ONE_TO_MANY) {
     // One-to-Many: [optionality] + [one] at source, [optionality] + [crowfoot] at target

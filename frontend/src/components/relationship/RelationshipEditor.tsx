@@ -8,7 +8,7 @@ import { DraggableModal } from '@/components/common/DraggableModal';
 import { useModelStore } from '@/stores/modelStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useSDKModeStore } from '@/services/sdk/sdkMode';
-import type { RelationshipType, Cardinality } from '@/types/relationship';
+import type { RelationshipType, NewCardinality } from '@/types/relationship';
 
 export interface RelationshipEditorProps {
   relationshipId: string;
@@ -37,8 +37,8 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
   const relationship = relationships.find((r) => r.id === relationshipId);
 
   const [relationshipType, setRelationshipType] = useState<RelationshipType>('one-to-one');
-  const [sourceCardinality, setSourceCardinality] = useState<Cardinality>('1');
-  const [targetCardinality, setTargetCardinality] = useState<Cardinality>('1');
+  const [sourceCardinality, setSourceCardinality] = useState<NewCardinality>('oneToOne');
+  const [targetCardinality, setTargetCardinality] = useState<NewCardinality>('oneToMany');
   const [sourceKey, setSourceKey] = useState<string>('');
   const [targetKey, setTargetKey] = useState<string>('');
   const [label, setLabel] = useState('');
@@ -66,12 +66,32 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
     { value: 'left-top', label: 'Left Top' },
   ];
 
+  // Convert legacy cardinality format to new SDK format (defined before useEffect)
+  const convertLegacyCardinalityValue = (value: string): NewCardinality => {
+    // If already in new format, return as-is
+    if (['oneToOne', 'oneToMany', 'zeroOrOne', 'zeroOrMany'].includes(value)) {
+      return value as NewCardinality;
+    }
+    // Convert legacy '0', '1', 'N' format
+    switch (value) {
+      case '0':
+        return 'zeroOrOne';
+      case '1':
+        return 'oneToOne';
+      case 'N':
+        return 'zeroOrMany';
+      default:
+        return 'oneToMany';
+    }
+  };
+
   // Load relationship data when dialog opens
   useEffect(() => {
     if (relationship && isOpen) {
       setRelationshipType(relationship.type);
-      setSourceCardinality(relationship.source_cardinality);
-      setTargetCardinality(relationship.target_cardinality);
+      // Convert legacy cardinality values to new format
+      setSourceCardinality(convertLegacyCardinalityValue(relationship.source_cardinality));
+      setTargetCardinality(convertLegacyCardinalityValue(relationship.target_cardinality));
       setSourceKey(relationship.source_key || '');
       setTargetKey(relationship.target_key || '');
       setLabel(relationship.label || '');
@@ -83,14 +103,14 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
     }
   }, [relationship, isOpen, relationships]);
 
-  // Get available keys for a table (primary keys and compound keys)
+  // Get available keys for a table (primary keys, foreign keys, unique indexes, and compound keys)
   const getTableKeys = (
     tableId: string
-  ): Array<{ id: string; name: string; type: 'primary' | 'compound' }> => {
+  ): Array<{ id: string; name: string; type: 'PK' | 'FK' | 'IX' | 'compound' }> => {
     const table = tables.find((t) => t.id === tableId);
     if (!table) return [];
 
-    const keys: Array<{ id: string; name: string; type: 'primary' | 'compound' }> = [];
+    const keys: Array<{ id: string; name: string; type: 'PK' | 'FK' | 'IX' | 'compound' }> = [];
 
     // Add single column primary keys
     table.columns
@@ -98,8 +118,30 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
       .forEach((col) => {
         keys.push({
           id: col.id,
-          name: `${col.name} (Primary Key)`,
-          type: 'primary',
+          name: col.name,
+          type: 'PK',
+        });
+      });
+
+    // Add foreign keys (exclude if already added as PK)
+    table.columns
+      .filter((col) => col.is_foreign_key && !col.is_primary_key)
+      .forEach((col) => {
+        keys.push({
+          id: col.id,
+          name: col.name,
+          type: 'FK',
+        });
+      });
+
+    // Add unique indexes (exclude if already added as PK)
+    table.columns
+      .filter((col) => col.is_unique && !col.is_primary_key)
+      .forEach((col) => {
+        keys.push({
+          id: col.id,
+          name: col.name,
+          type: 'IX',
         });
       });
 
@@ -123,11 +165,26 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
 
   // Derive relationship type from cardinalities
   const getRelationshipTypeFromCardinalities = (
-    source: Cardinality,
-    target: Cardinality
+    source: NewCardinality,
+    target: NewCardinality
   ): RelationshipType => {
-    if (source === 'N' && target === 'N') return 'many-to-many';
-    if (source === 'N' || target === 'N') return 'one-to-many';
+    // Many-to-many: both sides can have many
+    if (
+      (source === 'zeroOrMany' || source === 'oneToMany') &&
+      (target === 'zeroOrMany' || target === 'oneToMany')
+    ) {
+      return 'many-to-many';
+    }
+    // One-to-many: one side has many
+    if (
+      source === 'zeroOrMany' ||
+      source === 'oneToMany' ||
+      target === 'zeroOrMany' ||
+      target === 'oneToMany'
+    ) {
+      return 'one-to-many';
+    }
+    // One-to-one: neither side has many
     return 'one-to-one';
   };
 
@@ -293,9 +350,9 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
     const newSourceType = relationship.target_type;
     const newTargetType = relationship.source_type;
 
-    // Swap cardinalities
-    const newSourceCardinality = relationship.target_cardinality;
-    const newTargetCardinality = relationship.source_cardinality;
+    // Swap cardinalities (convert to new format for local state)
+    const newSourceCardinality = convertLegacyCardinalityValue(relationship.target_cardinality);
+    const newTargetCardinality = convertLegacyCardinalityValue(relationship.source_cardinality);
 
     // Update the relationship
     updateRelationship(relationshipId, {
@@ -373,7 +430,7 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
                   <label
                     htmlFor="source-cardinality"
                     className="block text-sm font-medium text-gray-700 mb-2"
-                    title="Crow's Foot notation: 0 = zero/optional, 1 = one/required, N = many"
+                    title="Crow's Foot cardinality notation"
                   >
                     Source Cardinality ({sourceName})
                   </label>
@@ -381,7 +438,7 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
                     id="source-cardinality"
                     value={sourceCardinality}
                     onChange={(e) => {
-                      const newCardinality = e.target.value as Cardinality;
+                      const newCardinality = e.target.value as NewCardinality;
                       setSourceCardinality(newCardinality);
                       // Update relationship type based on new cardinalities
                       setRelationshipType(
@@ -389,18 +446,19 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
                       );
                     }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    title="0 = zero/optional, 1 = one/required, N = many"
+                    title="Select cardinality for source endpoint"
                   >
-                    <option value="0">0 (Zero/Optional)</option>
-                    <option value="1">1 (One/Required)</option>
-                    <option value="N">N (Many)</option>
+                    <option value="oneToOne">1:1 (One to One)</option>
+                    <option value="oneToMany">1:N (One to Many)</option>
+                    <option value="zeroOrOne">0:1 (Zero or One)</option>
+                    <option value="zeroOrMany">0:N (Zero or Many)</option>
                   </select>
                 </div>
                 <div>
                   <label
                     htmlFor="target-cardinality"
                     className="block text-sm font-medium text-gray-700 mb-2"
-                    title="Crow's Foot notation: 0 = zero/optional, 1 = one/required, N = many"
+                    title="Crow's Foot cardinality notation"
                   >
                     Target Cardinality ({targetName})
                   </label>
@@ -408,7 +466,7 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
                     id="target-cardinality"
                     value={targetCardinality}
                     onChange={(e) => {
-                      const newCardinality = e.target.value as Cardinality;
+                      const newCardinality = e.target.value as NewCardinality;
                       setTargetCardinality(newCardinality);
                       // Update relationship type based on new cardinalities
                       setRelationshipType(
@@ -416,11 +474,12 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
                       );
                     }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    title="0 = zero/optional, 1 = one/required, N = many"
+                    title="Select cardinality for target endpoint"
                   >
-                    <option value="0">0 (Zero/Optional)</option>
-                    <option value="1">1 (One/Required)</option>
-                    <option value="N">N (Many)</option>
+                    <option value="oneToOne">1:1 (One to One)</option>
+                    <option value="oneToMany">1:N (One to Many)</option>
+                    <option value="zeroOrOne">0:1 (Zero or One)</option>
+                    <option value="zeroOrMany">0:N (Zero or Many)</option>
                   </select>
                 </div>
               </div>
@@ -442,13 +501,14 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
                   <option value="">Select a key...</option>
                   {getTableKeys(relationship.source_id).map((key) => (
                     <option key={key.id} value={key.id}>
-                      {key.name}
+                      [{key.type}] {key.name}
                     </option>
                   ))}
                 </select>
                 {getTableKeys(relationship.source_id).length === 0 && (
                   <p className="mt-1 text-xs text-yellow-600">
-                    No keys found. Add a primary key or compound key to the source table.
+                    No keys found. Add a primary key, foreign key, unique index, or compound key to
+                    the source table.
                   </p>
                 )}
               </div>
@@ -470,13 +530,14 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
                   <option value="">Select a key...</option>
                   {getTableKeys(relationship.target_id).map((key) => (
                     <option key={key.id} value={key.id}>
-                      {key.name}
+                      [{key.type}] {key.name}
                     </option>
                   ))}
                 </select>
                 {getTableKeys(relationship.target_id).length === 0 && (
                   <p className="mt-1 text-xs text-yellow-600">
-                    No keys found. Add a primary key or compound key to the target table.
+                    No keys found. Add a primary key, foreign key, unique index, or compound key to
+                    the target table.
                   </p>
                 )}
               </div>

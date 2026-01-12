@@ -49,19 +49,23 @@ export const CanvasNode: React.FC<NodeProps<TableNodeData>> = memo(({ data, sele
   const showDataTypes = modelType === 'physical'; // Physical view: show data types
   const showConstraints = modelType === 'physical'; // Physical view: show constraints
 
-  // Filter columns based on view type
+  // Filter columns based on view type and sort by order
   const visibleColumns = useMemo(() => {
     if (!showColumns) return [];
 
+    let cols: typeof table.columns = [];
     if (modelType === 'logical') {
-      // Logical view: show only keys (primary keys and foreign keys)
-      return table.columns.filter((col) => col.is_primary_key || col.is_foreign_key);
+      // Logical view: show only keys (primary keys, foreign keys, and unique indexes)
+      cols = table.columns.filter(
+        (col) => col.is_primary_key || col.is_foreign_key || col.is_unique
+      );
     } else if (modelType === 'physical') {
       // Physical view: show all columns
-      return table.columns;
+      cols = table.columns;
     }
 
-    return [];
+    // Sort by order
+    return [...cols].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   }, [table.columns, modelType, showColumns]);
 
   // Get quality tier and determine title bar color
@@ -353,6 +357,12 @@ export const CanvasNode: React.FC<NodeProps<TableNodeData>> = memo(({ data, sele
                       {column.is_foreign_key && (
                         <span className="text-green-600 font-bold mr-1" aria-label="Foreign key">
                           FK
+                        </span>
+                      )}
+                      {/* Show IX only if unique AND not a primary key */}
+                      {column.is_unique && !column.is_primary_key && (
+                        <span className="text-purple-600 font-bold mr-1" aria-label="Unique index">
+                          IX
                         </span>
                       )}
                       <span className={column.nullable ? 'text-gray-600' : 'font-medium'}>

@@ -145,8 +145,8 @@ export interface CreateRelationshipRequest {
   source_table_id: string;
   target_table_id: string;
   type: 'one-to-one' | 'one-to-many' | 'many-to-many';
-  source_cardinality: '0' | '1' | 'N';
-  target_cardinality: '0' | '1' | 'N';
+  source_cardinality: import('./relationship').Cardinality;
+  target_cardinality: import('./relationship').Cardinality;
   label?: string;
 }
 
@@ -156,8 +156,8 @@ export interface CreateRelationshipResponse {
 
 export interface UpdateRelationshipRequest {
   type?: 'one-to-one' | 'one-to-many' | 'many-to-many';
-  source_cardinality?: '0' | '1' | 'N';
-  target_cardinality?: '0' | '1' | 'N';
+  source_cardinality?: import('./relationship').Cardinality;
+  target_cardinality?: import('./relationship').Cardinality;
   label?: string;
 }
 
@@ -231,7 +231,13 @@ export interface ApiError {
 
 // WebSocket messages
 export interface WebSocketMessage {
-  type: 'table_updated' | 'table_deleted' | 'relationship_updated' | 'relationship_deleted' | 'presence' | 'conflict';
+  type:
+    | 'table_updated'
+    | 'table_deleted'
+    | 'relationship_updated'
+    | 'relationship_deleted'
+    | 'presence'
+    | 'conflict';
   workspace_id: string;
   data: Record<string, unknown>;
   timestamp: string;
@@ -244,4 +250,3 @@ export interface PresenceMessage {
   active_domain_id?: string;
   timestamp: string;
 }
-

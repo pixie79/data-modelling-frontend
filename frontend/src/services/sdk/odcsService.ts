@@ -305,18 +305,36 @@ class ODCSService {
                       status: table.status || table.metadata?.status || 'draft',
                       columns: Array.isArray(table.columns)
                         ? table.columns.map((col: any) => {
+                            const isPrimaryKey = col.is_primary_key ?? col.primaryKey ?? false;
+                            const isUnique = col.is_unique ?? false;
                             const column: any = {
                               id: col.id,
                               table_id: col.table_id,
                               name: col.name,
                               data_type: col.data_type || col.dataType || 'string',
                               nullable: col.nullable ?? false,
-                              primary_key: col.is_primary_key ?? col.primaryKey ?? false,
+                              primary_key: isPrimaryKey,
+                              // Use ODCS 'unique' field - true for PK or IX
+                              unique: isPrimaryKey || isUnique,
                               order: col.order ?? 0,
                               created_at: col.created_at || col.createdAt || now,
                             };
+                            // Store order and is_foreign_key in custom metadata (not in ODCS schema)
+                            // Note: is_unique uses ODCS 'unique' field set above, not custom metadata
+                            const customMetadata: any = {
+                              order: col.order ?? 0,
+                            };
+
+                            // Store is_foreign_key flag in custom metadata
+                            const isForeignKey = col.is_foreign_key ?? col.foreignKey ?? false;
+                            if (isForeignKey) {
+                              customMetadata.is_foreign_key = true;
+                            }
+
+                            column.custom = customMetadata;
+
                             // Only add foreign_key as an object if there's a reference
-                            if (col.is_foreign_key || col.foreignKey) {
+                            if (isForeignKey) {
                               column.foreign_key = {
                                 column_id:
                                   col.foreign_key_reference || col.foreignKeyReference || null,
@@ -337,8 +355,13 @@ class ODCSService {
                     if (Array.isArray(table.tags)) cleaned.tags = table.tags;
                     if (table.data_level) cleaned.data_level = table.data_level;
                     // IMPORTANT: Preserve metadata (including system_id) when saving
+                    // BUT: Strip out customProperties and odcsMetadata as SDK doesn't understand their format
+                    // (customProperties uses {property, value} format but SDK expects {tableId, ...})
                     if (table.metadata && typeof table.metadata === 'object') {
-                      cleaned.metadata = { ...table.metadata };
+                      const { customProperties, odcsMetadata, ...cleanedMetadata } = table.metadata;
+                      if (Object.keys(cleanedMetadata).length > 0) {
+                        cleaned.metadata = cleanedMetadata;
+                      }
                       if (table.metadata.system_id) {
                         console.log(
                           `[ODCSService] Preserving system_id="${table.metadata.system_id}" in metadata for table "${table.name}"`
@@ -349,8 +372,8 @@ class ODCSService {
                     if (Array.isArray(table.compoundKeys) && table.compoundKeys.length > 0) {
                       cleaned.compound_keys = table.compoundKeys.map((ck: any) => ({
                         id: ck.id,
-                        table_id: ck.table_id || table.id,
-                        column_ids: ck.column_ids || ck.columnIds,
+                        table_id: ck.table_id || ck.tableId || table.id,
+                        column_ids: ck.column_ids || ck.columnIds || [],
                         is_primary: ck.is_primary ?? ck.isPrimary ?? false,
                         created_at: ck.created_at || ck.createdAt || now,
                         ...(ck.name && { name: ck.name }),
@@ -361,8 +384,8 @@ class ODCSService {
                     ) {
                       cleaned.compound_keys = table.compound_keys.map((ck: any) => ({
                         id: ck.id,
-                        table_id: ck.table_id || table.id,
-                        column_ids: ck.column_ids || ck.columnIds,
+                        table_id: ck.table_id || ck.tableId || table.id,
+                        column_ids: ck.column_ids || ck.columnIds || [],
                         is_primary: ck.is_primary ?? ck.isPrimary ?? false,
                         created_at: ck.created_at || ck.createdAt || now,
                         ...(ck.name && { name: ck.name }),
@@ -405,13 +428,68 @@ class ODCSService {
                 is_subfolder: (normalized as any).is_subfolder ?? false,
               };
 
+              // Build a map of column metadata by table name + column name
+              // SDK doesn't pass through 'custom' or 'unique' fields, so we inject them in post-processing
+              const columnMetadataMap = new Map<string, { custom?: any; unique?: boolean }>();
+              cleanedTables.forEach((table: any) => {
+                if (Array.isArray(table.columns)) {
+                  table.columns.forEach((col: any) => {
+                    const key = `${table.name}::${col.name}`;
+                    const metadata: { custom?: any; unique?: boolean } = {};
+
+                    // Capture custom metadata (order, is_foreign_key)
+                    if (col.custom && Object.keys(col.custom).length > 0) {
+                      metadata.custom = col.custom;
+                      // Debug: log columns with FK flag
+                      if (col.custom.is_foreign_key) {
+                        console.log(
+                          `[ODCSService] Column ${key} has FK in custom metadata:`,
+                          JSON.stringify(col.custom)
+                        );
+                      }
+                    }
+
+                    // Capture unique flag (for IX - unique index)
+                    if (col.unique === true) {
+                      metadata.unique = true;
+                    }
+
+                    if (Object.keys(metadata).length > 0) {
+                      columnMetadataMap.set(key, metadata);
+                    }
+                  });
+                }
+              });
+              console.log('[ODCSService] Column metadata map:', columnMetadataMap.size, 'entries');
+
               // Convert DataModel to JSON string
               const workspaceJson = JSON.stringify(dataModel);
+
+              // Debug: Log the full table data for tables with compound_keys or indexes
+              cleanedTables.forEach((table: any) => {
+                if (table.compound_keys?.length > 0 || table.indexes?.length > 0) {
+                  console.log(`[ODCSService] Table "${table.name}" has compound_keys or indexes:`, {
+                    compound_keys: table.compound_keys,
+                    indexes: table.indexes,
+                  });
+                }
+              });
+
+              // Debug: Log the JSON being sent to SDK for sat_customer_profiles
+              const debugTable = cleanedTables.find((t: any) => t.name === 'sat_customer_profiles');
+              if (debugTable) {
+                console.log(
+                  '[ODCSService] DEBUG sat_customer_profiles table data:',
+                  JSON.stringify(debugTable, null, 2)
+                );
+              }
+
               // Call SDK function (synchronous, returns YAML string)
               let yamlResult = (sdk as any).export_to_odcs_yaml(workspaceJson);
 
               // Post-process YAML to fix SDK schema generation issues
               // SDK sometimes generates invalid schema where properties should be an array
+              // Also inject column custom metadata that SDK doesn't preserve
               try {
                 const parsed = yaml.load(yamlResult) as any;
                 let modified = false;
@@ -419,6 +497,8 @@ class ODCSService {
                 // Fix schema properties structure if needed
                 if (parsed.schema && Array.isArray(parsed.schema)) {
                   parsed.schema.forEach((schemaItem: any, index: number) => {
+                    const tableName = schemaItem.name;
+
                     if (
                       schemaItem.properties &&
                       typeof schemaItem.properties === 'object' &&
@@ -436,6 +516,28 @@ class ODCSService {
                       console.log(
                         `[ODCSService] Fixed schema[${index}].properties: converted object to array`
                       );
+                    }
+
+                    // Inject column metadata (custom and unique) into properties
+                    if (schemaItem.properties && Array.isArray(schemaItem.properties)) {
+                      schemaItem.properties.forEach((prop: any) => {
+                        const key = `${tableName}::${prop.name}`;
+                        const metadata = columnMetadataMap.get(key);
+                        if (metadata) {
+                          if (metadata.custom) {
+                            prop.custom = metadata.custom;
+                            modified = true;
+                          }
+                          if (metadata.unique === true) {
+                            prop.unique = true;
+                            modified = true;
+                          }
+                          console.log(
+                            `[ODCSService] Injected metadata for column ${key}:`,
+                            metadata
+                          );
+                        }
+                      });
                     }
 
                     // Ensure status is present (required by ODCS schema)
@@ -1652,7 +1754,14 @@ class ODCSService {
         is_primary_key:
           col.is_primary_key ?? col.primary_key ?? col.isPrimaryKey ?? col.primaryKey ?? false,
         is_foreign_key:
-          col.is_foreign_key ?? col.foreign_key ?? col.isForeignKey ?? col.foreignKey ?? false,
+          col.is_foreign_key ??
+          col.isForeignKey ??
+          col.custom?.is_foreign_key ?? // Check custom metadata
+          (typeof col.foreign_key === 'object' && col.foreign_key !== null) ?? // Infer from FK object
+          (typeof col.foreignKey === 'object' && col.foreignKey !== null) ??
+          false,
+        // is_unique: true if ODCS unique=true (will show as IX only if not PK)
+        is_unique: col.unique ?? col.is_unique ?? col.isUnique ?? false,
         foreign_key_reference:
           col.foreign_key_reference || col.foreign_key || col.reference || col.foreignKeyReference,
         default_value: col.default_value || col.default || col.defaultValue,
@@ -1661,7 +1770,7 @@ class ODCSService {
         constraints: Object.keys(colConstraints).length > 0 ? colConstraints : undefined,
         quality_rules: qualityArray || colQualityRules, // Store quality array if present, otherwise use quality_rules object
         quality: qualityArray, // Preserve raw quality array for UI components
-        order: col.order ?? colIndex,
+        order: col.custom?.order ?? col.order ?? colIndex,
         created_at: col.created_at || col.createdAt || now,
       };
     });
@@ -1782,11 +1891,21 @@ class ODCSService {
       relationshipType = 'many-to-many';
     }
 
-    // Convert cardinality to Cardinality type ('0', '1', 'N')
-    const convertCardinality = (val: any): '0' | '1' | 'N' => {
-      if (val === '0' || val === 0 || val === 'optional') return '0';
-      if (val === '1' || val === 1 || val === 'one' || val === 'required') return '1';
-      return 'N';
+    // Convert cardinality to new SDK format
+    type Cardinality = 'oneToOne' | 'oneToMany' | 'zeroOrOne' | 'zeroOrMany';
+    const convertCardinality = (val: any): Cardinality => {
+      // If already in new format, return as-is
+      if (['oneToOne', 'oneToMany', 'zeroOrOne', 'zeroOrMany'].includes(val)) {
+        return val as Cardinality;
+      }
+      // Convert legacy '0', '1', 'N' format
+      if (val === '0' || val === 0 || val === 'optional' || val === 'zeroOrOne') return 'zeroOrOne';
+      if (val === '1' || val === 1 || val === 'one' || val === 'required' || val === 'oneToOne')
+        return 'oneToOne';
+      if (val === 'N' || val === 'many' || val === 'zeroOrMany') return 'zeroOrMany';
+      if (val === 'oneToMany') return 'oneToMany';
+      // Default to oneToMany for unrecognized values
+      return 'oneToMany';
     };
 
     const sourceId =
@@ -1909,8 +2028,16 @@ class ODCSService {
             for (const [property, value] of Object.entries((table as any).metadata)) {
               // Skip data_level - it's stored as dm_level tag instead
               if (property === 'data_level') continue;
+              // Skip internal properties that shouldn't be in customProperties
+              if (property === 'customProperties' || property === 'odcsMetadata') continue;
               if (value !== undefined && value !== null) {
-                props.push({ property, value: String(value) });
+                // Handle different value types appropriately
+                if (typeof value === 'object') {
+                  // Serialize objects to JSON string
+                  props.push({ property, value: JSON.stringify(value) });
+                } else {
+                  props.push({ property, value: String(value) });
+                }
               }
             }
           }

@@ -180,6 +180,17 @@ export const ColumnEditor: React.FC<ColumnEditorProps> = ({
               <span className="text-gray-600">FK</span>
             </label>
 
+            <label className="flex items-center gap-1 text-xs">
+              <input
+                type="checkbox"
+                checked={column.is_unique ?? false}
+                onChange={(e) => onChange({ is_unique: e.target.checked })}
+                className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                aria-label="Unique index"
+              />
+              <span className="text-gray-600">IX</span>
+            </label>
+
             {/* Compound Key Tag Display */}
             {column.compound_key_tag &&
               (() => {

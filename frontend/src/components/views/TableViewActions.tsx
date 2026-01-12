@@ -32,14 +32,20 @@ export const TableViewActions: React.FC<TableViewActionsProps> = ({ workspaceId,
 
   return (
     <>
-      <div className="absolute top-4 right-4 z-10">
+      <div className="absolute top-16 right-4 z-10">
         <button
           onClick={handleCreate}
-          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-lg hover:bg-blue-700 flex items-center gap-2"
+          className="p-2 text-white bg-blue-600 rounded-lg shadow-lg hover:bg-blue-700 flex items-center justify-center"
           title="Create or import a table"
         >
-          <span>+</span>
-          <span>Create/Import Table</span>
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+            />
+          </svg>
         </button>
       </div>
 
@@ -58,4 +64,3 @@ export const TableViewActions: React.FC<TableViewActionsProps> = ({ workspaceId,
     </>
   );
 };
-

@@ -7,7 +7,17 @@ import type { ModelType } from './workspace';
 
 export type RelationshipType = 'one-to-one' | 'one-to-many' | 'many-to-many';
 
-export type Cardinality = '0' | '1' | 'N';
+// Legacy cardinality format (for backwards compatibility)
+export type LegacyCardinality = '0' | '1' | 'N';
+
+// New SDK-aligned cardinality type (SDK CrowsfeetCardinality)
+export type NewCardinality = 'oneToOne' | 'oneToMany' | 'zeroOrOne' | 'zeroOrMany';
+
+// Combined cardinality type - supports both legacy and new formats
+export type Cardinality = LegacyCardinality | NewCardinality;
+
+// Key type for relationship endpoints
+export type RelationshipKeyType = 'PK' | 'FK' | 'IX' | 'compound';
 
 // Enum for relationship cardinality types (used by CardinalityEdge component)
 export enum RelationshipCardinality {

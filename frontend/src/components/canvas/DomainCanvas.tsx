@@ -604,8 +604,15 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
 
     // In Systems view, show systems as nodes with table cards inside
     if (currentView === 'systems') {
-      // Combine owned and shared systems
-      const allSystems = [...domainSystems, ...sharedResources.systems];
+      // Combine owned and shared systems, deduplicating by system ID
+      const seenSystemIds = new Set<string>();
+      const allSystems = [...domainSystems, ...sharedResources.systems].filter((system) => {
+        if (seenSystemIds.has(system.id)) {
+          return false;
+        }
+        seenSystemIds.add(system.id);
+        return true;
+      });
 
       allSystems.forEach((system, index) => {
         const isShared = sharedResources.systems.some((s) => s.id === system.id);
@@ -641,6 +648,16 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
           });
         }
 
+        // Deduplicate systemTables by ID (safety measure)
+        const seenTableIds = new Set<string>();
+        systemTables = systemTables.filter((table) => {
+          if (seenTableIds.has(table.id)) {
+            return false;
+          }
+          seenTableIds.add(table.id);
+          return true;
+        });
+
         // Get compute assets belonging to this system
         // For shared systems: only show assets from the shared system (not from current domain)
         // For owned systems: show assets from current domain + foreign assets
@@ -670,6 +687,16 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
             }
           });
         }
+
+        // Deduplicate systemAssets by ID (safety measure)
+        const seenAssetIds = new Set<string>();
+        systemAssets = systemAssets.filter((asset) => {
+          if (seenAssetIds.has(asset.id)) {
+            return false;
+          }
+          seenAssetIds.add(asset.id);
+          return true;
+        });
 
         // Use view-specific position if available, then fallback to system.position_x/y, then default
         const defaultX = 100 + (index % 3) * 450;
@@ -1009,13 +1036,16 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
     const tableDataChanged = currentTableDataHash !== prevTableDataHash;
 
     if (tablesChanged || assetsChanged || systemsChanged || viewChanged || tableDataChanged) {
-      // Update nodes if data structure changed OR table data changed, preserve current positions from ReactFlow state
       setNodes((currentNodes) => {
-        // Create a map of current node positions from ReactFlow (user's current drag positions)
-        const positionMap = new Map(currentNodes.map((n) => [n.id, n.position]));
+        // When VIEW changes, use initialNodes positions directly (from viewPositions[currentView])
+        // This ensures each view loads its own saved positions, not the previous view's positions
+        if (viewChanged) {
+          return initialNodes;
+        }
 
-        // Update nodes with new data but preserve positions from ReactFlow state
+        // Data changed but same view - preserve current positions from ReactFlow state
         // This ensures user drags are preserved even when data changes
+        const positionMap = new Map(currentNodes.map((n) => [n.id, n.position]));
         return initialNodes.map((node) => {
           const existingPosition = positionMap.get(node.id);
           // Use existing position if available (preserves user drags), otherwise use initial position

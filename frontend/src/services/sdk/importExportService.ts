@@ -154,10 +154,14 @@ class ImportExportService {
     const now = new Date().toISOString();
     return {
       id: compoundKey.id,
-      table_id: compoundKey.table_id,
-      column_ids: Array.isArray(compoundKey.column_ids) ? compoundKey.column_ids : [],
-      is_primary: compoundKey.is_primary ?? false,
-      created_at: compoundKey.created_at || now,
+      table_id: compoundKey.table_id || compoundKey.tableId,
+      column_ids: Array.isArray(compoundKey.column_ids)
+        ? compoundKey.column_ids
+        : Array.isArray(compoundKey.columnIds)
+          ? compoundKey.columnIds
+          : [],
+      is_primary: compoundKey.is_primary ?? compoundKey.isPrimary ?? false,
+      created_at: compoundKey.created_at || compoundKey.createdAt || now,
     };
   }
 

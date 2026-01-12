@@ -243,6 +243,7 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
           if ('nullable' in updates) updatedCol.nullable = updates.nullable ?? false;
           if ('is_foreign_key' in updates)
             updatedCol.is_foreign_key = updates.is_foreign_key ?? false;
+          if ('is_unique' in updates) updatedCol.is_unique = updates.is_unique ?? false;
           if ('name' in updates) updatedCol.name = updates.name ?? '';
           if ('data_type' in updates) updatedCol.data_type = updates.data_type ?? 'VARCHAR';
           if ('description' in updates) updatedCol.description = updates.description;
@@ -261,6 +262,37 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
 
   const handleDeleteColumn = (columnId: string) => {
     setColumns((cols) => cols.filter((col) => col.id !== columnId));
+    setHasUnsavedChanges(true);
+  };
+
+  // Handle moving a column up or down in the order
+  const handleMoveColumn = (columnId: string, direction: 'up' | 'down') => {
+    setColumns((cols) => {
+      const sortedCols = [...cols].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      const index = sortedCols.findIndex((c) => c.id === columnId);
+      if (index === -1) return cols;
+
+      const newIndex = direction === 'up' ? index - 1 : index + 1;
+      if (newIndex < 0 || newIndex >= sortedCols.length) return cols;
+
+      const currentCol = sortedCols[index];
+      const targetCol = sortedCols[newIndex];
+      if (!currentCol || !targetCol) return cols;
+
+      // Swap orders between the two columns
+      const currentOrder = currentCol.order ?? index;
+      const targetOrder = targetCol.order ?? newIndex;
+
+      return cols.map((col) => {
+        if (col.id === currentCol.id) {
+          return { ...col, order: targetOrder };
+        }
+        if (col.id === targetCol.id) {
+          return { ...col, order: currentOrder };
+        }
+        return col;
+      });
+    });
     setHasUnsavedChanges(true);
   };
 
@@ -692,6 +724,25 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
             >
               Details
             </button>
+            {/* Column reorder buttons */}
+            <div className="flex flex-col">
+              <button
+                onClick={() => handleMoveColumn(column.id, 'up')}
+                disabled={columnsAtLevel.indexOf(column) === 0}
+                className="px-1 py-0.5 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded disabled:opacity-30 disabled:cursor-not-allowed"
+                title="Move up"
+              >
+                ▲
+              </button>
+              <button
+                onClick={() => handleMoveColumn(column.id, 'down')}
+                disabled={columnsAtLevel.indexOf(column) === columnsAtLevel.length - 1}
+                className="px-1 py-0.5 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded disabled:opacity-30 disabled:cursor-not-allowed"
+                title="Move down"
+              >
+                ▼
+              </button>
+            </div>
           </div>
 
           {/* Render children if expanded */}

@@ -33,22 +33,28 @@ export const NodeViewActions: React.FC<NodeViewActionsProps> = ({ domainId }) =>
 
   return (
     <>
-      <div className="absolute top-4 right-4 z-10" style={{ transform: 'translateX(-200px)' }}>
+      <div className="absolute top-28 right-4 z-10">
         <div className="relative">
           <button
             onClick={handleCreate}
             onMouseEnter={() => setShowTooltip(true)}
             onMouseLeave={() => setShowTooltip(false)}
-            className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg shadow-lg hover:bg-purple-700 flex items-center gap-2"
+            className="p-2 text-white bg-purple-600 rounded-lg shadow-lg hover:bg-purple-700 flex items-center justify-center"
             title="Create or import an AI/ML/App node (CADS node)"
           >
-            <span>+</span>
-            <span>Create/Import Node</span>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+              />
+            </svg>
           </button>
           {showTooltip && (
             <Tooltip
               content="Add AI, ML, or App nodes to this system. These are CADS (Compute Asset Definition Standard) nodes that represent compute assets."
-              position="bottom"
+              position="left"
             >
               <span />
             </Tooltip>
@@ -68,4 +74,3 @@ export const NodeViewActions: React.FC<NodeViewActionsProps> = ({ domainId }) =>
     </>
   );
 };
-

@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { useReactFlow, getNodesBounds, getViewportForBounds } from 'reactflow';
+import { useReactFlow, getNodesBounds } from 'reactflow';
 import { toPng } from 'html-to-image';
 import { useUIStore } from '@/stores/uiStore';
 
@@ -29,12 +29,26 @@ interface SelectionBox {
  * - High-quality PNG output (4x scale for zooming)
  */
 export const CanvasExport: React.FC<CanvasExportProps> = ({ filenamePrefix = 'canvas' }) => {
-  const { getNodes } = useReactFlow();
+  const { getNodes, getViewport } = useReactFlow();
   const { addToast } = useUIStore();
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectionBox, setSelectionBox] = useState<SelectionBox | null>(null);
   const [showMenu, setShowMenu] = useState(false);
   const selectionOverlayRef = useRef<HTMLDivElement>(null);
+
+  // Filter function to exclude UI elements from export
+  const filterNode = (node: HTMLElement) => {
+    const className = node.className || '';
+    if (typeof className === 'string') {
+      return (
+        !className.includes('react-flow__controls') &&
+        !className.includes('react-flow__minimap') &&
+        !className.includes('react-flow__attribution') &&
+        !className.includes('react-flow__panel')
+      );
+    }
+    return true;
+  };
 
   // Export the full canvas (all nodes)
   const exportFullCanvas = useCallback(async () => {
@@ -50,7 +64,7 @@ export const CanvasExport: React.FC<CanvasExportProps> = ({ filenamePrefix = 'ca
     }
 
     try {
-      // Get the ReactFlow viewport element
+      // Get the ReactFlow viewport element - this contains the transformed content
       const viewport = document.querySelector('.react-flow__viewport') as HTMLElement;
       if (!viewport) {
         throw new Error('Canvas viewport not found');
@@ -58,71 +72,67 @@ export const CanvasExport: React.FC<CanvasExportProps> = ({ filenamePrefix = 'ca
 
       // Calculate bounds of all nodes
       const nodesBounds = getNodesBounds(nodes);
+      const currentViewport = getViewport();
 
       // Add padding around the bounds
       const padding = 50;
-      const width = nodesBounds.width + padding * 2;
-      const height = nodesBounds.height + padding * 2;
 
-      // Calculate viewport transform to fit all nodes
-      const viewportBounds = getViewportForBounds(
-        nodesBounds,
-        width,
-        height,
-        0.5, // minZoom
-        2, // maxZoom
-        padding
-      );
+      // Calculate the image dimensions based on node bounds
+      const imageWidth = nodesBounds.width + padding * 2;
+      const imageHeight = nodesBounds.height + padding * 2;
 
       // Use higher scale for better quality (4x for crisp details)
       const scale = 4;
-
-      // Get the entire ReactFlow container for export
-      const flowContainer = document.querySelector('.react-flow') as HTMLElement;
-      if (!flowContainer) {
-        throw new Error('Canvas container not found');
-      }
 
       addToast({
         type: 'info',
         message: 'Generating high-quality PNG...',
       });
 
-      // Create the PNG with high pixel ratio for quality
-      const dataUrl = await toPng(flowContainer, {
-        backgroundColor: '#ffffff',
-        width: width * scale,
-        height: height * scale,
-        style: {
-          width: `${width}px`,
-          height: `${height}px`,
-          transform: `translate(${viewportBounds.x + padding}px, ${viewportBounds.y + padding}px) scale(${viewportBounds.zoom})`,
-        },
-        pixelRatio: scale,
-        filter: (node) => {
-          // Exclude controls and other UI elements
-          const className = node.className || '';
-          if (typeof className === 'string') {
-            return (
-              !className.includes('react-flow__controls') &&
-              !className.includes('react-flow__minimap') &&
-              !className.includes('react-flow__attribution')
-            );
-          }
-          return true;
-        },
-      });
+      // Clone the viewport and adjust its transform to show all nodes
+      const clonedViewport = viewport.cloneNode(true) as HTMLElement;
 
-      // Download the image
-      const link = document.createElement('a');
-      link.download = `${filenamePrefix}-${new Date().toISOString().slice(0, 10)}.png`;
-      link.href = dataUrl;
-      link.click();
+      // Create a wrapper to contain the cloned content
+      const wrapper = document.createElement('div');
+      wrapper.style.position = 'absolute';
+      wrapper.style.left = '-9999px';
+      wrapper.style.top = '-9999px';
+      wrapper.style.width = `${imageWidth}px`;
+      wrapper.style.height = `${imageHeight}px`;
+      wrapper.style.overflow = 'hidden';
+      wrapper.style.backgroundColor = '#ffffff';
 
-      addToast({
-        type: 'success',
-        message: 'Canvas exported successfully',
-      });
+      // Set the transform to position all nodes in view with padding
+      clonedViewport.style.transform = `translate(${-nodesBounds.x + padding}px, ${-nodesBounds.y + padding}px) scale(1)`;
+      clonedViewport.style.transformOrigin = '0 0';
+
+      wrapper.appendChild(clonedViewport);
+      document.body.appendChild(wrapper);
+
+      try {
+        // Create the PNG from the wrapper
+        const dataUrl = await toPng(wrapper, {
+          backgroundColor: '#ffffff',
+          width: imageWidth,
+          height: imageHeight,
+          pixelRatio: scale,
+          filter: filterNode,
+        });
+
+        // Download the image
+        const link = document.createElement('a');
+        link.download = `${filenamePrefix}-${new Date().toISOString().slice(0, 10)}.png`;
+        link.href = dataUrl;
+        link.click();
+
+        addToast({
+          type: 'success',
+          message: 'Canvas exported successfully',
+        });
+      } finally {
+        // Clean up
+        document.body.removeChild(wrapper);
+      }
     } catch (error) {
       console.error('Failed to export canvas:', error);
       addToast({
@@ -130,7 +140,7 @@ export const CanvasExport: React.FC<CanvasExportProps> = ({ filenamePrefix = 'ca
         message: `Failed to export canvas: ${error instanceof Error ? error.message : 'Unknown error'}`,
       });
     }
-  }, [getNodes, filenamePrefix, addToast]);
+  }, [getNodes, getViewport, filenamePrefix, addToast]);
 
   // Start area selection mode
   const startAreaSelection = useCallback(() => {
@@ -182,9 +192,9 @@ export const CanvasExport: React.FC<CanvasExportProps> = ({ filenamePrefix = 'ca
 
     setIsSelecting(false);
 
-    // Calculate the actual selection rectangle
-    const x = Math.min(selectionBox.startX, selectionBox.endX);
-    const y = Math.min(selectionBox.startY, selectionBox.endY);
+    // Calculate the actual selection rectangle (screen coordinates)
+    const screenX = Math.min(selectionBox.startX, selectionBox.endX);
+    const screenY = Math.min(selectionBox.startY, selectionBox.endY);
     const width = Math.abs(selectionBox.endX - selectionBox.startX);
     const height = Math.abs(selectionBox.endY - selectionBox.startY);
 
@@ -199,10 +209,14 @@ export const CanvasExport: React.FC<CanvasExportProps> = ({ filenamePrefix = 'ca
     }
 
     try {
-      const flowContainer = document.querySelector('.react-flow') as HTMLElement;
-      if (!flowContainer) {
-        throw new Error('Canvas container not found');
+      // Get the ReactFlow viewport element
+      const viewport = document.querySelector('.react-flow__viewport') as HTMLElement;
+      if (!viewport) {
+        throw new Error('Canvas viewport not found');
       }
+
+      // Get the current viewport transform
+      const currentViewport = getViewport();
 
       addToast({
         type: 'info',
@@ -212,39 +226,57 @@ export const CanvasExport: React.FC<CanvasExportProps> = ({ filenamePrefix = 'ca
       // Use higher scale for better quality
       const scale = 4;
 
-      // Clone the ReactFlow element for cropping
-      const dataUrl = await toPng(flowContainer, {
-        backgroundColor: '#ffffff',
-        pixelRatio: scale,
-        // Crop to the selected area
-        width,
-        height,
-        style: {
-          transform: `translate(-${x}px, -${y}px)`,
-        },
-        filter: (node) => {
-          const className = node.className || '';
-          if (typeof className === 'string') {
-            return (
-              !className.includes('react-flow__controls') &&
-              !className.includes('react-flow__minimap') &&
-              !className.includes('react-flow__attribution')
-            );
-          }
-          return true;
-        },
-      });
+      // Convert screen coordinates to canvas coordinates
+      // The selection is in screen space, we need to figure out what part of the canvas that represents
+      const canvasX = (screenX - currentViewport.x) / currentViewport.zoom;
+      const canvasY = (screenY - currentViewport.y) / currentViewport.zoom;
+      const canvasWidth = width / currentViewport.zoom;
+      const canvasHeight = height / currentViewport.zoom;
 
-      // Download the image
-      const link = document.createElement('a');
-      link.download = `${filenamePrefix}-selection-${new Date().toISOString().slice(0, 10)}.png`;
-      link.href = dataUrl;
-      link.click();
+      // Clone the viewport
+      const clonedViewport = viewport.cloneNode(true) as HTMLElement;
 
-      addToast({
-        type: 'success',
-        message: 'Selected area exported successfully',
-      });
+      // Create a wrapper to contain the cloned content
+      const wrapper = document.createElement('div');
+      wrapper.style.position = 'absolute';
+      wrapper.style.left = '-9999px';
+      wrapper.style.top = '-9999px';
+      wrapper.style.width = `${canvasWidth}px`;
+      wrapper.style.height = `${canvasHeight}px`;
+      wrapper.style.overflow = 'hidden';
+      wrapper.style.backgroundColor = '#ffffff';
+
+      // Set the transform to show only the selected area at scale 1
+      clonedViewport.style.transform = `translate(${-canvasX}px, ${-canvasY}px) scale(1)`;
+      clonedViewport.style.transformOrigin = '0 0';
+
+      wrapper.appendChild(clonedViewport);
+      document.body.appendChild(wrapper);
+
+      try {
+        // Create the PNG from the wrapper
+        const dataUrl = await toPng(wrapper, {
+          backgroundColor: '#ffffff',
+          width: canvasWidth,
+          height: canvasHeight,
+          pixelRatio: scale,
+          filter: filterNode,
+        });
+
+        // Download the image
+        const link = document.createElement('a');
+        link.download = `${filenamePrefix}-selection-${new Date().toISOString().slice(0, 10)}.png`;
+        link.href = dataUrl;
+        link.click();
+
+        addToast({
+          type: 'success',
+          message: 'Selected area exported successfully',
+        });
+      } finally {
+        // Clean up
+        document.body.removeChild(wrapper);
+      }
     } catch (error) {
       console.error('Failed to export selected area:', error);
       addToast({
@@ -254,7 +286,7 @@ export const CanvasExport: React.FC<CanvasExportProps> = ({ filenamePrefix = 'ca
     }
 
     setSelectionBox(null);
-  }, [isSelecting, selectionBox, filenamePrefix, addToast]);
+  }, [isSelecting, selectionBox, filenamePrefix, addToast, getViewport]);
 
   // Cancel selection on Escape
   useEffect(() => {

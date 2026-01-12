@@ -358,7 +358,11 @@ class ODCSService {
                     // BUT: Strip out customProperties and odcsMetadata as SDK doesn't understand their format
                     // (customProperties uses {property, value} format but SDK expects {tableId, ...})
                     if (table.metadata && typeof table.metadata === 'object') {
-                      const { customProperties, odcsMetadata, ...cleanedMetadata } = table.metadata;
+                      const {
+                        customProperties: _customProperties,
+                        odcsMetadata: _odcsMetadata,
+                        ...cleanedMetadata
+                      } = table.metadata;
                       if (Object.keys(cleanedMetadata).length > 0) {
                         cleaned.metadata = cleanedMetadata;
                       }

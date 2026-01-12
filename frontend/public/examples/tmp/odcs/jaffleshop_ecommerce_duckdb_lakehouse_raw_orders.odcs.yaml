@@ -1,0 +1,55 @@
+apiVersion: v3.1.0
+kind: DataContract
+id: 7a973d8e-db4d-451d-bf7f-9c6255243590
+name: raw_orders
+version: 1.0.0
+status: draft
+tags:
+  - raw
+  - orders
+  - dm_level:Bronze
+schema:
+  - name: raw_orders
+    properties:
+      - logicalType: string
+        physicalType: STRING
+        required: true
+        primaryKey: true
+        description: Unique order identifier from source system
+        id: id_obj
+        name: id
+      - logicalType: integer
+        physicalType: INTEGER
+        required: true
+        description: Customer identifier (FK to raw_customers.id)
+        id: customer_obj
+        name: customer
+      - logicalType: timestamp
+        physicalType: TIMESTAMP
+        required: true
+        description: Timestamp when order was placed
+        id: ordered_at_obj
+        name: ordered_at
+      - logicalType: string
+        physicalType: STRING
+        required: true
+        description: Store identifier (FK to raw_stores.id)
+        id: store_id_obj
+        name: store_id
+      - logicalType: integer
+        physicalType: INTEGER
+        description: Order subtotal in cents
+        id: subtotal_obj
+        name: subtotal
+      - logicalType: integer
+        physicalType: INTEGER
+        description: Tax amount paid in cents
+        id: tax_paid_obj
+        name: tax_paid
+      - logicalType: integer
+        physicalType: INTEGER
+        description: Total order amount in cents
+        id: order_total_obj
+        name: order_total
+    status: draft
+contractCreatedTs: 2026-01-12T09:43:27.721Z

@@ -46,7 +46,7 @@ consequences: |
   - Monitor data volumes for scaling triggers
   - Document migration path in runbooks
 options:
-  - title: DuckDB (Selected)
+  - name: DuckDB
     description: Embedded analytical database, runs in-process
     pros:
       - Zero infrastructure cost
@@ -56,7 +56,8 @@ options:
     cons:
       - Single-node only
       - May not scale beyond 100GB efficiently
-  - title: Snowflake
+    selected: true
+  - name: Snowflake
     description: Cloud-native data warehouse
     pros:
       - Infinite scalability
@@ -66,7 +67,8 @@ options:
       - Pay-per-use costs
       - Requires cloud setup
       - Slower local development
-  - title: BigQuery
+    selected: false
+  - name: BigQuery
     description: Google Cloud serverless data warehouse
     pros:
       - Serverless architecture
@@ -76,18 +78,19 @@ options:
       - GCP lock-in
       - Cold start latency
       - Complex cost management
-domain_id: d9004c83-fd63-43fe-afb8-77726c3e276e
-workspace_id: f47ac10b-58cc-4372-a567-0e02b2c3d479
+    selected: false
+domainId: d9004c83-fd63-43fe-afb8-77726c3e276e
+workspaceId: f47ac10b-58cc-4372-a567-0e02b2c3d479
 authors:
   - platform-team@jaffleshop.example
 deciders:
   - cto@jaffleshop.example
   - head-of-data@jaffleshop.example
 tags:
-  - name: technology
-  - name: database
-  - name: lakehouse
-  - name: infrastructure
-created_at: '2026-01-11T15:39:33.874Z'
-updated_at: '2026-01-11T15:39:33.874Z'
-decided_at: '2024-01-10T11:00:00Z'
+  - technology
+  - database
+  - lakehouse
+  - infrastructure
+createdAt: '2026-01-11T15:39:33.874Z'
+updatedAt: '2026-01-11T15:39:33.874Z'
+decidedAt: '2024-01-10T11:00:00Z'

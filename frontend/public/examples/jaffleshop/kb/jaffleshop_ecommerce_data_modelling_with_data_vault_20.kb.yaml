@@ -63,7 +63,7 @@ content: |
   CREATE TABLE sat_customer_details (
       sys_hk_hub         BINARY(32) NOT NULL,   -- FK to hub_customer
       sys_load_dts       TIMESTAMP NOT NULL,    -- Load timestamp
-      sys_sat_hd         BINARY(32) NOT NULL,   -- Hash diff
+      sys_hd_sat         BINARY(32) NOT NULL,   -- Hash diff
       customer_name      VARCHAR(200),
       email              VARCHAR(255),
       phone              VARCHAR(50),
@@ -84,7 +84,7 @@ content: |
   | `sys_ok` | Ordering Key | Pipe-delimited concatenation for ordering |
   | `sys_hk_hub` | Hub Hash Key | SHA256 hash key for hub tables |
   | `sys_hk_lnk` | Link Hash Key | Combined SHA256 of hub hash keys |
-  | `sys_sat_hd` | Satellite Hash Diff | Hash over satellite attributes |
+  | `sys_hd_sat` | Satellite Hash Diff | Hash over satellite attributes |
   | `sys_cl` | Clustering Key | Grouping key for auto-clustering |
   | `sys_load_dts` | Load Date Timestamp | Technical load timestamp for audit |
   | `sys_record_source` | Record Source | Data origin identifier |
@@ -177,14 +177,14 @@ content: |
   JOIN hub_customer ON s.customer_id = hub_customer.customer_id;
   ```
 
-  ### Hash Diffs (sys_sat_hd)
+  ### Hash Diffs (sys_hd_sat)
 
   Hash diffs detect changes in satellite attributes. They are computed over
   **all descriptive attributes except sys_load_dts**.
 
   **Formula:**
   ```sql
-  sys_sat_hd = SHA256(CONCAT(attr_1, '|', attr_2, '|', ..., attr_n))
+  sys_hd_sat = SHA256(CONCAT(attr_1, '|', attr_2, '|', ..., attr_n))
   ```
 
   **Example Implementation:**
@@ -199,7 +199,7 @@ content: |
           COALESCE(email, ''),
           '|',
           COALESCE(phone, '')
-      )) AS sys_sat_hd,
+      )) AS sys_hd_sat,
       customer_name,
       email,
       phone,
@@ -210,7 +210,7 @@ content: |
       -- Only insert if hash diff has changed
       SELECT 1 FROM sat_customer_details sat
       WHERE sat.sys_hk_hub = hub.sys_hk_hub
-        AND sat.sys_sat_hd = SHA256(CONCAT(
+        AND sat.sys_hd_sat = SHA256(CONCAT(
               COALESCE(stg.customer_name, ''),
               '|',
               COALESCE(stg.email, ''),
@@ -314,7 +314,7 @@ content: |
   CREATE TABLE sat_order_details (
       sys_hk_hub    BINARY(32) NOT NULL,
       sys_load_dts  TIMESTAMP NOT NULL,
-      sys_sat_hd    BINARY(32) NOT NULL,
+      sys_hd_sat    BINARY(32) NOT NULL,
       sys_cl        VARCHAR(50),  -- Clustering key (e.g., region, date)
       order_amount  DECIMAL(10,2),
       order_status  VARCHAR(20),
@@ -333,12 +333,12 @@ content: |
   ### Satellite Design
   - Group related attributes in the same satellite
   - Create separate satellites for different rates of change
-  - Include sys_sat_hd to detect actual changes
+  - Include sys_hd_sat to detect actual changes
 
   ### Loading Patterns
   - Load hubs first, then links, then satellites
   - Use hash key lookups for efficient hub/link resolution
-  - Implement change detection using sys_sat_hd comparison
+  - Implement change detection using sys_hd_sat comparison
 
   ### Naming Standards
   - Prefix hubs with `hub_`
@@ -361,7 +361,7 @@ content: |
   CREATE TABLE sat_customer_contact (
       sys_hk_hub         BINARY(32) NOT NULL,
       sys_load_dts       TIMESTAMP NOT NULL,
-      sys_sat_hd         BINARY(32) NOT NULL,
+      sys_hd_sat         BINARY(32) NOT NULL,
       email              VARCHAR(255),
       phone              VARCHAR(50),
       address            VARCHAR(500),
@@ -373,7 +373,7 @@ content: |
   CREATE TABLE sat_customer_demographics (
       sys_hk_hub         BINARY(32) NOT NULL,
       sys_load_dts       TIMESTAMP NOT NULL,
-      sys_sat_hd         BINARY(32) NOT NULL,
+      sys_hd_sat         BINARY(32) NOT NULL,
       date_of_birth      DATE,
       gender             VARCHAR(20),
       income_bracket     VARCHAR(50),

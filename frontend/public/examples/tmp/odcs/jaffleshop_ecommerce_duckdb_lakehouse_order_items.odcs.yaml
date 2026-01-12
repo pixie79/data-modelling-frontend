@@ -1,0 +1,55 @@
+apiVersion: v3.1.0
+kind: DataContract
+id: 11bd83b4-c10a-47f3-8e52-d5f0295b645e
+name: order_items
+version: 1.0.0
+status: draft
+tags:
+  - mart
+  - order_items
+  - fact
+  - dm_level:Gold
+schema:
+  - name: order_items
+    properties:
+      - logicalType: string
+        physicalType: STRING
+        required: true
+        primaryKey: true
+        description: Unique order item identifier
+        id: order_item_id_obj
+        name: order_item_id
+      - logicalType: string
+        physicalType: STRING
+        required: true
+        description: Order identifier (FK to orders fact)
+        id: order_id_obj
+        name: order_id
+      - logicalType: string
+        physicalType: STRING
+        required: true
+        description: Product identifier (FK to products dimension)
+        id: product_id_obj
+        name: product_id
+      - logicalType: string
+        physicalType: STRING
+        description: Price at time of order
+        id: product_price_obj
+        name: product_price
+      - logicalType: string
+        physicalType: STRING
+        description: Total supply cost for item
+        id: supply_cost_obj
+        name: supply_cost
+      - logicalType: boolean
+        physicalType: BOOLEAN
+        description: Whether item is food
+        id: is_food_item_obj
+        name: is_food_item
+      - logicalType: boolean
+        physicalType: BOOLEAN
+        description: Whether item is drink
+        id: is_drink_item_obj
+        name: is_drink_item
+    status: draft
+contractCreatedTs: 2026-01-12T09:43:27.711Z

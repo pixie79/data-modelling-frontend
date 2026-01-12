@@ -49,7 +49,7 @@ consequences: |
   - Add pre-commit hooks for validation
   - Regular audits for contract drift
 options:
-  - title: ODCS Data Contracts (Selected)
+  - name: ODCS Data Contracts
     description: Open Data Contract Standard YAML files
     pros:
       - Open standard, vendor-neutral
@@ -59,7 +59,8 @@ options:
     cons:
       - Manual sync with implementations
       - Learning curve
-  - title: dbt Documentation Only
+    selected: true
+  - name: dbt Documentation Only
     description: Use dbt's built-in documentation
     pros:
       - Native to dbt workflow
@@ -68,7 +69,8 @@ options:
       - Limited metadata fields
       - No SLA support
       - dbt-specific
-  - title: Data Catalog Tool
+    selected: false
+  - name: Data Catalog Tool
     description: Use Atlan, DataHub, or similar
     pros:
       - Rich UI for discovery
@@ -77,18 +79,19 @@ options:
       - Additional infrastructure
       - Vendor lock-in
       - Cost
-domain_id: d9004c83-fd63-43fe-afb8-77726c3e276e
-workspace_id: f47ac10b-58cc-4372-a567-0e02b2c3d479
+    selected: false
+domainId: d9004c83-fd63-43fe-afb8-77726c3e276e
+workspaceId: f47ac10b-58cc-4372-a567-0e02b2c3d479
 authors:
   - data-governance@jaffleshop.example
 deciders:
   - head-of-data@jaffleshop.example
   - cto@jaffleshop.example
 tags:
-  - name: data-contracts
-  - name: odcs
-  - name: governance
-  - name: documentation
-created_at: '2026-01-11T15:39:33.870Z'
-updated_at: '2026-01-11T15:39:33.871Z'
-decided_at: '2024-01-12T10:30:00Z'
+  - data-contracts
+  - odcs
+  - governance
+  - documentation
+createdAt: '2026-01-11T15:39:33.870Z'
+updatedAt: '2026-01-11T15:39:33.871Z'
+decidedAt: '2024-01-12T10:30:00Z'

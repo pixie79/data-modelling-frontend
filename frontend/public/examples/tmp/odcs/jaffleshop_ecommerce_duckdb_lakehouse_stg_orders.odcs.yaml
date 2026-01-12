@@ -1,0 +1,55 @@
+apiVersion: v3.1.0
+kind: DataContract
+id: 01f8fd58-5c57-4ccf-8bb0-7e5ad0bbaa96
+name: stg_orders
+version: 1.0.0
+status: draft
+tags:
+  - staging
+  - orders
+  - dm_level:Silver
+schema:
+  - name: stg_orders
+    properties:
+      - logicalType: string
+        physicalType: STRING
+        required: true
+        primaryKey: true
+        description: Standardized order identifier
+        id: order_id_obj
+        name: order_id
+      - logicalType: integer
+        physicalType: INTEGER
+        required: true
+        description: Customer identifier (FK to stg_customers)
+        id: customer_id_obj
+        name: customer_id
+      - logicalType: string
+        physicalType: STRING
+        required: true
+        description: Location identifier (FK to stg_locations)
+        id: location_id_obj
+        name: location_id
+      - logicalType: timestamp
+        physicalType: TIMESTAMP
+        required: true
+        description: Order timestamp (standardized timezone)
+        id: ordered_at_obj
+        name: ordered_at
+      - logicalType: string
+        physicalType: STRING
+        description: Total order amount in dollars
+        id: order_total_obj
+        name: order_total
+      - logicalType: string
+        physicalType: STRING
+        description: Tax amount in dollars
+        id: tax_paid_obj
+        name: tax_paid
+      - logicalType: string
+        physicalType: STRING
+        description: Subtotal in dollars
+        id: subtotal_obj
+        name: subtotal
+    status: draft
+contractCreatedTs: 2026-01-12T09:43:27.729Z

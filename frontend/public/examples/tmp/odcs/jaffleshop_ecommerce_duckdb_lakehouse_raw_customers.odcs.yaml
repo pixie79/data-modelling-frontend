@@ -1,0 +1,28 @@
+apiVersion: v3.1.0
+kind: DataContract
+id: 9f910cbb-3abe-4235-812e-faa33d66dee0
+name: raw_customers
+version: 1.0.0
+status: draft
+tags:
+  - raw
+  - customers
+  - dm_level:Bronze
+schema:
+  - name: raw_customers
+    properties:
+      - logicalType: integer
+        physicalType: INTEGER
+        required: true
+        primaryKey: true
+        description: Unique customer identifier from source system
+        id: id_obj
+        name: id
+      - logicalType: string
+        physicalType: STRING
+        required: true
+        description: Customer full name
+        id: name_obj
+        name: name
+    status: draft
+contractCreatedTs: 2026-01-12T09:43:27.718Z

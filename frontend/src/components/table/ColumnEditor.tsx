@@ -107,9 +107,9 @@ export const ColumnEditor: React.FC<ColumnEditorProps> = ({
   };
 
   return (
-    <div className="p-3 border border-gray-200 rounded-lg bg-white hover:border-gray-300 transition-colors">
-      <div className="flex items-start gap-2">
-        <div className="flex-1 space-y-2">
+    <div className="p-2 border border-gray-200 rounded-lg bg-white hover:border-gray-300 transition-colors">
+      <div className="flex items-start gap-1.5">
+        <div className="flex-1 space-y-1.5">
           <div>
             <input
               type="text"
@@ -123,17 +123,21 @@ export const ColumnEditor: React.FC<ColumnEditorProps> = ({
               aria-describedby={nameError ? `${column.id}-name-error` : undefined}
             />
             {nameError && (
-              <p id={`${column.id}-name-error`} className="mt-1 text-xs text-red-600" role="alert">
+              <p
+                id={`${column.id}-name-error`}
+                className="mt-0.5 text-xs text-red-600"
+                role="alert"
+              >
                 {nameError}
               </p>
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <select
               value={dataType}
               onChange={(e) => handleDataTypeChange(e.target.value)}
-              className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-28 px-1.5 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               aria-label="Data type"
             >
               {DATA_TYPES.map((type) => (
@@ -143,7 +147,7 @@ export const ColumnEditor: React.FC<ColumnEditorProps> = ({
               ))}
             </select>
 
-            <label className="flex items-center gap-1 text-sm">
+            <label className="flex items-center gap-1 text-xs">
               <input
                 type="checkbox"
                 checked={column.nullable} // Use prop value directly, not local state
@@ -151,12 +155,10 @@ export const ColumnEditor: React.FC<ColumnEditorProps> = ({
                 className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 aria-label="Nullable"
               />
-              <span className="text-gray-600">Nullable</span>
+              <span className="text-gray-600">Null</span>
             </label>
-          </div>
 
-          <div className="flex items-center gap-4 flex-wrap">
-            <label className="flex items-center gap-1 text-sm">
+            <label className="flex items-center gap-1 text-xs">
               <input
                 type="checkbox"
                 checked={column.is_primary_key} // Use prop value directly, not local state
@@ -164,10 +166,10 @@ export const ColumnEditor: React.FC<ColumnEditorProps> = ({
                 className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 aria-label="Primary key"
               />
-              <span className="text-gray-600">Primary Key</span>
+              <span className="text-gray-600">PK</span>
             </label>
 
-            <label className="flex items-center gap-1 text-sm">
+            <label className="flex items-center gap-1 text-xs">
               <input
                 type="checkbox"
                 checked={column.is_foreign_key} // Use prop value directly, not local state
@@ -175,7 +177,7 @@ export const ColumnEditor: React.FC<ColumnEditorProps> = ({
                 className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 aria-label="Foreign key"
               />
-              <span className="text-gray-600">Foreign Key</span>
+              <span className="text-gray-600">FK</span>
             </label>
 
             {/* Compound Key Tag Display */}

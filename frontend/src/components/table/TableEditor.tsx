@@ -964,8 +964,8 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
 
   return (
     <>
-      <div className="p-4 space-y-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-2">
+      <div className="p-3 space-y-3 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-1">
           <h2 className="text-lg font-semibold text-gray-900">Edit Table</h2>
           <div className="flex gap-2">
             <div className="relative">
@@ -1128,7 +1128,7 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
         </div>
 
         <div>
-          <label htmlFor="table-name" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="table-name" className="block text-xs font-medium text-gray-700 mb-0.5">
             Table Name *
           </label>
           <input
@@ -1137,21 +1137,21 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
             value={name}
             onChange={(e) => handleNameChange(e.target.value)}
             onBlur={handleNameBlur}
-            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+            className={`w-full px-2 py-1.5 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
               errors.name ? 'border-red-500' : 'border-gray-300'
             }`}
             aria-invalid={!!errors.name}
             aria-describedby={errors.name ? 'name-error' : undefined}
           />
           {errors.name && (
-            <p id="name-error" className="mt-1 text-sm text-red-600" role="alert">
+            <p id="name-error" className="mt-0.5 text-xs text-red-600" role="alert">
               {errors.name}
             </p>
           )}
         </div>
 
         <div>
-          <label htmlFor="table-alias" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="table-alias" className="block text-xs font-medium text-gray-700 mb-0.5">
             Alias (Optional)
           </label>
           <input
@@ -1159,14 +1159,14 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
             type="text"
             value={alias}
             onChange={(e) => handleAliasChange(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
         <div>
           <label
             htmlFor="table-description"
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-xs font-medium text-gray-700 mb-0.5"
           >
             Description
           </label>
@@ -1178,15 +1178,15 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
               updateTable(tableId, { description: e.target.value });
               setHasUnsavedChanges(true);
             }}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            rows={3}
+            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            rows={2}
           />
         </div>
 
         <div>
           <label
             htmlFor="table-data-level"
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-xs font-medium text-gray-700 mb-0.5"
           >
             Data Level
           </label>
@@ -1194,7 +1194,7 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
             id="table-data-level"
             value={dataLevel}
             onChange={(e) => handleDataLevelChange(e.target.value as DataLevel)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="operational">Operational</option>
             <option value="bronze">Bronze</option>
@@ -1206,25 +1206,25 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
         <div className="flex gap-2">
           <button
             onClick={() => setShowTableMetadata(true)}
-            className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+            className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
           >
             Edit Table Metadata
           </button>
         </div>
 
         <div>
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-1">
             <label className="block text-sm font-medium text-gray-700">Columns</label>
             <button
               onClick={handleAddColumn}
-              className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-2 py-0.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               Add Column
             </button>
           </div>
-          <div className="space-y-2 max-h-[400px] overflow-y-auto table-columns-scrollable">
+          <div className="space-y-1.5 min-h-[150px] max-h-[60vh] overflow-y-auto resize-y border border-gray-200 rounded p-2 table-columns-scrollable">
             {columns.length === 0 ? (
-              <p className="text-sm text-gray-500 py-4 text-center">
+              <p className="text-sm text-gray-500 py-2 text-center">
                 No columns. Add one to get started.
               </p>
             ) : (
@@ -1234,7 +1234,7 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
         </div>
 
         {/* Compound Keys Section */}
-        <div className="border-t border-gray-200 pt-4">
+        <div className="border-t border-gray-200 pt-3">
           <CompoundKeyEditor
             tableId={tableId}
             columns={columns}
@@ -1246,8 +1246,8 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
         </div>
 
         {/* Indexes Section */}
-        <div className="border-t border-gray-200 pt-4">
-          <div className="flex items-center justify-between mb-2">
+        <div className="border-t border-gray-200 pt-3">
+          <div className="flex items-center justify-between mb-1">
             <h3 className="text-sm font-semibold text-gray-700">Indexes</h3>
             <button
               onClick={() => setShowIndexes(!showIndexes)}

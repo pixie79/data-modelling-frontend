@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_RawIngestion" targetNamespace="http://jaffleshop.example/bpmn">
+  <bpmn:process id="js-process-raw-ingestion" name="Raw Data Ingestion" isExecutable="true">
+    <bpmn:documentation>
+      Bronze Layer ETL Process - Ingests raw data from source systems into DuckDB.
+      Extracts data from operational databases, validates schema, and loads into raw tables.
+      Runs daily at 02:00 UTC.
+    </bpmn:documentation>
+    <bpmn:startEvent id="StartEvent_1" name="Daily Schedule Trigger">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+      <bpmn:outgoing>Flow_0kc8phj</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:parallelGateway id="Gateway_Split" name="Extract Sources in Parallel">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:incoming>Flow_0kc8phj</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+      <bpmn:outgoing>Flow_1pt8byn</bpmn:outgoing>
+      <bpmn:outgoing>Flow_0gb0mgx</bpmn:outgoing>
+      <bpmn:outgoing>Flow_1v3mb1e</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:serviceTask id="Task_ExtractCustomers" name="Extract Customers">
+      <bpmn:documentation>Extract customer data from CRM system</bpmn:documentation>
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:incoming>Flow_1pt8byn</bpmn:incoming>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+      <bpmn:outgoing>Flow_16m9oq0</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Task_ExtractOrders" name="Extract Orders &#38; Items">
+      <bpmn:documentation>Extract orders and line items from POS system</bpmn:documentation>
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:incoming>Flow_0gb0mgx</bpmn:incoming>
+      <bpmn:outgoing>Flow_6</bpmn:outgoing>
+      <bpmn:outgoing>Flow_0cjyxfx</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Task_ExtractProducts" name="Extract Products &#38; Supplies">
+      <bpmn:documentation>Extract product catalog and supply chain data</bpmn:documentation>
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:incoming>Flow_1v3mb1e</bpmn:incoming>
+      <bpmn:outgoing>Flow_7</bpmn:outgoing>
+      <bpmn:outgoing>Flow_0qq0h9x</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:parallelGateway id="Gateway_Join" name="Wait for All Extracts">
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:incoming>Flow_6</bpmn:incoming>
+      <bpmn:incoming>Flow_7</bpmn:incoming>
+      <bpmn:incoming>Flow_16m9oq0</bpmn:incoming>
+      <bpmn:incoming>Flow_0cjyxfx</bpmn:incoming>
+      <bpmn:incoming>Flow_0qq0h9x</bpmn:incoming>
+      <bpmn:outgoing>Flow_8</bpmn:outgoing>
+      <bpmn:outgoing>Flow_1apj3ve</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:serviceTask id="Task_ValidateSchema" name="Validate Schema">
+      <bpmn:documentation>Validate extracted data against expected schemas</bpmn:documentation>
+      <bpmn:incoming>Flow_8</bpmn:incoming>
+      <bpmn:incoming>Flow_1apj3ve</bpmn:incoming>
+      <bpmn:outgoing>Flow_9</bpmn:outgoing>
+      <bpmn:outgoing>Flow_09rdhgt</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Task_LoadRaw" name="Load to Raw Tables">
+      <bpmn:documentation>
+        Load validated data into DuckDB raw schema:
+        - raw.customers
+        - raw.orders
+        - raw.items
+        - raw.products
+        - raw.supplies
+        - raw.stores
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_9</bpmn:incoming>
+      <bpmn:incoming>Flow_09rdhgt</bpmn:incoming>
+      <bpmn:outgoing>Flow_10</bpmn:outgoing>
+      <bpmn:outgoing>Flow_0tmlg6w</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="EndEvent_1" name="Ingestion Complete">
+      <bpmn:incoming>Flow_10</bpmn:incoming>
+      <bpmn:incoming>Flow_0tmlg6w</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="Gateway_Split" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Gateway_Split" targetRef="Task_ExtractCustomers" />
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="Gateway_Split" targetRef="Task_ExtractOrders" />
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="Gateway_Split" targetRef="Task_ExtractProducts" />
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="Task_ExtractCustomers" targetRef="Gateway_Join" />
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="Task_ExtractOrders" targetRef="Gateway_Join" />
+    <bpmn:sequenceFlow id="Flow_7" sourceRef="Task_ExtractProducts" targetRef="Gateway_Join" />
+    <bpmn:sequenceFlow id="Flow_8" sourceRef="Gateway_Join" targetRef="Task_ValidateSchema" />
+    <bpmn:sequenceFlow id="Flow_9" sourceRef="Task_ValidateSchema" targetRef="Task_LoadRaw" />
+    <bpmn:sequenceFlow id="Flow_10" sourceRef="Task_LoadRaw" targetRef="EndEvent_1" />
+    <bpmn:sequenceFlow id="Flow_0kc8phj" sourceRef="StartEvent_1" targetRef="Gateway_Split" />
+    <bpmn:sequenceFlow id="Flow_16m9oq0" sourceRef="Task_ExtractCustomers" targetRef="Gateway_Join" />
+    <bpmn:sequenceFlow id="Flow_0cjyxfx" sourceRef="Task_ExtractOrders" targetRef="Gateway_Join" />
+    <bpmn:sequenceFlow id="Flow_0qq0h9x" sourceRef="Task_ExtractProducts" targetRef="Gateway_Join" />
+    <bpmn:sequenceFlow id="Flow_1pt8byn" sourceRef="Gateway_Split" targetRef="Task_ExtractCustomers" />
+    <bpmn:sequenceFlow id="Flow_0gb0mgx" sourceRef="Gateway_Split" targetRef="Task_ExtractOrders" />
+    <bpmn:sequenceFlow id="Flow_1v3mb1e" sourceRef="Gateway_Split" targetRef="Task_ExtractProducts" />
+    <bpmn:sequenceFlow id="Flow_09rdhgt" sourceRef="Task_ValidateSchema" targetRef="Task_LoadRaw" />
+    <bpmn:sequenceFlow id="Flow_0tmlg6w" sourceRef="Task_LoadRaw" targetRef="EndEvent_1" />
+    <bpmn:sequenceFlow id="Flow_1apj3ve" sourceRef="Gateway_Join" targetRef="Task_ValidateSchema" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="js-process-raw-ingestion">
+      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
+        <dc:Bounds x="152" y="192" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Split_di" bpmnElement="Gateway_Split">
+        <dc:Bounds x="245" y="185" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ExtractCustomers_di" bpmnElement="Task_ExtractCustomers">
+        <dc:Bounds x="350" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ExtractOrders_di" bpmnElement="Task_ExtractOrders">
+        <dc:Bounds x="350" y="170" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ExtractProducts_di" bpmnElement="Task_ExtractProducts">
+        <dc:Bounds x="350" y="260" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Join_di" bpmnElement="Gateway_Join">
+        <dc:Bounds x="505" y="185" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="564.5" y="196" width="53" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_1_di" bpmnElement="EndEvent_1">
+        <dc:Bounds x="972" y="192" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="966" y="228" width="48" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_LoadRaw_di" bpmnElement="Task_LoadRaw">
+        <dc:Bounds x="800" y="170" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ValidateSchema_di" bpmnElement="Task_ValidateSchema">
+        <dc:Bounds x="630" y="170" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_0kc8phj_di" bpmnElement="Flow_0kc8phj">
+        <di:waypoint x="188" y="210" />
+        <di:waypoint x="245" y="210" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_16m9oq0_di" bpmnElement="Flow_16m9oq0">
+        <di:waypoint x="450" y="120" />
+        <di:waypoint x="530" y="120" />
+        <di:waypoint x="530" y="185" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0cjyxfx_di" bpmnElement="Flow_0cjyxfx">
+        <di:waypoint x="450" y="210" />
+        <di:waypoint x="505" y="210" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0qq0h9x_di" bpmnElement="Flow_0qq0h9x">
+        <di:waypoint x="450" y="300" />
+        <di:waypoint x="530" y="300" />
+        <di:waypoint x="530" y="235" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1pt8byn_di" bpmnElement="Flow_1pt8byn">
+        <di:waypoint x="270" y="185" />
+        <di:waypoint x="270" y="120" />
+        <di:waypoint x="350" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0gb0mgx_di" bpmnElement="Flow_0gb0mgx">
+        <di:waypoint x="295" y="210" />
+        <di:waypoint x="350" y="210" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1v3mb1e_di" bpmnElement="Flow_1v3mb1e">
+        <di:waypoint x="270" y="235" />
+        <di:waypoint x="270" y="300" />
+        <di:waypoint x="350" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_09rdhgt_di" bpmnElement="Flow_09rdhgt">
+        <di:waypoint x="730" y="210" />
+        <di:waypoint x="800" y="210" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0tmlg6w_di" bpmnElement="Flow_0tmlg6w">
+        <di:waypoint x="900" y="210" />
+        <di:waypoint x="972" y="210" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1apj3ve_di" bpmnElement="Flow_1apj3ve">
+        <di:waypoint x="555" y="210" />
+        <di:waypoint x="630" y="210" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

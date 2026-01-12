@@ -1,0 +1,28 @@
+apiVersion: v3.1.0
+kind: DataContract
+id: 4ec969d7-7f62-40b8-81dc-86ab915dd26a
+name: stg_customers
+version: 1.0.0
+status: draft
+tags:
+  - staging
+  - customers
+  - dm_level:Silver
+schema:
+  - name: stg_customers
+    properties:
+      - logicalType: integer
+        physicalType: INTEGER
+        required: true
+        primaryKey: true
+        description: Standardized customer identifier
+        id: customer_id_obj
+        name: customer_id
+      - logicalType: string
+        physicalType: STRING
+        required: true
+        description: Customer full name (cleaned)
+        id: customer_name_obj
+        name: customer_name
+    status: draft
+contractCreatedTs: 2026-01-12T09:43:27.725Z

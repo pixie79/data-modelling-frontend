@@ -153,7 +153,15 @@ class DecisionService {
         context: (parsed.context as string) || '',
         decision: (parsed.decision as string) || '',
         consequences: (parsed.consequences as string) || '',
-        options: Array.isArray(parsed.options) ? (parsed.options as DecisionOption[]) : [],
+        options: Array.isArray(parsed.options)
+          ? (parsed.options as Array<Record<string, unknown>>).map((opt) => ({
+              title: (opt.title as string) || (opt.name as string) || '',
+              description: (opt.description as string) || '',
+              pros: Array.isArray(opt.pros) ? (opt.pros as string[]) : [],
+              cons: Array.isArray(opt.cons) ? (opt.cons as string[]) : [],
+              selected: (opt.selected as boolean) ?? false, // Ensure selected field exists
+            }))
+          : [],
         domain_id: (parsed.domainId as string) || (parsed.domain_id as string),
         workspace_id: (parsed.workspaceId as string) || (parsed.workspace_id as string),
         authors: Array.isArray(parsed.authors) ? (parsed.authors as string[]) : [],

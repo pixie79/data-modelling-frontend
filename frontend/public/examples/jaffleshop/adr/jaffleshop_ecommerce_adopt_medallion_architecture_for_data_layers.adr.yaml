@@ -50,7 +50,7 @@ consequences: |
   - Implement storage lifecycle policies
   - Provide training on medallion architecture
 options:
-  - title: Medallion Architecture (Selected)
+  - name: Medallion Architecture
     description: Three-layer architecture (Bronze/Silver/Gold)
     pros:
       - Industry standard pattern
@@ -60,7 +60,8 @@ options:
     cons:
       - Storage overhead
       - Processing latency
-  - title: Lambda Architecture
+    selected: true
+  - name: Lambda Architecture
     description: Separate batch and real-time paths
     pros:
       - Real-time capabilities
@@ -69,7 +70,8 @@ options:
       - Complex to maintain
       - Code duplication
       - Higher operational overhead
-  - title: Kappa Architecture
+    selected: false
+  - name: Kappa Architecture
     description: Stream-only processing
     pros:
       - Simpler than Lambda
@@ -78,17 +80,18 @@ options:
       - Requires streaming infrastructure
       - Reprocessing challenges
       - Higher cost for batch workloads
-domain_id: d9004c83-fd63-43fe-afb8-77726c3e276e
-workspace_id: f47ac10b-58cc-4372-a567-0e02b2c3d479
+    selected: false
+domainId: d9004c83-fd63-43fe-afb8-77726c3e276e
+workspaceId: f47ac10b-58cc-4372-a567-0e02b2c3d479
 authors:
   - data-architecture-team@jaffleshop.example
 deciders:
   - head-of-data@jaffleshop.example
 tags:
-  - name: architecture
-  - name: medallion
-  - name: data-layers
-  - name: patterns
-created_at: '2026-01-11T15:39:33.867Z'
-updated_at: '2026-01-11T15:39:33.867Z'
-decided_at: '2024-01-11T14:00:00Z'
+  - architecture
+  - medallion
+  - data-layers
+  - patterns
+createdAt: '2026-01-11T15:39:33.867Z'
+updatedAt: '2026-01-11T15:39:33.867Z'
+decidedAt: '2024-01-11T14:00:00Z'

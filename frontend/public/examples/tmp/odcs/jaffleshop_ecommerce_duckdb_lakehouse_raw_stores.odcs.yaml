@@ -1,0 +1,38 @@
+apiVersion: v3.1.0
+kind: DataContract
+id: 87d05b19-4a56-40ea-93bc-e58a3481b759
+name: raw_stores
+version: 1.0.0
+status: draft
+tags:
+  - raw
+  - stores
+  - dm_level:Bronze
+schema:
+  - name: raw_stores
+    properties:
+      - logicalType: string
+        physicalType: STRING
+        required: true
+        primaryKey: true
+        description: Unique store identifier
+        id: id_obj
+        name: id
+      - logicalType: string
+        physicalType: STRING
+        required: true
+        description: Store display name
+        id: name_obj
+        name: name
+      - logicalType: timestamp
+        physicalType: TIMESTAMP
+        description: Date store opened
+        id: opened_at_obj
+        name: opened_at
+      - logicalType: string
+        physicalType: STRING
+        description: Store tax rate as decimal
+        id: tax_rate_obj
+        name: tax_rate
+    status: draft
+contractCreatedTs: 2026-01-12T09:43:27.723Z

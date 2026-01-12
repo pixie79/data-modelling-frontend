@@ -1,0 +1,49 @@
+apiVersion: v3.1.0
+kind: DataContract
+id: a1b365b7-9562-4036-85e5-032324ca59a2
+name: customers
+version: 1.0.0
+status: draft
+tags:
+  - mart
+  - customers
+  - dimension
+  - dm_level:Gold
+schema:
+  - name: customers
+    properties:
+      - logicalType: integer
+        physicalType: INTEGER
+        required: true
+        primaryKey: true
+        description: Unique customer identifier
+        id: customer_id_obj
+        name: customer_id
+      - logicalType: string
+        physicalType: STRING
+        required: true
+        description: Customer full name
+        id: customer_name_obj
+        name: customer_name
+      - logicalType: date
+        physicalType: DATE
+        description: Date of customer first order
+        id: first_order_date_obj
+        name: first_order_date
+      - logicalType: date
+        physicalType: DATE
+        description: Date of customer most recent order
+        id: most_recent_order_date_obj
+        name: most_recent_order_date
+      - logicalType: integer
+        physicalType: INTEGER
+        description: Total number of orders placed
+        id: lifetime_order_count_obj
+        name: lifetime_order_count
+      - logicalType: string
+        physicalType: STRING
+        description: Total value of all orders in dollars
+        id: lifetime_order_value_obj
+        name: lifetime_order_value
+    status: draft
+contractCreatedTs: 2026-01-12T09:43:27.703Z

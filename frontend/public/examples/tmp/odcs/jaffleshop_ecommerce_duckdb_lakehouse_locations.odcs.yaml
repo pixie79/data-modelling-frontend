@@ -1,0 +1,39 @@
+apiVersion: v3.1.0
+kind: DataContract
+id: 2d2cd506-372f-48a0-a880-a7399d8208a5
+name: locations
+version: 1.0.0
+status: draft
+tags:
+  - mart
+  - locations
+  - dimension
+  - dm_level:Gold
+schema:
+  - name: locations
+    properties:
+      - logicalType: string
+        physicalType: STRING
+        required: true
+        primaryKey: true
+        description: Unique location identifier
+        id: location_id_obj
+        name: location_id
+      - logicalType: string
+        physicalType: STRING
+        required: true
+        description: Location display name
+        id: location_name_obj
+        name: location_name
+      - logicalType: date
+        physicalType: DATE
+        description: Date location opened
+        id: opened_date_obj
+        name: opened_date
+      - logicalType: string
+        physicalType: STRING
+        description: Location tax rate
+        id: tax_rate_obj
+        name: tax_rate
+    status: draft
+contractCreatedTs: 2026-01-12T09:43:27.706Z

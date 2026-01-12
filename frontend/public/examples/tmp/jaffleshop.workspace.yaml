@@ -1,0 +1,255 @@
+id: f47ac10b-58cc-4372-a567-0e02b2c3d479
+name: jaffleshop
+owner_id: 550e8400-e29b-41d4-a716-446655440000
+created_at: '2025-01-08T00:00:00Z'
+last_modified_at: '2026-01-12T09:57:38.135Z'
+description: |
+  Complete e-commerce data platform example demonstrating medallion architecture
+  (bronze/silver/gold layers), BPMN processes, knowledge articles, and architecture
+  decision records. Jaffleshop is a fictional coffee shop chain used as a reference
+  implementation for data modeling and analytics.
+domains:
+  - id: d9004c83-fd63-43fe-afb8-77726c3e276e
+    name: ecommerce
+    description: |
+      E-commerce domain containing customer, order, product, and location data
+      across raw, staging, and mart layers following the medallion architecture.
+    systems:
+      - id: ad789620-a825-4bc4-afd7-429db96a6359
+        name: DuckDB Lakehouse
+        description: DuckDB-based analytics lakehouse implementing medallion architecture with bronze (raw), silver (staging), and gold (mart) layers.
+        table_ids:
+          - 9f910cbb-3abe-4235-812e-faa33d66dee0
+          - 7a973d8e-db4d-451d-bf7f-9c6255243590
+          - 87d05b19-4a56-40ea-93bc-e58a3481b759
+          - 01739458-f08c-4e9b-a75c-41ac95732595
+          - 57003496-b863-45b5-805d-efa4082917f8
+          - 6d7a3e84-2b63-4815-8613-789fe04592d0
+          - 4ec969d7-7f62-40b8-81dc-86ab915dd26a
+          - 01f8fd58-5c57-4ccf-8bb0-7e5ad0bbaa96
+          - 9931fece-ad3b-46ad-8872-10ae4327501a
+          - 54f89d6c-900c-4403-b53c-4df32d8c47e8
+          - 0072c7c7-38ad-48f4-81a8-eff0b2ac403e
+          - e54b55db-e643-4558-8314-7b2b3c2231ea
+          - a1b365b7-9562-4036-85e5-032324ca59a2
+          - 2d2cd506-372f-48a0-a880-a7399d8208a5
+          - 1a5e3e4e-80ee-4ecd-836a-fc303bad3d36
+          - 2636c98e-0dec-4d3d-895a-e7ba8339d6be
+          - 11bd83b4-c10a-47f3-8e52-d5f0295b645e
+          - bfe4654e-ede1-4750-827e-54b5fbb3ecd1
+          - 8460a400-04e8-4b17-992d-b4d025557b4a
+    view_positions:
+      systems:
+        ad789620-a825-4bc4-afd7-429db96a6359:
+          x: 100
+          'y': 100
+      process:
+        54f89d6c-900c-4403-b53c-4df32d8c47e8:
+          x: 1249.3155915255245
+          'y': 254.37411306771548
+        6d7a3e84-2b63-4815-8613-789fe04592d0:
+          x: -762.68080051024
+          'y': 256.82568306042276
+        2d2cd506-372f-48a0-a880-a7399d8208a5:
+          x: 2498.6165164628096
+          'y': 677.8672347806003
+        8460a400-04e8-4b17-992d-b4d025557b4a:
+          x: 3260.9245188595196
+          'y': 314.6039137943555
+        9f910cbb-3abe-4235-812e-faa33d66dee0:
+          x: 245.86033917846146
+          'y': 559.0138924910768
+        11bd83b4-c10a-47f3-8e52-d5f0295b645e:
+          x: 2858.3825779608615
+          'y': 520.2845542558432
+        01f8fd58-5c57-4ccf-8bb0-7e5ad0bbaa96:
+          x: 863.4607477242937
+          'y': 253.4630618062119
+        0072c7c7-38ad-48f4-81a8-eff0b2ac403e:
+          x: 1251.1312277731654
+          'y': 481.36772135041883
+        7a973d8e-db4d-451d-bf7f-9c6255243590:
+          x: -129.81464031552272
+          'y': 559.1878797475151
+        a1b365b7-9562-4036-85e5-032324ca59a2:
+          x: 3247.8816268081073
+          'y': 678.2598540642442
+        2636c98e-0dec-4d3d-895a-e7ba8339d6be:
+          x: 2858.2853108531904
+          'y': 678.3799500331818
+        bfe4654e-ede1-4750-827e-54b5fbb3ecd1:
+          x: 2858.705824622032
+          'y': 314.80432359261374
+        1a5e3e4e-80ee-4ecd-836a-fc303bad3d36:
+          x: 2710.9189253177983
+          'y': 942.3436193491427
+        57003496-b863-45b5-805d-efa4082917f8:
+          x: -762.0824051089922
+          'y': 559.7090913972523
+        e54b55db-e643-4558-8314-7b2b3c2231ea:
+          x: 1601.9959013800724
+          'y': 481.42615276604556
+        4ec969d7-7f62-40b8-81dc-86ab915dd26a:
+          x: 863.050228714727
+          'y': 475.6726552940793
+        87d05b19-4a56-40ea-93bc-e58a3481b759:
+          x: -130.61368272414958
+          'y': 365.48854110609784
+        01739458-f08c-4e9b-a75c-41ac95732595:
+          x: -430.75082453000937
+          'y': 559.1041731596156
+        9931fece-ad3b-46ad-8872-10ae4327501a:
+          x: 864.0254281171357
+          'y': 19.66253261243969
+      analytical:
+        bfe4654e-ede1-4750-827e-54b5fbb3ecd1:
+          x: 2857.293126224551
+          'y': 136.80432550997762
+        8460a400-04e8-4b17-992d-b4d025557b4a:
+          x: 3276.464201231813
+          'y': 169.09597885378787
+        1a5e3e4e-80ee-4ecd-836a-fc303bad3d36:
+          x: 3906.061769586927
+          'y': 440.83568824330257
+        2636c98e-0dec-4d3d-895a-e7ba8339d6be:
+          x: 2868.174199635559
+          'y': 921.3640743999548
+        a1b365b7-9562-4036-85e5-032324ca59a2:
+          x: 3243.6435316156635
+          'y': 984.8154063176731
+        2d2cd506-372f-48a0-a880-a7399d8208a5:
+          x: 2502.8546116552534
+          'y': 1016.9148501760976
+        e54b55db-e643-4558-8314-7b2b3c2231ea:
+          x: 1606.2339965725162
+          'y': 513.918215908114
+        54f89d6c-900c-4403-b53c-4df32d8c47e8:
+          x: 1252.140988320487
+          'y': 258.61220826015915
+        9931fece-ad3b-46ad-8872-10ae4327501a:
+          x: 861.2000313221732
+          'y': -206.36921098455855
+        01f8fd58-5c57-4ccf-8bb0-7e5ad0bbaa96:
+          x: 860.6353509293313
+          'y': 194.1297291119999
+        4ec969d7-7f62-40b8-81dc-86ab915dd26a:
+          x: 853.1613399323584
+          'y': 568.9107495278411
+        87d05b19-4a56-40ea-93bc-e58a3481b759:
+          x: -130.61368272414958
+          'y': 221.39330456301138
+        9f910cbb-3abe-4235-812e-faa33d66dee0:
+          x: 209.13018084394923
+          'y': 639.5377011475074
+        01739458-f08c-4e9b-a75c-41ac95732595:
+          x: -446.290506902303
+          'y': 622.6756010462714
+        57003496-b863-45b5-805d-efa4082917f8:
+          x: -762.0824051089922
+          'y': 590.7884561418397
+relationships:
+  - id: 38eb57be-8ebc-4e18-9c05-6c25e9149fd4
+    source_table_id: 7a973d8e-db4d-451d-bf7f-9c6255243590
+    target_table_id: 9f910cbb-3abe-4235-812e-faa33d66dee0
+    cardinality: one_to_many
+    notes: Order references customer
+    source_handle: right-center
+    target_handle: left-center
+  - id: 2dfaf3f0-320e-4fb3-9c0b-22ad57db423b
+    source_table_id: 7a973d8e-db4d-451d-bf7f-9c6255243590
+    target_table_id: 87d05b19-4a56-40ea-93bc-e58a3481b759
+    cardinality: one_to_many
+    notes: Order has many order items
+    source_handle: top-center
+    target_handle: bottom-center
+  - id: abd3524a-abf6-42f4-b672-c0e194de18e3
+    source_table_id: 01739458-f08c-4e9b-a75c-41ac95732595
+    target_table_id: 7a973d8e-db4d-451d-bf7f-9c6255243590
+    cardinality: one_to_many
+    notes: Product appears in many orders
+    source_handle: right-center
+    target_handle: left-center
+  - id: 3694eb1c-458e-45f1-a59f-afedeb1bea56
+    source_table_id: 01739458-f08c-4e9b-a75c-41ac95732595
+    target_table_id: 57003496-b863-45b5-805d-efa4082917f8
+    cardinality: one_to_many
+    notes: Product has supply chain records
+    source_handle: left-center
+    target_handle: right-center
+  - id: d8d72ad0-76a7-4aae-acad-b2ffb79417a4
+    source_table_id: 6d7a3e84-2b63-4815-8613-789fe04592d0
+    target_table_id: 57003496-b863-45b5-805d-efa4082917f8
+    cardinality: one_to_many
+    notes: Store receives supplies
+    source_handle: bottom-center
+    target_handle: top-center
+  - id: da5b61fe-66bc-4585-875b-836840bebc2f
+    source_table_id: 01f8fd58-5c57-4ccf-8bb0-7e5ad0bbaa96
+    target_table_id: 4ec969d7-7f62-40b8-81dc-86ab915dd26a
+    cardinality: one_to_many
+    notes: Staging order references staging customer
+    source_handle: bottom-center
+    target_handle: top-center
+  - id: e4c547bb-a585-402d-a262-99be5479577b
+    source_table_id: 01f8fd58-5c57-4ccf-8bb0-7e5ad0bbaa96
+    target_table_id: 9931fece-ad3b-46ad-8872-10ae4327501a
+    cardinality: one_to_many
+    notes: Staging order has staging order items
+    source_handle: top-center
+    target_handle: bottom-center
+  - id: ebcb2b94-4ebe-4e72-89a6-c9575e567d5a
+    source_table_id: 54f89d6c-900c-4403-b53c-4df32d8c47e8
+    target_table_id: 01f8fd58-5c57-4ccf-8bb0-7e5ad0bbaa96
+    cardinality: one_to_many
+    notes: Staging product in staging orders
+    source_handle: left-center
+    target_handle: right-center
+  - id: 92487f3b-0f9a-403a-b1b5-41aa6837fda5
+    source_table_id: 54f89d6c-900c-4403-b53c-4df32d8c47e8
+    target_table_id: 0072c7c7-38ad-48f4-81a8-eff0b2ac403e
+    cardinality: one_to_many
+    notes: Staging product has staging supplies
+    source_handle: bottom-center
+    target_handle: top-center
+  - id: afca4b48-1682-46bc-8b07-d739fe67cf4a
+    source_table_id: e54b55db-e643-4558-8314-7b2b3c2231ea
+    target_table_id: 0072c7c7-38ad-48f4-81a8-eff0b2ac403e
+    cardinality: one_to_many
+    notes: Staging store receives staging supplies
+    source_handle: left-center
+    target_handle: right-center
+  - id: baa236a9-f5e5-4fd8-a738-728c92d48906
+    source_table_id: 2636c98e-0dec-4d3d-895a-e7ba8339d6be
+    target_table_id: a1b365b7-9562-4036-85e5-032324ca59a2
+    cardinality: one_to_many
+    notes: Date dimension for customer analysis
+    source_handle: right-center
+    target_handle: left-center
+  - id: e61a54c0-cd14-4f76-884b-e2bba5fbe726
+    source_table_id: 2636c98e-0dec-4d3d-895a-e7ba8339d6be
+    target_table_id: 2d2cd506-372f-48a0-a880-a7399d8208a5
+    cardinality: one_to_many
+    notes: Date dimension for product analysis
+    source_handle: left-center
+    target_handle: right-center
+  - id: 0d78fb8c-997c-4282-b593-e429c9670c8f
+    source_table_id: 11bd83b4-c10a-47f3-8e52-d5f0295b645e
+    target_table_id: 2636c98e-0dec-4d3d-895a-e7ba8339d6be
+    cardinality: one_to_many
+    notes: Fact orders to date dimension
+    source_handle: bottom-center
+    target_handle: top-center
+  - id: e77ecaaa-70c1-4d5a-bfe0-44d3887c6e39
+    source_table_id: 11bd83b4-c10a-47f3-8e52-d5f0295b645e
+    target_table_id: bfe4654e-ede1-4750-827e-54b5fbb3ecd1
+    cardinality: one_to_many
+    notes: Fact orders has order items
+    source_handle: top-center
+    target_handle: bottom-center
+  - id: 16312919-e491-4b3e-a120-0a044db29312
+    source_table_id: 8460a400-04e8-4b17-992d-b4d025557b4a
+    target_table_id: bfe4654e-ede1-4750-827e-54b5fbb3ecd1
+    cardinality: one_to_many
+    notes: Inventory fact linked to order items
+    source_handle: left-center
+    target_handle: right-center

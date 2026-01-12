@@ -1,0 +1,38 @@
+apiVersion: v3.1.0
+kind: DataContract
+id: 9931fece-ad3b-46ad-8872-10ae4327501a
+name: stg_locations
+version: 1.0.0
+status: draft
+tags:
+  - staging
+  - locations
+  - dm_level:Silver
+schema:
+  - name: stg_locations
+    properties:
+      - logicalType: string
+        physicalType: STRING
+        required: true
+        primaryKey: true
+        description: Standardized location identifier
+        id: location_id_obj
+        name: location_id
+      - logicalType: string
+        physicalType: STRING
+        required: true
+        description: Location display name
+        id: location_name_obj
+        name: location_name
+      - logicalType: date
+        physicalType: DATE
+        description: Date location opened
+        id: opened_date_obj
+        name: opened_date
+      - logicalType: string
+        physicalType: STRING
+        description: Location tax rate as decimal
+        id: tax_rate_obj
+        name: tax_rate
+    status: draft
+contractCreatedTs: 2026-01-12T09:43:27.726Z

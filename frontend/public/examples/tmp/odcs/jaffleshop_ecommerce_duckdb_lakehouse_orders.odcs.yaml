@@ -1,0 +1,72 @@
+apiVersion: v3.1.0
+kind: DataContract
+id: 2636c98e-0dec-4d3d-895a-e7ba8339d6be
+name: orders
+version: 1.0.0
+status: draft
+tags:
+  - mart
+  - orders
+  - fact
+  - dm_level:Gold
+schema:
+  - name: orders
+    properties:
+      - logicalType: string
+        physicalType: STRING
+        required: true
+        primaryKey: true
+        description: Unique order identifier
+        id: order_id_obj
+        name: order_id
+      - logicalType: integer
+        physicalType: INTEGER
+        required: true
+        description: Customer identifier (FK to customers dimension)
+        id: customer_id_obj
+        name: customer_id
+      - logicalType: string
+        physicalType: STRING
+        required: true
+        description: Location identifier (FK to locations dimension)
+        id: location_id_obj
+        name: location_id
+      - logicalType: date
+        physicalType: DATE
+        required: true
+        description: Date order was placed
+        id: order_date_obj
+        name: order_date
+      - logicalType: timestamp
+        physicalType: TIMESTAMP
+        required: true
+        description: Timestamp order was placed
+        id: ordered_at_obj
+        name: ordered_at
+      - logicalType: string
+        physicalType: STRING
+        description: Total order amount in dollars
+        id: order_total_obj
+        name: order_total
+      - logicalType: string
+        physicalType: STRING
+        description: Tax amount in dollars
+        id: tax_paid_obj
+        name: tax_paid
+      - logicalType: string
+        physicalType: STRING
+        description: Subtotal in dollars
+        id: subtotal_obj
+        name: subtotal
+      - logicalType: integer
+        physicalType: INTEGER
+        description: Number of items in order
+        id: item_count_obj
+        name: item_count
+      - logicalType: boolean
+        physicalType: BOOLEAN
+        description: Whether this is customer first order
+        id: is_first_order_obj
+        name: is_first_order
+    status: draft
+contractCreatedTs: 2026-01-12T09:43:27.714Z

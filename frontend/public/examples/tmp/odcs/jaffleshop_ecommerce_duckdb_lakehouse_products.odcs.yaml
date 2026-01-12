@@ -1,0 +1,54 @@
+apiVersion: v3.1.0
+kind: DataContract
+id: bfe4654e-ede1-4750-827e-54b5fbb3ecd1
+name: products
+version: 1.0.0
+status: draft
+tags:
+  - mart
+  - products
+  - dimension
+  - dm_level:Gold
+schema:
+  - name: products
+    properties:
+      - logicalType: string
+        physicalType: STRING
+        required: true
+        primaryKey: true
+        description: Unique product identifier
+        id: product_id_obj
+        name: product_id
+      - logicalType: string
+        physicalType: STRING
+        required: true
+        description: Product display name
+        id: product_name_obj
+        name: product_name
+      - logicalType: string
+        physicalType: STRING
+        description: Product category type
+        id: product_type_obj
+        name: product_type
+      - logicalType: string
+        physicalType: STRING
+        description: Current product price in dollars
+        id: product_price_obj
+        name: product_price
+      - logicalType: string
+        physicalType: STRING
+        description: Product description text
+        id: product_description_obj
+        name: product_description
+      - logicalType: boolean
+        physicalType: BOOLEAN
+        description: Whether product is food
+        id: is_food_item_obj
+        name: is_food_item
+      - logicalType: boolean
+        physicalType: BOOLEAN
+        description: Whether product is drink
+        id: is_drink_item_obj
+        name: is_drink_item
+    status: draft
+contractCreatedTs: 2026-01-12T09:43:27.716Z

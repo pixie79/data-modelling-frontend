@@ -1,0 +1,53 @@
+apiVersion: v3.1.0
+kind: DataContract
+id: 0072c7c7-38ad-48f4-81a8-eff0b2ac403e
+name: stg_products
+version: 1.0.0
+status: draft
+tags:
+  - staging
+  - products
+  - dm_level:Silver
+schema:
+  - name: stg_products
+    properties:
+      - logicalType: string
+        physicalType: STRING
+        required: true
+        primaryKey: true
+        description: Standardized product identifier (derived from SKU)
+        id: product_id_obj
+        name: product_id
+      - logicalType: string
+        physicalType: STRING
+        required: true
+        description: Product display name (cleaned)
+        id: product_name_obj
+        name: product_name
+      - logicalType: string
+        physicalType: STRING
+        description: Product category type
+        id: product_type_obj
+        name: product_type
+      - logicalType: string
+        physicalType: STRING
+        description: Product price in dollars
+        id: product_price_obj
+        name: product_price
+      - logicalType: string
+        physicalType: STRING
+        description: Product description text
+        id: product_description_obj
+        name: product_description
+      - logicalType: boolean
+        physicalType: BOOLEAN
+        description: Whether product is a food item
+        id: is_food_item_obj
+        name: is_food_item
+      - logicalType: boolean
+        physicalType: BOOLEAN
+        description: Whether product is a drink item
+        id: is_drink_item_obj
+        name: is_drink_item
+    status: draft
+contractCreatedTs: 2026-01-12T09:43:27.730Z

@@ -1,0 +1,34 @@
+apiVersion: v3.1.0
+kind: DataContract
+id: 01739458-f08c-4e9b-a75c-41ac95732595
+name: raw_items
+version: 1.0.0
+status: draft
+tags:
+  - raw
+  - items
+  - dm_level:Bronze
+schema:
+  - name: raw_items
+    properties:
+      - logicalType: string
+        physicalType: STRING
+        required: true
+        primaryKey: true
+        description: Unique item identifier from source system
+        id: id_obj
+        name: id
+      - logicalType: string
+        physicalType: STRING
+        required: true
+        description: Order identifier (FK to raw_orders.id)
+        id: order_id_obj
+        name: order_id
+      - logicalType: string
+        physicalType: STRING
+        required: true
+        description: Product SKU (FK to raw_products.sku)
+        id: sku_obj
+        name: sku
+    status: draft
+contractCreatedTs: 2026-01-12T09:43:27.719Z

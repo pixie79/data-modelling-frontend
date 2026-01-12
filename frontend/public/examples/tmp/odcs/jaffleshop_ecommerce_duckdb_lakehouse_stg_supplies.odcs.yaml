@@ -1,0 +1,44 @@
+apiVersion: v3.1.0
+kind: DataContract
+id: e54b55db-e643-4558-8314-7b2b3c2231ea
+name: stg_supplies
+version: 1.0.0
+status: draft
+tags:
+  - staging
+  - supplies
+  - dm_level:Silver
+schema:
+  - name: stg_supplies
+    properties:
+      - logicalType: string
+        physicalType: STRING
+        required: true
+        primaryKey: true
+        description: Standardized supply record identifier
+        id: supply_id_obj
+        name: supply_id
+      - logicalType: string
+        physicalType: STRING
+        required: true
+        description: Supply item name
+        id: supply_name_obj
+        name: supply_name
+      - logicalType: string
+        physicalType: STRING
+        required: true
+        description: Product identifier (FK to stg_products)
+        id: product_id_obj
+        name: product_id
+      - logicalType: string
+        physicalType: STRING
+        description: Supply cost in dollars
+        id: supply_cost_obj
+        name: supply_cost
+      - logicalType: boolean
+        physicalType: BOOLEAN
+        description: Whether supply item is perishable
+        id: is_perishable_obj
+        name: is_perishable
+    status: draft
+contractCreatedTs: 2026-01-12T09:43:27.731Z

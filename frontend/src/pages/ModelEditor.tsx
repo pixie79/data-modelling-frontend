@@ -729,6 +729,7 @@ const ModelEditor: React.FC = () => {
             zIndex={zIndex}
             onFocus={() => focusTableEditor(tableId)}
             hideBackdrop={true} // No backdrop so users can click other tables on canvas
+            resizable={true} // Allow resizing to see more columns
           >
             <TableEditor
               tableId={tableId}

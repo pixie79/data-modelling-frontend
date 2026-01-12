@@ -1,0 +1,44 @@
+apiVersion: v3.1.0
+kind: DataContract
+id: 6d7a3e84-2b63-4815-8613-789fe04592d0
+name: raw_supplies
+version: 1.0.0
+status: draft
+tags:
+  - raw
+  - supplies
+  - dm_level:Bronze
+schema:
+  - name: raw_supplies
+    properties:
+      - logicalType: string
+        physicalType: STRING
+        required: true
+        primaryKey: true
+        description: Unique supply record identifier
+        id: id_obj
+        name: id
+      - logicalType: string
+        physicalType: STRING
+        required: true
+        description: Supply item name
+        id: name_obj
+        name: name
+      - logicalType: integer
+        physicalType: INTEGER
+        description: Supply cost in cents
+        id: cost_obj
+        name: cost
+      - logicalType: boolean
+        physicalType: BOOLEAN
+        description: Whether supply item is perishable
+        id: perishable_obj
+        name: perishable
+      - logicalType: string
+        physicalType: STRING
+        required: true
+        description: Product SKU (FK to raw_products.sku)
+        id: sku_obj
+        name: sku
+    status: draft
+contractCreatedTs: 2026-01-12T09:43:27.724Z

@@ -1,0 +1,274 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_MartBuild" targetNamespace="http://jaffleshop.example/bpmn">
+  <bpmn:process id="js-process-mart-build" name="Mart Build" isExecutable="true">
+    <bpmn:documentation>
+      Gold Layer ETL Process - Builds dimensional model (star schema) for analytics.
+      Creates dimension and fact tables optimized for BI queries and MetricFlow.
+      Triggered after Staging Transformation completes.
+    </bpmn:documentation>
+    <bpmn:startEvent id="StartEvent_1" name="Staging Complete">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+      <bpmn:outgoing>Flow_0vqlydv</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="Task_BuildTimeSpine" name="Build Time Spine">
+      <bpmn:documentation>
+        Generate metricflow_time_spine dimension:
+        - Create date range from min(ordered_at) to current_date + 365
+        - Calculate all date parts (week, month, quarter, year)
+        - Calculate day-of metrics for filtering
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:incoming>Flow_0vqlydv</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+      <bpmn:outgoing>Flow_1h1zw38</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:parallelGateway id="Gateway_DimSplit" name="Build Dimensions in Parallel">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:incoming>Flow_1h1zw38</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+      <bpmn:outgoing>Flow_6</bpmn:outgoing>
+      <bpmn:outgoing>Flow_03jiv0c</bpmn:outgoing>
+      <bpmn:outgoing>Flow_1s5yj88</bpmn:outgoing>
+      <bpmn:outgoing>Flow_08ohsjn</bpmn:outgoing>
+      <bpmn:outgoing>Flow_1yvl2kl</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:serviceTask id="Task_BuildCustomers" name="Build Customers Dimension">
+      <bpmn:documentation>
+        Build customers dimension with lifetime metrics:
+        - Calculate first_order_date, most_recent_order_date
+        - Aggregate lifetime_order_count, lifetime_order_value
+        - Join customer data with order aggregates
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:incoming>Flow_1yvl2kl</bpmn:incoming>
+      <bpmn:outgoing>Flow_7</bpmn:outgoing>
+      <bpmn:outgoing>Flow_018s8px</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Task_BuildProducts" name="Build Products Dimension">
+      <bpmn:documentation>
+        Build products dimension:
+        - Copy from stg_products
+        - Add any derived attributes
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:incoming>Flow_08ohsjn</bpmn:incoming>
+      <bpmn:outgoing>Flow_8</bpmn:outgoing>
+      <bpmn:outgoing>Flow_1akcg6f</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Task_BuildLocations" name="Build Locations Dimension">
+      <bpmn:documentation>
+        Build locations dimension:
+        - Copy from stg_locations
+        - Add any derived attributes
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:incoming>Flow_1s5yj88</bpmn:incoming>
+      <bpmn:outgoing>Flow_9</bpmn:outgoing>
+      <bpmn:outgoing>Flow_0gy0wlt</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Task_BuildSupplies" name="Build Supplies Dimension">
+      <bpmn:documentation>
+        Build supplies dimension:
+        - Copy from stg_supplies
+        - Ensure product_id references are valid
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_6</bpmn:incoming>
+      <bpmn:incoming>Flow_03jiv0c</bpmn:incoming>
+      <bpmn:outgoing>Flow_10</bpmn:outgoing>
+      <bpmn:outgoing>Flow_1x2oagu</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:parallelGateway id="Gateway_DimJoin" name="Wait for Dimensions">
+      <bpmn:incoming>Flow_7</bpmn:incoming>
+      <bpmn:incoming>Flow_8</bpmn:incoming>
+      <bpmn:incoming>Flow_9</bpmn:incoming>
+      <bpmn:incoming>Flow_10</bpmn:incoming>
+      <bpmn:incoming>Flow_018s8px</bpmn:incoming>
+      <bpmn:incoming>Flow_1akcg6f</bpmn:incoming>
+      <bpmn:incoming>Flow_0gy0wlt</bpmn:incoming>
+      <bpmn:incoming>Flow_1x2oagu</bpmn:incoming>
+      <bpmn:outgoing>Flow_11</bpmn:outgoing>
+      <bpmn:outgoing>Flow_0as9dmd</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:serviceTask id="Task_BuildOrders" name="Build Orders Fact">
+      <bpmn:documentation>
+        Build orders fact table:
+        - Extract order_date from ordered_at
+        - Calculate item_count from order_items
+        - Determine is_first_order flag per customer
+        - Validate FK references to dimensions
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_11</bpmn:incoming>
+      <bpmn:incoming>Flow_0as9dmd</bpmn:incoming>
+      <bpmn:outgoing>Flow_12</bpmn:outgoing>
+      <bpmn:outgoing>Flow_18b7e5p</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Task_BuildOrderItems" name="Build Order Items Fact">
+      <bpmn:documentation>
+        Build order_items fact table:
+        - Join with products for product_price
+        - Calculate supply_cost from supplies
+        - Copy is_food_item, is_drink_item flags
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_12</bpmn:incoming>
+      <bpmn:incoming>Flow_18b7e5p</bpmn:incoming>
+      <bpmn:outgoing>Flow_13</bpmn:outgoing>
+      <bpmn:outgoing>Flow_05b9tdp</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Task_ValidateMart" name="Validate Mart Integrity">
+      <bpmn:documentation>
+        Run final validation checks:
+        - Verify all FK relationships
+        - Check for orphaned records
+        - Validate aggregation accuracy
+        - Run MetricFlow semantic validation
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_13</bpmn:incoming>
+      <bpmn:incoming>Flow_05b9tdp</bpmn:incoming>
+      <bpmn:outgoing>Flow_14</bpmn:outgoing>
+      <bpmn:outgoing>Flow_00fj47w</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="EndEvent_1" name="Mart Build Complete">
+      <bpmn:incoming>Flow_14</bpmn:incoming>
+      <bpmn:incoming>Flow_00fj47w</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="Task_BuildTimeSpine" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_BuildTimeSpine" targetRef="Gateway_DimSplit" />
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="Gateway_DimSplit" targetRef="Task_BuildCustomers" />
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="Gateway_DimSplit" targetRef="Task_BuildProducts" />
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="Gateway_DimSplit" targetRef="Task_BuildLocations" />
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="Gateway_DimSplit" targetRef="Task_BuildSupplies" />
+    <bpmn:sequenceFlow id="Flow_7" sourceRef="Task_BuildCustomers" targetRef="Gateway_DimJoin" />
+    <bpmn:sequenceFlow id="Flow_8" sourceRef="Task_BuildProducts" targetRef="Gateway_DimJoin" />
+    <bpmn:sequenceFlow id="Flow_9" sourceRef="Task_BuildLocations" targetRef="Gateway_DimJoin" />
+    <bpmn:sequenceFlow id="Flow_10" sourceRef="Task_BuildSupplies" targetRef="Gateway_DimJoin" />
+    <bpmn:sequenceFlow id="Flow_11" sourceRef="Gateway_DimJoin" targetRef="Task_BuildOrders" />
+    <bpmn:sequenceFlow id="Flow_12" sourceRef="Task_BuildOrders" targetRef="Task_BuildOrderItems" />
+    <bpmn:sequenceFlow id="Flow_13" sourceRef="Task_BuildOrderItems" targetRef="Task_ValidateMart" />
+    <bpmn:sequenceFlow id="Flow_14" sourceRef="Task_ValidateMart" targetRef="EndEvent_1" />
+    <bpmn:sequenceFlow id="Flow_0vqlydv" sourceRef="StartEvent_1" targetRef="Task_BuildTimeSpine" />
+    <bpmn:sequenceFlow id="Flow_1h1zw38" sourceRef="Task_BuildTimeSpine" targetRef="Gateway_DimSplit" />
+    <bpmn:sequenceFlow id="Flow_0as9dmd" sourceRef="Gateway_DimJoin" targetRef="Task_BuildOrders" />
+    <bpmn:sequenceFlow id="Flow_18b7e5p" sourceRef="Task_BuildOrders" targetRef="Task_BuildOrderItems" />
+    <bpmn:sequenceFlow id="Flow_05b9tdp" sourceRef="Task_BuildOrderItems" targetRef="Task_ValidateMart" />
+    <bpmn:sequenceFlow id="Flow_00fj47w" sourceRef="Task_ValidateMart" targetRef="EndEvent_1" />
+    <bpmn:sequenceFlow id="Flow_018s8px" sourceRef="Task_BuildCustomers" targetRef="Gateway_DimJoin" />
+    <bpmn:sequenceFlow id="Flow_1akcg6f" sourceRef="Task_BuildProducts" targetRef="Gateway_DimJoin" />
+    <bpmn:sequenceFlow id="Flow_0gy0wlt" sourceRef="Task_BuildLocations" targetRef="Gateway_DimJoin" />
+    <bpmn:sequenceFlow id="Flow_1x2oagu" sourceRef="Task_BuildSupplies" targetRef="Gateway_DimJoin" />
+    <bpmn:sequenceFlow id="Flow_03jiv0c" sourceRef="Gateway_DimSplit" targetRef="Task_BuildSupplies" />
+    <bpmn:sequenceFlow id="Flow_1s5yj88" sourceRef="Gateway_DimSplit" targetRef="Task_BuildLocations" />
+    <bpmn:sequenceFlow id="Flow_08ohsjn" sourceRef="Gateway_DimSplit" targetRef="Task_BuildProducts" />
+    <bpmn:sequenceFlow id="Flow_1yvl2kl" sourceRef="Gateway_DimSplit" targetRef="Task_BuildCustomers" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="js-process-mart-build">
+      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
+        <dc:Bounds x="152" y="192" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_BuildTimeSpine_di" bpmnElement="Task_BuildTimeSpine">
+        <dc:Bounds x="240" y="170" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_DimSplit_di" bpmnElement="Gateway_DimSplit">
+        <dc:Bounds x="395" y="185" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="377" y="147.5" width="85" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_BuildCustomers_di" bpmnElement="Task_BuildCustomers">
+        <dc:Bounds x="500" y="60" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_BuildProducts_di" bpmnElement="Task_BuildProducts">
+        <dc:Bounds x="500" y="150" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_BuildLocations_di" bpmnElement="Task_BuildLocations">
+        <dc:Bounds x="500" y="240" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_BuildSupplies_di" bpmnElement="Task_BuildSupplies">
+        <dc:Bounds x="500" y="330" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_DimJoin_di" bpmnElement="Gateway_DimJoin">
+        <dc:Bounds x="655" y="185" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_BuildOrders_di" bpmnElement="Task_BuildOrders">
+        <dc:Bounds x="760" y="170" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_BuildOrderItems_di" bpmnElement="Task_BuildOrderItems">
+        <dc:Bounds x="920" y="170" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ValidateMart_di" bpmnElement="Task_ValidateMart">
+        <dc:Bounds x="1080" y="170" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_1_di" bpmnElement="EndEvent_1">
+        <dc:Bounds x="1242" y="192" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_0vqlydv_di" bpmnElement="Flow_0vqlydv">
+        <di:waypoint x="188" y="210" />
+        <di:waypoint x="240" y="210" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1h1zw38_di" bpmnElement="Flow_1h1zw38">
+        <di:waypoint x="340" y="210" />
+        <di:waypoint x="395" y="210" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0as9dmd_di" bpmnElement="Flow_0as9dmd">
+        <di:waypoint x="705" y="210" />
+        <di:waypoint x="760" y="210" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_18b7e5p_di" bpmnElement="Flow_18b7e5p">
+        <di:waypoint x="860" y="210" />
+        <di:waypoint x="920" y="210" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_05b9tdp_di" bpmnElement="Flow_05b9tdp">
+        <di:waypoint x="1020" y="210" />
+        <di:waypoint x="1080" y="210" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_00fj47w_di" bpmnElement="Flow_00fj47w">
+        <di:waypoint x="1180" y="210" />
+        <di:waypoint x="1242" y="210" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_018s8px_di" bpmnElement="Flow_018s8px">
+        <di:waypoint x="600" y="100" />
+        <di:waypoint x="680" y="100" />
+        <di:waypoint x="680" y="185" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1akcg6f_di" bpmnElement="Flow_1akcg6f">
+        <di:waypoint x="600" y="190" />
+        <di:waypoint x="628" y="190" />
+        <di:waypoint x="628" y="210" />
+        <di:waypoint x="655" y="210" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0gy0wlt_di" bpmnElement="Flow_0gy0wlt">
+        <di:waypoint x="600" y="280" />
+        <di:waypoint x="680" y="280" />
+        <di:waypoint x="680" y="235" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1x2oagu_di" bpmnElement="Flow_1x2oagu">
+        <di:waypoint x="600" y="370" />
+        <di:waypoint x="680" y="370" />
+        <di:waypoint x="680" y="235" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_03jiv0c_di" bpmnElement="Flow_03jiv0c">
+        <di:waypoint x="420" y="235" />
+        <di:waypoint x="420" y="370" />
+        <di:waypoint x="500" y="370" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1s5yj88_di" bpmnElement="Flow_1s5yj88">
+        <di:waypoint x="420" y="235" />
+        <di:waypoint x="420" y="280" />
+        <di:waypoint x="500" y="280" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_08ohsjn_di" bpmnElement="Flow_08ohsjn">
+        <di:waypoint x="445" y="210" />
+        <di:waypoint x="473" y="210" />
+        <di:waypoint x="473" y="190" />
+        <di:waypoint x="500" y="190" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1yvl2kl_di" bpmnElement="Flow_1yvl2kl">
+        <di:waypoint x="420" y="185" />
+        <di:waypoint x="420" y="100" />
+        <di:waypoint x="500" y="100" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

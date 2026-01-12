@@ -1,0 +1,43 @@
+apiVersion: v3.1.0
+kind: DataContract
+id: 57003496-b863-45b5-805d-efa4082917f8
+name: raw_products
+version: 1.0.0
+status: draft
+tags:
+  - raw
+  - products
+  - dm_level:Bronze
+schema:
+  - name: raw_products
+    properties:
+      - logicalType: string
+        physicalType: STRING
+        required: true
+        primaryKey: true
+        description: Unique product SKU identifier
+        id: sku_obj
+        name: sku
+      - logicalType: string
+        physicalType: STRING
+        required: true
+        description: Product display name
+        id: name_obj
+        name: name
+      - logicalType: string
+        physicalType: STRING
+        description: Product type category
+        id: type_obj
+        name: type
+      - logicalType: integer
+        physicalType: INTEGER
+        description: Product price in cents
+        id: price_obj
+        name: price
+      - logicalType: string
+        physicalType: STRING
+        description: Product description text
+        id: description_obj
+        name: description
+    status: draft
+contractCreatedTs: 2026-01-12T09:43:27.722Z

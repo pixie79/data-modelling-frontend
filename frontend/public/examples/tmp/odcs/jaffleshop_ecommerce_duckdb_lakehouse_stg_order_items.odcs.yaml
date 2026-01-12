@@ -1,0 +1,34 @@
+apiVersion: v3.1.0
+kind: DataContract
+id: 54f89d6c-900c-4403-b53c-4df32d8c47e8
+name: stg_order_items
+version: 1.0.0
+status: draft
+tags:
+  - staging
+  - order_items
+  - dm_level:Silver
+schema:
+  - name: stg_order_items
+    properties:
+      - logicalType: string
+        physicalType: STRING
+        required: true
+        primaryKey: true
+        description: Standardized order item identifier
+        id: order_item_id_obj
+        name: order_item_id
+      - logicalType: string
+        physicalType: STRING
+        required: true
+        description: Order identifier (FK to stg_orders)
+        id: order_id_obj
+        name: order_id
+      - logicalType: string
+        physicalType: STRING
+        required: true
+        description: Product identifier (FK to stg_products)
+        id: product_id_obj
+        name: product_id
+    status: draft
+contractCreatedTs: 2026-01-12T09:43:27.727Z

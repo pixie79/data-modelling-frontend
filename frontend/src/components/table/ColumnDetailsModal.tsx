@@ -1,12 +1,13 @@
 /**
  * Column Details Modal
- * Pop-out modal for editing column properties including quality rules and metadata
+ * Pop-out modal for editing column properties including ODCS v3.1.0 fields,
+ * quality rules, and metadata with tooltips and dropdowns
  */
 
 import React, { useState, useEffect } from 'react';
 import { DraggableModal } from '@/components/common/DraggableModal';
 import { useUIStore } from '@/stores/uiStore';
-import type { Column } from '@/types/table';
+import type { Column, AuthoritativeDefinition } from '@/types/table';
 
 export interface ColumnDetailsModalProps {
   column: Column;
@@ -36,6 +37,84 @@ export interface QualityRule {
   validValues?: string[];
 }
 
+// Tooltip component for field descriptions
+const Tooltip: React.FC<{ text: string; children: React.ReactNode }> = ({ text, children }) => (
+  <div className="group relative inline-flex items-center">
+    {children}
+    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-normal max-w-xs z-50 shadow-lg">
+      {text}
+      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+    </div>
+  </div>
+);
+
+// Info icon for tooltips
+const InfoIcon: React.FC = () => (
+  <svg
+    className="w-4 h-4 text-gray-400 ml-1 cursor-help"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+    />
+  </svg>
+);
+
+// Label with tooltip
+const LabelWithTooltip: React.FC<{ label: string; tooltip: string; required?: boolean }> = ({
+  label,
+  tooltip,
+  required,
+}) => (
+  <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
+    {label}
+    {required && <span className="text-red-500 ml-1">*</span>}
+    <Tooltip text={tooltip}>
+      <InfoIcon />
+    </Tooltip>
+  </label>
+);
+
+// Classification options (ODCS standard)
+const CLASSIFICATION_OPTIONS = [
+  { value: '', label: 'Select classification...' },
+  { value: 'public', label: 'Public' },
+  { value: 'internal', label: 'Internal' },
+  { value: 'confidential', label: 'Confidential' },
+  { value: 'restricted', label: 'Restricted' },
+  { value: 'pii', label: 'PII (Personal Identifiable Information)' },
+  { value: 'phi', label: 'PHI (Protected Health Information)' },
+  { value: 'pci', label: 'PCI (Payment Card Industry)' },
+  { value: 'sensitive', label: 'Sensitive' },
+];
+
+// Authoritative definition type options
+const AUTH_DEFINITION_TYPES = [
+  { value: 'business-glossary', label: 'Business Glossary' },
+  { value: 'data-dictionary', label: 'Data Dictionary' },
+  { value: 'data-catalog', label: 'Data Catalog' },
+  { value: 'master-data', label: 'Master Data Management' },
+  { value: 'regulatory', label: 'Regulatory Definition' },
+  { value: 'industry-standard', label: 'Industry Standard' },
+  { value: 'custom', label: 'Custom' },
+];
+
+// Section header component
+const SectionHeader: React.FC<{ title: string; description?: string }> = ({
+  title,
+  description,
+}) => (
+  <div className="border-b border-gray-200 pb-2 mb-4">
+    <h3 className="text-sm font-semibold text-gray-800">{title}</h3>
+    {description && <p className="text-xs text-gray-500 mt-1">{description}</p>}
+  </div>
+);
+
 export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
   column,
   isOpen,
@@ -43,23 +122,80 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
   onSave,
 }) => {
   const { addToast } = useUIStore();
+
+  // Basic Properties
   const [description, setDescription] = useState<string>('');
   const [defaultValue, setDefaultValue] = useState<string>(column.default_value || '');
+
+  // ODCS Naming
+  const [businessName, setBusinessName] = useState<string>('');
+  const [physicalName, setPhysicalName] = useState<string>('');
+
+  // Data Governance
+  const [classification, setClassification] = useState<string>('');
+  const [criticalDataElement, setCriticalDataElement] = useState<boolean>(false);
+  const [authoritativeDefinitions, setAuthoritativeDefinitions] = useState<
+    AuthoritativeDefinition[]
+  >([]);
+
+  // Data Engineering
+  const [partitioned, setPartitioned] = useState<boolean>(false);
+  const [partitionKeyPosition, setPartitionKeyPosition] = useState<number | undefined>();
+  const [clustered, setClustered] = useState<boolean>(false);
+  const [encryptedName, setEncryptedName] = useState<string>('');
+
+  // Transformations
+  const [transformSourceObjects, setTransformSourceObjects] = useState<string[]>([]);
+  const [transformLogic, setTransformLogic] = useState<string>('');
+  const [transformDescription, setTransformDescription] = useState<string>('');
+
+  // Documentation
+  const [examples, setExamples] = useState<string[]>([]);
+  const [tags, setTags] = useState<Array<{ key?: string; value: string }>>([]);
+  const [customProperties, setCustomProperties] = useState<Record<string, unknown>>({});
+
+  // Quality Rules
   const [qualityRules, setQualityRules] = useState<QualityRule[]>([]);
   const [metadata, setMetadata] = useState<Record<string, unknown>>({});
+
+  // UI State
   const [isSaving, setIsSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState<
+    'basic' | 'governance' | 'engineering' | 'transform' | 'quality'
+  >('basic');
 
-  // Initialize from column constraints, quality_rules, quality, and metadata
+  // Initialize from column data
   useEffect(() => {
-    console.log('[ColumnDetailsModal] Initializing with column:', {
-      name: column.name,
-      description: column.description,
-      constraints: column.constraints,
-      quality_rules: column.quality_rules,
-      quality: (column as any).quality, // Raw SDK quality array
-    });
+    // Basic properties
+    setDescription(column.description || '');
+    setDefaultValue(column.default_value || '');
 
-    // Combine constraints and quality_rules
+    // ODCS Naming
+    setBusinessName(column.businessName || '');
+    setPhysicalName(column.physicalName || '');
+
+    // Data Governance
+    setClassification(column.classification || '');
+    setCriticalDataElement(column.criticalDataElement || false);
+    setAuthoritativeDefinitions(column.authoritativeDefinitions || []);
+
+    // Data Engineering
+    setPartitioned(column.partitioned || false);
+    setPartitionKeyPosition(column.partitionKeyPosition);
+    setClustered(column.clustered || false);
+    setEncryptedName(column.encryptedName || '');
+
+    // Transformations
+    setTransformSourceObjects(column.transformSourceObjects || []);
+    setTransformLogic(column.transformLogic || '');
+    setTransformDescription(column.transformDescription || '');
+
+    // Documentation
+    setExamples(column.examples || []);
+    setTags(column.tags || []);
+    setCustomProperties(column.customProperties || {});
+
+    // Parse quality rules from constraints
     const allConstraints: Record<string, unknown> = {
       ...(column.constraints || {}),
     };
@@ -68,25 +204,18 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
     const extractFromQualityArray = (qualityArray: unknown[]) => {
       qualityArray.forEach((qualityRule: any) => {
         if (qualityRule.implementation && qualityRule.implementation.kwargs) {
-          // Extract value_set from great-expectations format
           if (
             qualityRule.implementation.kwargs.value_set &&
             Array.isArray(qualityRule.implementation.kwargs.value_set)
           ) {
             allConstraints.validValues = qualityRule.implementation.kwargs.value_set;
-            console.log(
-              '[ColumnDetailsModal] Extracted validValues from quality:',
-              allConstraints.validValues
-            );
           }
-          // Extract min/max values
           if (qualityRule.implementation.kwargs.min_value !== undefined) {
             allConstraints.minimum = qualityRule.implementation.kwargs.min_value;
           }
           if (qualityRule.implementation.kwargs.max_value !== undefined) {
             allConstraints.maximum = qualityRule.implementation.kwargs.max_value;
           }
-          // Extract regex pattern
           if (qualityRule.implementation.kwargs.regex) {
             allConstraints.pattern = qualityRule.implementation.kwargs.regex;
           }
@@ -94,23 +223,17 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
       });
     };
 
-    // Handle quality array format (ODCL) - extract rules from array
     if (Array.isArray(column.quality_rules)) {
-      console.log('[ColumnDetailsModal] Processing quality_rules array:', column.quality_rules);
       extractFromQualityArray(column.quality_rules);
     } else if (column.quality_rules && typeof column.quality_rules === 'object') {
-      // Handle quality_rules as an object
       Object.assign(allConstraints, column.quality_rules);
     }
 
-    // Also check raw 'quality' array from SDK (ODCL format)
     const rawQuality = (column as any).quality;
     if (Array.isArray(rawQuality)) {
-      console.log('[ColumnDetailsModal] Processing raw quality array:', rawQuality);
       extractFromQualityArray(rawQuality);
     }
 
-    // Also check constraints for validValues
     if (column.constraints) {
       if (column.constraints.validValues) {
         allConstraints.validValues = column.constraints.validValues;
@@ -120,10 +243,7 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
       }
     }
 
-    console.log('[ColumnDetailsModal] All constraints after processing:', allConstraints);
-
     if (Object.keys(allConstraints).length > 0) {
-      // Parse quality rules from constraints
       const rules: QualityRule[] = [];
 
       if (allConstraints.minLength !== undefined || allConstraints.maxLength !== undefined) {
@@ -178,23 +298,6 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
       setQualityRules(rules);
     }
 
-    // Extract description from column or constraints
-    if (column.description) {
-      setDescription(column.description);
-      console.log(
-        '[ColumnDetailsModal] Set description from column.description:',
-        column.description
-      );
-    } else if (allConstraints.description) {
-      setDescription(allConstraints.description as string);
-      console.log(
-        '[ColumnDetailsModal] Set description from constraints:',
-        allConstraints.description
-      );
-    } else {
-      console.warn('[ColumnDetailsModal] No description found for column:', column.name);
-    }
-
     // Store other metadata
     const otherMetadata: Record<string, unknown> = {};
     if (Object.keys(allConstraints).length > 0) {
@@ -219,12 +322,61 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
     setMetadata(otherMetadata);
   }, [column]);
 
+  // Authoritative Definition handlers
+  const handleAddAuthDefinition = () => {
+    setAuthoritativeDefinitions([
+      ...authoritativeDefinitions,
+      { type: 'business-glossary', url: '' },
+    ]);
+  };
+
+  const handleUpdateAuthDefinition = (index: number, updates: Partial<AuthoritativeDefinition>) => {
+    setAuthoritativeDefinitions((defs) =>
+      defs.map((def, i) => (i === index ? { ...def, ...updates } : def))
+    );
+  };
+
+  const handleRemoveAuthDefinition = (index: number) => {
+    setAuthoritativeDefinitions((defs) => defs.filter((_, i) => i !== index));
+  };
+
+  // Tag handlers
+  const handleAddTag = () => {
+    setTags([...tags, { key: '', value: '' }]);
+  };
+
+  const handleUpdateTag = (index: number, updates: Partial<{ key: string; value: string }>) => {
+    setTags((t) => t.map((tag, i) => (i === index ? { ...tag, ...updates } : tag)));
+  };
+
+  const handleRemoveTag = (index: number) => {
+    setTags((t) => t.filter((_, i) => i !== index));
+  };
+
+  // Custom property handlers
+  const handleAddCustomProperty = () => {
+    const key = `property_${Object.keys(customProperties).length + 1}`;
+    setCustomProperties({ ...customProperties, [key]: '' });
+  };
+
+  const handleUpdateCustomProperty = (oldKey: string, newKey: string, value: unknown) => {
+    const newProps = { ...customProperties };
+    if (oldKey !== newKey) {
+      delete newProps[oldKey];
+    }
+    newProps[newKey] = value;
+    setCustomProperties(newProps);
+  };
+
+  const handleRemoveCustomProperty = (key: string) => {
+    const newProps = { ...customProperties };
+    delete newProps[key];
+    setCustomProperties(newProps);
+  };
+
+  // Quality rule handlers
   const handleAddQualityRule = (type: QualityRule['type']) => {
-    const newRule: QualityRule = {
-      type,
-      enabled: true,
-    };
-    setQualityRules([...qualityRules, newRule]);
+    setQualityRules([...qualityRules, { type, enabled: true }]);
   };
 
   const handleUpdateQualityRule = (index: number, updates: Partial<QualityRule>) => {
@@ -276,12 +428,45 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
       // Merge with existing metadata
       const updatedConstraints = { ...constraints, ...metadata };
 
-      await onSave(column.id, {
+      // Build the complete column update
+      const columnUpdate: Partial<Column> = {
+        // Basic Properties
         default_value: defaultValue || undefined,
         description: description || undefined,
         constraints: Object.keys(updatedConstraints).length > 0 ? updatedConstraints : undefined,
         quality_rules: Object.keys(updatedConstraints).length > 0 ? updatedConstraints : undefined,
-      });
+
+        // ODCS Naming
+        businessName: businessName || undefined,
+        physicalName: physicalName || undefined,
+
+        // Data Governance
+        classification: classification || undefined,
+        criticalDataElement: criticalDataElement || undefined,
+        authoritativeDefinitions:
+          authoritativeDefinitions.length > 0
+            ? authoritativeDefinitions.filter((d) => d.url)
+            : undefined,
+
+        // Data Engineering
+        partitioned: partitioned || undefined,
+        partitionKeyPosition: partitionKeyPosition,
+        clustered: clustered || undefined,
+        encryptedName: encryptedName || undefined,
+
+        // Transformations
+        transformSourceObjects:
+          transformSourceObjects.length > 0 ? transformSourceObjects.filter((s) => s) : undefined,
+        transformLogic: transformLogic || undefined,
+        transformDescription: transformDescription || undefined,
+
+        // Documentation
+        examples: examples.length > 0 ? examples.filter((e) => e) : undefined,
+        tags: tags.length > 0 ? tags.filter((t) => t.value) : undefined,
+        customProperties: Object.keys(customProperties).length > 0 ? customProperties : undefined,
+      };
+
+      await onSave(column.id, columnUpdate);
 
       addToast({
         type: 'success',
@@ -298,240 +483,689 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
     }
   };
 
+  const tabs = [
+    { id: 'basic' as const, label: 'Basic', icon: '📝' },
+    { id: 'governance' as const, label: 'Governance', icon: '🔒' },
+    { id: 'engineering' as const, label: 'Engineering', icon: '⚙️' },
+    { id: 'transform' as const, label: 'Transform', icon: '🔄' },
+    { id: 'quality' as const, label: 'Quality', icon: '✓' },
+  ];
+
   return (
     <DraggableModal
       isOpen={isOpen}
       onClose={onClose}
       title={`Column Details: ${column.name}`}
-      size="md"
-      initialPosition={{ x: 100, y: 100 }}
+      size="lg"
+      initialPosition={{ x: 100, y: 50 }}
     >
-      <div className="space-y-6">
-        {/* Basic Properties */}
-        <div>
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">Basic Properties</h3>
-          <div className="space-y-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Column description..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                rows={3}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Default Value</label>
-              <input
-                type="text"
-                value={defaultValue}
-                onChange={(e) => setDefaultValue(e.target.value)}
-                placeholder="Default value..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
+      <div className="flex flex-col h-[600px]">
+        {/* Tab Navigation */}
+        <div className="flex border-b border-gray-200 mb-4">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === tab.id
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <span className="mr-1">{tab.icon}</span>
+              {tab.label}
+            </button>
+          ))}
         </div>
 
-        {/* Quality Rules */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-gray-700">Quality Rules</h3>
-            <div className="flex gap-2">
-              <select
-                onChange={(e) => {
-                  if (e.target.value) {
-                    handleAddQualityRule(e.target.value as QualityRule['type']);
-                    e.target.value = '';
-                  }
-                }}
-                className="text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Add Quality Rule...</option>
-                <option value="string_constraints">String Constraints</option>
-                <option value="numeric_constraints">Numeric Constraints</option>
-                <option value="pattern">Pattern</option>
-                <option value="format">Format</option>
-                <option value="valid_values">Valid Values</option>
-              </select>
-            </div>
-          </div>
+        {/* Tab Content */}
+        <div className="flex-1 overflow-y-auto pr-2">
+          {/* Basic Tab */}
+          {activeTab === 'basic' && (
+            <div className="space-y-6">
+              <SectionHeader
+                title="Naming & Identity"
+                description="Define how this column is identified across different contexts"
+              />
 
-          {qualityRules.length === 0 ? (
-            <p className="text-sm text-gray-500 italic">No quality rules defined</p>
-          ) : (
-            <div className="space-y-3">
-              {qualityRules.map((rule, index) => (
-                <div key={index} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="flex items-center gap-2">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <LabelWithTooltip
+                    label="Business Name"
+                    tooltip="A human-friendly name for business users. Used in reports and documentation."
+                  />
+                  <input
+                    type="text"
+                    value={businessName}
+                    onChange={(e) => setBusinessName(e.target.value)}
+                    placeholder="e.g., Customer Full Name"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <LabelWithTooltip
+                    label="Physical Name"
+                    tooltip="The actual column name in the physical database. May differ from logical name due to naming conventions."
+                  />
+                  <input
+                    type="text"
+                    value={physicalName}
+                    onChange={(e) => setPhysicalName(e.target.value)}
+                    placeholder="e.g., cust_full_nm"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <LabelWithTooltip
+                  label="Description"
+                  tooltip="Detailed description of the column's purpose, content, and business meaning."
+                />
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Describe what this column contains and how it should be used..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <LabelWithTooltip
+                  label="Default Value"
+                  tooltip="The default value assigned when no value is provided during insert operations."
+                />
+                <input
+                  type="text"
+                  value={defaultValue}
+                  onChange={(e) => setDefaultValue(e.target.value)}
+                  placeholder="e.g., 0, 'N/A', CURRENT_TIMESTAMP"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <LabelWithTooltip
+                  label="Examples"
+                  tooltip="Example values to help understand the expected data format and content."
+                />
+                <input
+                  type="text"
+                  value={examples.join(', ')}
+                  onChange={(e) =>
+                    setExamples(
+                      e.target.value
+                        .split(',')
+                        .map((s) => s.trim())
+                        .filter((s) => s)
+                    )
+                  }
+                  placeholder="e.g., John Doe, Jane Smith, Bob Wilson"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">Comma-separated list of example values</p>
+              </div>
+            </div>
+          )}
+
+          {/* Governance Tab */}
+          {activeTab === 'governance' && (
+            <div className="space-y-6">
+              <SectionHeader
+                title="Data Classification"
+                description="Define security and compliance requirements for this column"
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <LabelWithTooltip
+                    label="Classification"
+                    tooltip="Data sensitivity level that determines access controls and handling requirements."
+                  />
+                  <select
+                    value={classification}
+                    onChange={(e) => setClassification(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {CLASSIFICATION_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <LabelWithTooltip
+                    label="Critical Data Element"
+                    tooltip="Mark if this column is essential for business operations and requires additional oversight."
+                  />
+                  <div className="flex items-center h-10">
+                    <label className="flex items-center cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={rule.enabled}
-                        onChange={(e) =>
-                          handleUpdateQualityRule(index, { enabled: e.target.checked })
-                        }
-                        className="rounded"
+                        checked={criticalDataElement}
+                        onChange={(e) => setCriticalDataElement(e.target.checked)}
+                        className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
-                      <span className="text-sm font-medium text-gray-700 capitalize">
-                        {rule.type.replace('_', ' ')}
+                      <span className="ml-2 text-sm text-gray-700">
+                        Yes, this is a critical data element
                       </span>
                     </label>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <LabelWithTooltip
+                  label="Encrypted Column Name"
+                  tooltip="If this column has an encrypted version, specify its name here."
+                />
+                <input
+                  type="text"
+                  value={encryptedName}
+                  onChange={(e) => setEncryptedName(e.target.value)}
+                  placeholder="e.g., customer_ssn_encrypted"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <SectionHeader
+                title="Authoritative Definitions"
+                description="Link to official sources that define this data element"
+              />
+
+              <div className="space-y-3">
+                {authoritativeDefinitions.map((def, index) => (
+                  <div key={index} className="flex gap-2 items-start p-3 bg-gray-50 rounded-lg">
+                    <div className="flex-1 grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Type</label>
+                        <select
+                          value={def.type}
+                          onChange={(e) =>
+                            handleUpdateAuthDefinition(index, { type: e.target.value })
+                          }
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                        >
+                          {AUTH_DEFINITION_TYPES.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">URL</label>
+                        <input
+                          type="url"
+                          value={def.url}
+                          onChange={(e) =>
+                            handleUpdateAuthDefinition(index, { url: e.target.value })
+                          }
+                          placeholder="https://..."
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                        />
+                      </div>
+                    </div>
                     <button
-                      onClick={() => handleRemoveQualityRule(index)}
-                      className="text-red-600 hover:text-red-800 text-sm"
+                      onClick={() => handleRemoveAuthDefinition(index)}
+                      className="text-red-600 hover:text-red-800 text-sm mt-5"
                     >
-                      Remove
+                      ✕
                     </button>
                   </div>
+                ))}
+                <button
+                  onClick={handleAddAuthDefinition}
+                  className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                >
+                  <span>+</span> Add Authoritative Definition
+                </button>
+              </div>
 
-                  {rule.type === 'string_constraints' && (
-                    <div className="grid grid-cols-2 gap-2 mt-2">
-                      <div>
-                        <label className="block text-xs text-gray-600 mb-1">Min Length</label>
-                        <input
-                          type="number"
-                          value={rule.minLength || ''}
-                          onChange={(e) =>
-                            handleUpdateQualityRule(index, {
-                              minLength: e.target.value ? parseInt(e.target.value, 10) : undefined,
-                            })
-                          }
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
-                          placeholder="Min"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-gray-600 mb-1">Max Length</label>
-                        <input
-                          type="number"
-                          value={rule.maxLength || ''}
-                          onChange={(e) =>
-                            handleUpdateQualityRule(index, {
-                              maxLength: e.target.value ? parseInt(e.target.value, 10) : undefined,
-                            })
-                          }
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
-                          placeholder="Max"
-                        />
-                      </div>
-                    </div>
-                  )}
+              <SectionHeader
+                title="Tags"
+                description="Add metadata tags for categorization and discovery"
+              />
 
-                  {rule.type === 'numeric_constraints' && (
-                    <div className="grid grid-cols-2 gap-2 mt-2">
-                      <div>
-                        <label className="block text-xs text-gray-600 mb-1">Minimum</label>
-                        <input
-                          type="number"
-                          value={rule.minimum || ''}
-                          onChange={(e) =>
-                            handleUpdateQualityRule(index, {
-                              minimum: e.target.value ? parseFloat(e.target.value) : undefined,
-                            })
-                          }
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
-                          placeholder="Min"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-gray-600 mb-1">Maximum</label>
-                        <input
-                          type="number"
-                          value={rule.maximum || ''}
-                          onChange={(e) =>
-                            handleUpdateQualityRule(index, {
-                              maximum: e.target.value ? parseFloat(e.target.value) : undefined,
-                            })
-                          }
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
-                          placeholder="Max"
-                        />
-                      </div>
-                    </div>
-                  )}
+              <div className="space-y-3">
+                {tags.map((tag, index) => (
+                  <div key={index} className="flex gap-2 items-center">
+                    <input
+                      type="text"
+                      value={tag.key || ''}
+                      onChange={(e) => handleUpdateTag(index, { key: e.target.value })}
+                      placeholder="Key (optional)"
+                      className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded"
+                    />
+                    <span className="text-gray-400">=</span>
+                    <input
+                      type="text"
+                      value={tag.value}
+                      onChange={(e) => handleUpdateTag(index, { value: e.target.value })}
+                      placeholder="Value"
+                      className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded"
+                    />
+                    <button
+                      onClick={() => handleRemoveTag(index)}
+                      className="text-red-600 hover:text-red-800 text-sm"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                <button
+                  onClick={handleAddTag}
+                  className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                >
+                  <span>+</span> Add Tag
+                </button>
+              </div>
+            </div>
+          )}
 
-                  {rule.type === 'pattern' && (
-                    <div className="mt-2">
-                      <label className="block text-xs text-gray-600 mb-1">Regex Pattern</label>
+          {/* Engineering Tab */}
+          {activeTab === 'engineering' && (
+            <div className="space-y-6">
+              <SectionHeader
+                title="Storage & Performance"
+                description="Configure how this column is stored and optimized"
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <LabelWithTooltip
+                    label="Partitioned"
+                    tooltip="Enable if this column is used for table partitioning to improve query performance."
+                  />
+                  <div className="flex items-center h-10">
+                    <label className="flex items-center cursor-pointer">
                       <input
-                        type="text"
-                        value={rule.pattern || ''}
-                        onChange={(e) =>
-                          handleUpdateQualityRule(index, { pattern: e.target.value })
-                        }
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
-                        placeholder="^[A-Z]+$"
+                        type="checkbox"
+                        checked={partitioned}
+                        onChange={(e) => setPartitioned(e.target.checked)}
+                        className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
-                    </div>
-                  )}
-
-                  {rule.type === 'format' && (
-                    <div className="mt-2">
-                      <label className="block text-xs text-gray-600 mb-1">Format</label>
-                      <select
-                        value={rule.format || ''}
-                        onChange={(e) =>
-                          handleUpdateQualityRule(index, {
-                            format: e.target.value as QualityRule['format'],
-                          })
-                        }
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
-                      >
-                        <option value="">Select format...</option>
-                        <option value="email">Email</option>
-                        <option value="uuid">UUID</option>
-                        <option value="url">URL</option>
-                        <option value="date">Date</option>
-                        <option value="datetime">DateTime</option>
-                        <option value="phone">Phone</option>
-                      </select>
-                    </div>
-                  )}
-
-                  {rule.type === 'valid_values' && (
-                    <div className="mt-2">
-                      <label className="block text-xs text-gray-600 mb-1">
-                        Valid Values (comma-separated)
-                      </label>
-                      <input
-                        type="text"
-                        value={rule.validValues?.join(', ') || ''}
-                        onChange={(e) =>
-                          handleUpdateQualityRule(index, {
-                            validValues: e.target.value
-                              .split(',')
-                              .map((v) => v.trim())
-                              .filter((v) => v.length > 0),
-                          })
-                        }
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
-                        placeholder="value1, value2, value3"
-                      />
-                    </div>
-                  )}
+                      <span className="ml-2 text-sm text-gray-700">Used for partitioning</span>
+                    </label>
+                  </div>
                 </div>
-              ))}
+                {partitioned && (
+                  <div>
+                    <LabelWithTooltip
+                      label="Partition Key Position"
+                      tooltip="Position in composite partition key (1-indexed). Use 1 for single-column partition."
+                    />
+                    <input
+                      type="number"
+                      min={1}
+                      value={partitionKeyPosition || ''}
+                      onChange={(e) =>
+                        setPartitionKeyPosition(
+                          e.target.value ? parseInt(e.target.value, 10) : undefined
+                        )
+                      }
+                      placeholder="1"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <LabelWithTooltip
+                  label="Clustered"
+                  tooltip="Enable if this column is used for table clustering to co-locate related data."
+                />
+                <div className="flex items-center h-10">
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={clustered}
+                      onChange={(e) => setClustered(e.target.checked)}
+                      className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">Used for clustering</span>
+                  </label>
+                </div>
+              </div>
+
+              <SectionHeader
+                title="Custom Properties"
+                description="Add custom metadata properties for this column"
+              />
+
+              <div className="space-y-3">
+                {Object.entries(customProperties).map(([key, value]) => (
+                  <div key={key} className="flex gap-2 items-center">
+                    <input
+                      type="text"
+                      value={key}
+                      onChange={(e) => handleUpdateCustomProperty(key, e.target.value, value)}
+                      placeholder="Property name"
+                      className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded"
+                    />
+                    <span className="text-gray-400">:</span>
+                    <input
+                      type="text"
+                      value={String(value)}
+                      onChange={(e) => handleUpdateCustomProperty(key, key, e.target.value)}
+                      placeholder="Value"
+                      className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded"
+                    />
+                    <button
+                      onClick={() => handleRemoveCustomProperty(key)}
+                      className="text-red-600 hover:text-red-800 text-sm"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                <button
+                  onClick={handleAddCustomProperty}
+                  className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                >
+                  <span>+</span> Add Custom Property
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Transform Tab */}
+          {activeTab === 'transform' && (
+            <div className="space-y-6">
+              <SectionHeader
+                title="Transformation Logic"
+                description="Document how this column is derived or transformed"
+              />
+
+              <div>
+                <LabelWithTooltip
+                  label="Source Objects"
+                  tooltip="List of source tables, columns, or objects used to derive this column's value."
+                />
+                <input
+                  type="text"
+                  value={transformSourceObjects.join(', ')}
+                  onChange={(e) =>
+                    setTransformSourceObjects(
+                      e.target.value
+                        .split(',')
+                        .map((s) => s.trim())
+                        .filter((s) => s)
+                    )
+                  }
+                  placeholder="e.g., orders.total_amount, customers.discount_rate"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">Comma-separated list of source objects</p>
+              </div>
+
+              <div>
+                <LabelWithTooltip
+                  label="Transform Logic"
+                  tooltip="The formula, SQL expression, or code used to calculate this column's value."
+                />
+                <textarea
+                  value={transformLogic}
+                  onChange={(e) => setTransformLogic(e.target.value)}
+                  placeholder="e.g., COALESCE(orders.total_amount * (1 - customers.discount_rate), 0)"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                  rows={4}
+                />
+              </div>
+
+              <div>
+                <LabelWithTooltip
+                  label="Transform Description"
+                  tooltip="A plain-language explanation of the transformation logic for documentation."
+                />
+                <textarea
+                  value={transformDescription}
+                  onChange={(e) => setTransformDescription(e.target.value)}
+                  placeholder="Describe the transformation in plain language..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows={3}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Quality Tab */}
+          {activeTab === 'quality' && (
+            <div className="space-y-6">
+              <SectionHeader
+                title="Quality Rules"
+                description="Define data quality constraints and validation rules"
+              />
+
+              <div className="flex items-center gap-2 mb-4">
+                <select
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      handleAddQualityRule(e.target.value as QualityRule['type']);
+                      e.target.value = '';
+                    }
+                  }}
+                  className="text-sm px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Add Quality Rule...</option>
+                  <option value="string_constraints">String Constraints (min/max length)</option>
+                  <option value="numeric_constraints">Numeric Constraints (min/max value)</option>
+                  <option value="pattern">Pattern (regex validation)</option>
+                  <option value="format">Format (email, UUID, date, etc.)</option>
+                  <option value="valid_values">Valid Values (enumeration)</option>
+                </select>
+              </div>
+
+              {qualityRules.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <p className="text-sm">No quality rules defined</p>
+                  <p className="text-xs mt-1">Use the dropdown above to add validation rules</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {qualityRules.map((rule, index) => (
+                    <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                      <div className="flex items-center justify-between mb-3">
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={rule.enabled}
+                            onChange={(e) =>
+                              handleUpdateQualityRule(index, { enabled: e.target.checked })
+                            }
+                            className="w-4 h-4 rounded border-gray-300 text-blue-600"
+                          />
+                          <span className="text-sm font-medium text-gray-700 capitalize">
+                            {rule.type.replace(/_/g, ' ')}
+                          </span>
+                        </label>
+                        <button
+                          onClick={() => handleRemoveQualityRule(index)}
+                          className="text-red-600 hover:text-red-800 text-sm"
+                        >
+                          Remove
+                        </button>
+                      </div>
+
+                      {rule.type === 'string_constraints' && (
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <LabelWithTooltip
+                              label="Min Length"
+                              tooltip="Minimum number of characters allowed"
+                            />
+                            <input
+                              type="number"
+                              min={0}
+                              value={rule.minLength ?? ''}
+                              onChange={(e) =>
+                                handleUpdateQualityRule(index, {
+                                  minLength: e.target.value
+                                    ? parseInt(e.target.value, 10)
+                                    : undefined,
+                                })
+                              }
+                              className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                              placeholder="0"
+                            />
+                          </div>
+                          <div>
+                            <LabelWithTooltip
+                              label="Max Length"
+                              tooltip="Maximum number of characters allowed"
+                            />
+                            <input
+                              type="number"
+                              min={0}
+                              value={rule.maxLength ?? ''}
+                              onChange={(e) =>
+                                handleUpdateQualityRule(index, {
+                                  maxLength: e.target.value
+                                    ? parseInt(e.target.value, 10)
+                                    : undefined,
+                                })
+                              }
+                              className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                              placeholder="255"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {rule.type === 'numeric_constraints' && (
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <LabelWithTooltip
+                              label="Minimum"
+                              tooltip="Minimum numeric value allowed"
+                            />
+                            <input
+                              type="number"
+                              value={rule.minimum ?? ''}
+                              onChange={(e) =>
+                                handleUpdateQualityRule(index, {
+                                  minimum: e.target.value ? parseFloat(e.target.value) : undefined,
+                                })
+                              }
+                              className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                              placeholder="0"
+                            />
+                          </div>
+                          <div>
+                            <LabelWithTooltip
+                              label="Maximum"
+                              tooltip="Maximum numeric value allowed"
+                            />
+                            <input
+                              type="number"
+                              value={rule.maximum ?? ''}
+                              onChange={(e) =>
+                                handleUpdateQualityRule(index, {
+                                  maximum: e.target.value ? parseFloat(e.target.value) : undefined,
+                                })
+                              }
+                              className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                              placeholder="100"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {rule.type === 'pattern' && (
+                        <div>
+                          <LabelWithTooltip
+                            label="Regex Pattern"
+                            tooltip="Regular expression pattern that values must match"
+                          />
+                          <input
+                            type="text"
+                            value={rule.pattern || ''}
+                            onChange={(e) =>
+                              handleUpdateQualityRule(index, { pattern: e.target.value })
+                            }
+                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded font-mono"
+                            placeholder="^[A-Z]{2}[0-9]{4}$"
+                          />
+                        </div>
+                      )}
+
+                      {rule.type === 'format' && (
+                        <div>
+                          <LabelWithTooltip
+                            label="Format"
+                            tooltip="Predefined format that values must conform to"
+                          />
+                          <select
+                            value={rule.format || ''}
+                            onChange={(e) =>
+                              handleUpdateQualityRule(index, {
+                                format: e.target.value as QualityRule['format'],
+                              })
+                            }
+                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                          >
+                            <option value="">Select format...</option>
+                            <option value="email">Email Address</option>
+                            <option value="uuid">UUID</option>
+                            <option value="url">URL</option>
+                            <option value="date">Date (YYYY-MM-DD)</option>
+                            <option value="datetime">DateTime (ISO 8601)</option>
+                            <option value="phone">Phone Number</option>
+                          </select>
+                        </div>
+                      )}
+
+                      {rule.type === 'valid_values' && (
+                        <div>
+                          <LabelWithTooltip
+                            label="Valid Values"
+                            tooltip="List of allowed values (enumeration)"
+                          />
+                          <input
+                            type="text"
+                            value={rule.validValues?.join(', ') || ''}
+                            onChange={(e) =>
+                              handleUpdateQualityRule(index, {
+                                validValues: e.target.value
+                                  .split(',')
+                                  .map((v) => v.trim())
+                                  .filter((v) => v.length > 0),
+                              })
+                            }
+                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                            placeholder="active, inactive, pending"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">
+                            Comma-separated list of valid values
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
 
         {/* Actions */}
-        <div className="flex justify-end gap-2 pt-4 border-t border-gray-200">
+        <div className="flex justify-end gap-2 pt-4 mt-4 border-t border-gray-200">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
+            className="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
             disabled={isSaving}
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
-            className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             disabled={isSaving}
           >
-            {isSaving ? 'Saving...' : 'Save'}
+            {isSaving ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
       </div>

@@ -88,34 +88,26 @@ export const CanvasExport: React.FC<CanvasExportProps> = ({ filenamePrefix = 'ca
         message: 'Generating high-quality PNG...',
       });
 
-      // Clone the viewport and adjust its transform to show all nodes
-      const clonedViewport = viewport.cloneNode(true) as HTMLElement;
-
-      // Create a wrapper to contain the cloned content
-      const wrapper = document.createElement('div');
-      wrapper.style.position = 'absolute';
-      wrapper.style.left = '-9999px';
-      wrapper.style.top = '-9999px';
-      wrapper.style.width = `${imageWidth}px`;
-      wrapper.style.height = `${imageHeight}px`;
-      wrapper.style.overflow = 'hidden';
-      wrapper.style.backgroundColor = '#ffffff';
+      // Save the original transform so we can restore it after export
+      const originalTransform = viewport.style.transform;
 
       // Set the transform to position all nodes in view with padding
-      clonedViewport.style.transform = `translate(${-nodesBounds.x + padding}px, ${-nodesBounds.y + padding}px) scale(1)`;
-      clonedViewport.style.transformOrigin = '0 0';
-
-      wrapper.appendChild(clonedViewport);
-      document.body.appendChild(wrapper);
+      viewport.style.transform = `translate(${-nodesBounds.x + padding}px, ${-nodesBounds.y + padding}px) scale(1)`;
 
       try {
-        // Create the PNG from the wrapper
-        const dataUrl = await toPng(wrapper, {
+        // Create the PNG directly from the viewport (not a clone)
+        // This preserves all CSS styles since we're capturing the live element
+        const dataUrl = await toPng(viewport, {
           backgroundColor: '#ffffff',
           width: imageWidth,
           height: imageHeight,
           pixelRatio: scale,
           filter: filterNode,
+          style: {
+            // Ensure the viewport fills the capture area
+            width: `${imageWidth}px`,
+            height: `${imageHeight}px`,
+          },
         });
 
         // Download the image
@@ -129,8 +121,8 @@ export const CanvasExport: React.FC<CanvasExportProps> = ({ filenamePrefix = 'ca
           message: 'Canvas exported successfully',
         });
       } finally {
-        // Clean up
-        document.body.removeChild(wrapper);
+        // Restore the original transform
+        viewport.style.transform = originalTransform;
       }
     } catch (error) {
       console.error('Failed to export canvas:', error);
@@ -139,7 +131,7 @@ export const CanvasExport: React.FC<CanvasExportProps> = ({ filenamePrefix = 'ca
         message: `Failed to export canvas: ${error instanceof Error ? error.message : 'Unknown error'}`,
       });
     }
-  }, [getNodes, getViewport, filenamePrefix, addToast]);
+  }, [getNodes, filenamePrefix, addToast]);
 
   // Start area selection mode
   const startAreaSelection = useCallback(() => {
@@ -232,34 +224,26 @@ export const CanvasExport: React.FC<CanvasExportProps> = ({ filenamePrefix = 'ca
       const canvasWidth = width / currentViewport.zoom;
       const canvasHeight = height / currentViewport.zoom;
 
-      // Clone the viewport
-      const clonedViewport = viewport.cloneNode(true) as HTMLElement;
-
-      // Create a wrapper to contain the cloned content
-      const wrapper = document.createElement('div');
-      wrapper.style.position = 'absolute';
-      wrapper.style.left = '-9999px';
-      wrapper.style.top = '-9999px';
-      wrapper.style.width = `${canvasWidth}px`;
-      wrapper.style.height = `${canvasHeight}px`;
-      wrapper.style.overflow = 'hidden';
-      wrapper.style.backgroundColor = '#ffffff';
+      // Save the original transform so we can restore it after export
+      const originalTransform = viewport.style.transform;
 
       // Set the transform to show only the selected area at scale 1
-      clonedViewport.style.transform = `translate(${-canvasX}px, ${-canvasY}px) scale(1)`;
-      clonedViewport.style.transformOrigin = '0 0';
-
-      wrapper.appendChild(clonedViewport);
-      document.body.appendChild(wrapper);
+      viewport.style.transform = `translate(${-canvasX}px, ${-canvasY}px) scale(1)`;
 
       try {
-        // Create the PNG from the wrapper
-        const dataUrl = await toPng(wrapper, {
+        // Create the PNG directly from the viewport (not a clone)
+        // This preserves all CSS styles since we're capturing the live element
+        const dataUrl = await toPng(viewport, {
           backgroundColor: '#ffffff',
           width: canvasWidth,
           height: canvasHeight,
           pixelRatio: scale,
           filter: filterNode,
+          style: {
+            // Ensure the viewport fills the capture area
+            width: `${canvasWidth}px`,
+            height: `${canvasHeight}px`,
+          },
         });
 
         // Download the image
@@ -273,8 +257,8 @@ export const CanvasExport: React.FC<CanvasExportProps> = ({ filenamePrefix = 'ca
           message: 'Selected area exported successfully',
         });
       } finally {
-        // Clean up
-        document.body.removeChild(wrapper);
+        // Restore the original transform
+        viewport.style.transform = originalTransform;
       }
     } catch (error) {
       console.error('Failed to export selected area:', error);

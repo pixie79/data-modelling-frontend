@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Nested Column Hierarchy Preservation**: Fixed `processNestedColumns` overwriting ODCS hierarchy
   - Now preserves existing `parent_column_id` from ODCS import instead of only using dot notation
   - Dot notation detection only used as fallback for SQL imports without existing hierarchy
+  - Maps original column IDs to preserve `parent_column_id` references when IDs are regenerated
   - Fixes nested columns being lost when saving after ODCS import
 - **KnowledgeStore Infinite Loop**: Fixed `setFilter` being called hundreds of times per second
   - Updated `setFilter` to support functional updates: `setFilter(prev => ({ ...prev, ... }))`

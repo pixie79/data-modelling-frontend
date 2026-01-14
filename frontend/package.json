@@ -1,6 +1,6 @@
 {
   "name": "open-data-modelling",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "Open Data Modelling - A domain-centric data modeling application",
   "main": "dist-electron/main.cjs",
   "directories": {
@@ -32,6 +32,9 @@
     "electron:build": "npm run build:electron:frontend && npm run build:electron && electron-builder",
     "security:audit": "npm audit",
     "security:fix": "npm audit fix",
+    "rebuild:examples": "node scripts/rebuild-examples.cjs",
+    "rebuild:examples:migrate": "node scripts/rebuild-examples.cjs --migrate",
+    "migrate:odcs": "node scripts/migrate-odcs.cjs",
     "prepare": "cd .. && git config core.hooksPath .husky || true",
     "pre-commit": "lint-staged"
   },
@@ -40,8 +43,8 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
-    "@duckdb/duckdb-wasm": "1.32.0",
-    "@offenedatenmodellierung/data-modelling-sdk": "^2.0.3",
+    "@duckdb/duckdb-wasm": "^1.29.0",
+    "@offenedatenmodellierung/data-modelling-sdk": "^2.0.6",
     "@tanstack/react-query": "^5.90.16",
     "@types/js-yaml": "^4.0.9",
     "@types/jszip": "^3.4.0",

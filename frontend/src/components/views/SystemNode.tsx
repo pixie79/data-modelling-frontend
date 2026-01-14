@@ -28,6 +28,7 @@ export interface SystemNodeData {
   tableHasBPMN?: (tableId: string) => boolean; // Check if table has BPMN link
   onEdit?: (systemId: string) => void; // Handler for edit button clicks
   onDelete?: (systemId: string) => void; // Handler for delete button clicks
+  onExport?: (systemId: string) => void; // Handler for system export button clicks
   onAssetEdit?: (assetId: string) => void; // Handler for compute asset edit
   onAssetDelete?: (assetId: string) => void; // Handler for compute asset delete
   onAssetExport?: (assetId: string) => void; // Handler for compute asset export
@@ -60,6 +61,7 @@ export const SystemNode: React.FC<SystemNodeProps> = ({ data, selected }) => {
     onTableExport,
     onEdit,
     onDelete,
+    onExport,
     onAssetEdit,
     onAssetDelete,
     onAssetExport,
@@ -389,10 +391,29 @@ export const SystemNode: React.FC<SystemNodeProps> = ({ data, selected }) => {
             </div>
           )}
         </div>
-        {/* Edit/Delete buttons (only in Systems View) */}
-        {isSystemsView && (onEdit || onDelete) && (
+        {/* Edit/Export/Delete buttons (only in Systems View) */}
+        {isSystemsView && (onEdit || onDelete || onExport) && (
           <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
             <div className="flex gap-1">
+              {onExport && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onExport(systemId);
+                  }}
+                  className="p-1 bg-white rounded shadow text-green-600 hover:text-green-800"
+                  title="Export System"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                    />
+                  </svg>
+                </button>
+              )}
               {onEdit && (
                 <button
                   onClick={(e) => {

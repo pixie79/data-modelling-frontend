@@ -32,6 +32,7 @@ import { NodeViewActions } from '@/components/views/NodeViewActions';
 import { TableMetadataModal } from '@/components/table/TableMetadataModal';
 import { CreateSystemDialog } from '@/components/system/CreateSystemDialog';
 import { UnlinkedTablesDialog } from '@/components/system/UnlinkedTablesDialog';
+import { SystemExportDialog } from '@/components/system/SystemExportDialog';
 import { ComputeAssetEditor } from '@/components/asset/ComputeAssetEditor';
 import { RelationshipEditor } from '@/components/relationship/RelationshipEditor';
 import { EditorModal } from '@/components/editors/EditorModal';
@@ -118,6 +119,9 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
   const [showDMNEditor, setShowDMNEditor] = React.useState(false);
   const [editingBPMNProcessId, setEditingBPMNProcessId] = React.useState<string | null>(null);
   const [editingDMNDecisionId, setEditingDMNDecisionId] = React.useState<string | null>(null);
+
+  // State for system export dialog
+  const [exportingSystemId, setExportingSystemId] = React.useState<string | null>(null);
 
   // Listen for edit-relationship event (double-click on edge)
   React.useEffect(() => {
@@ -237,6 +241,11 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
     },
     [systems, selectedSystemId, removeSystem, setSelectedSystem]
   );
+
+  // Handle system export - opens export dialog
+  const handleSystemExport = React.useCallback((systemId: string) => {
+    setExportingSystemId(systemId);
+  }, []);
 
   // Handle compute asset edit
   const handleAssetEdit = React.useCallback((assetId: string) => {
@@ -727,6 +736,7 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
             // Only allow edit/delete for owned systems, not shared ones
             onEdit: isShared ? undefined : handleSystemEdit,
             onDelete: isShared ? undefined : handleSystemDelete,
+            onExport: isShared ? undefined : handleSystemExport,
             // For tables/assets within systems: check if individual items are shared
             onAssetEdit: handleAssetEdit, // Will be filtered in handler based on asset
             onAssetDelete: handleAssetDelete, // Will be filtered in handler based on asset
@@ -837,6 +847,7 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
     handleTableExport,
     handleSystemEdit,
     handleSystemDelete,
+    handleSystemExport,
     handleAssetEdit,
     handleAssetDelete,
     handleAssetExport,
@@ -1292,6 +1303,15 @@ export const DomainCanvas: React.FC<DomainCanvasProps> = ({ workspaceId, domainI
         onClose={() => setShowUnlinkedTablesDialog(false)}
         domainId={domainId}
       />
+
+      {/* System Export Dialog */}
+      {exportingSystemId && (
+        <SystemExportDialog
+          isOpen={!!exportingSystemId}
+          onClose={() => setExportingSystemId(null)}
+          systemId={exportingSystemId}
+        />
+      )}
 
       {/* Copyright Notice */}
       <div

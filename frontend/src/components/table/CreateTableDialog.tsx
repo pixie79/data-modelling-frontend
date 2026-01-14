@@ -220,6 +220,12 @@ export const CreateTableDialog: React.FC<CreateTableDialogProps> = ({
             primary_domain_id: importedTable.primary_domain_id,
             selectedDomainId,
             matches: importedTable.primary_domain_id === selectedDomainId,
+            // Debug: ODCS table-level fields
+            physicalName: importedTable.physicalName,
+            businessName: importedTable.businessName,
+            physicalType: importedTable.physicalType,
+            description: importedTable.description,
+            status: importedTable.status,
           });
 
           return importedTable;

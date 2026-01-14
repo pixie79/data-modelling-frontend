@@ -58,6 +58,26 @@ export interface TeamMember {
   name?: string; // User's name
 }
 
+/**
+ * Schema Relationship (ODCS v3.1.0)
+ * Defines relationships between schema objects (tables)
+ */
+export interface SchemaRelationship {
+  type?: string; // Relationship type (e.g., "parent", "child", "references")
+  to: string | string[]; // Target table(s) - can be "table.column" format or array
+  description?: string; // Description of the relationship
+  customProperties?: CustomProperty[]; // Custom properties including cardinality
+}
+
+/**
+ * Custom Property (ODCS v3.1.0)
+ * Generic key-value property for extensibility
+ */
+export interface CustomProperty {
+  property: string; // Property name/key
+  value: unknown; // Property value
+}
+
 export interface Table {
   id: string; // UUID
   workspace_id: string; // UUID
@@ -92,6 +112,16 @@ export interface Table {
   sla?: SLA;
   metadata?: Record<string, unknown>; // Custom metadata including quality_tier, data_modeling_method, and indexes
   quality_rules?: Record<string, unknown>; // Table-level quality rules
+
+  // ODCS v3.1.0 fields (SDK 2.0.4+)
+  status?: string; // Contract/table status (e.g., "active", "draft", "deprecated")
+  physicalName?: string; // Physical storage name (may differ from logical name)
+  physicalType?: string; // Physical storage type (e.g., "table", "view", "materialized_view")
+  businessName?: string; // Business-friendly name for the table
+  dataGranularityDescription?: string; // Description of data granularity (e.g., "One row per customer per day")
+  authoritativeDefinitions?: AuthoritativeDefinition[]; // Links to authoritative definitions
+  schemaRelationships?: SchemaRelationship[]; // Schema-level relationships to other tables
+  customProperties?: CustomProperty[]; // Custom metadata properties
 }
 
 export interface TableIndex {
@@ -153,6 +183,8 @@ export interface Column {
   // ODCS v3.1.0 fields (SDK 1.11.0+)
   businessName?: string; // Business-friendly name for the column
   physicalName?: string; // Physical storage name (may differ from logical name)
+  physicalType?: string; // Physical storage type (e.g., "VARCHAR(255)", "INT8")
+  logicalType?: string; // Logical data type (e.g., "string", "integer", "boolean")
   logicalTypeOptions?: LogicalTypeOptions; // Validation and metadata for logical types
   primaryKeyPosition?: number; // Position in composite primary key (1-indexed)
   unique?: boolean; // Whether column values must be unique
@@ -168,7 +200,19 @@ export interface Column {
   examples?: string[]; // Example values for documentation and testing
   authoritativeDefinitions?: AuthoritativeDefinition[]; // Links to authoritative definitions
   tags?: Array<{ key?: string; value: string }>; // Column-level tags
-  customProperties?: Record<string, unknown>; // Custom metadata properties
+  customProperties?: CustomProperty[]; // Custom metadata properties (ODCS v3.1.0 array format)
+  relationships?: PropertyRelationship[]; // Column-level relationships (ODCS v3.1.0)
+}
+
+/**
+ * Property Relationship (ODCS v3.1.0)
+ * Defines relationships at the column/property level
+ */
+export interface PropertyRelationship {
+  type?: string; // Relationship type
+  to: string | string[]; // Target column(s) - "table.column" format
+  description?: string; // Description of the relationship
+  customProperties?: CustomProperty[]; // Custom properties
 }
 
 export interface CompoundKey {

@@ -45,6 +45,11 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
   const [alias, setAlias] = useState(table?.alias || '');
   const [description, setDescription] = useState(table?.description || '');
   const [dataLevel, setDataLevel] = useState<DataLevel>(table?.data_level || 'operational');
+  const [modelType, setModelType] = useState<'conceptual' | 'logical' | 'physical'>(
+    table?.model_type || 'logical'
+  );
+  const [physicalName, setPhysicalName] = useState(table?.physicalName || '');
+  const [businessName, setBusinessName] = useState(table?.businessName || '');
   const [columns, setColumns] = useState<Column[]>(table?.columns || []);
   const [compoundKeys, setCompoundKeys] = useState<CompoundKey[]>(table?.compoundKeys || []);
   const [indexes, setIndexes] = useState<TableIndex[]>(() => {
@@ -103,6 +108,9 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
       setAlias(table.alias || '');
       setDescription(table.description || '');
       setDataLevel(table.data_level || 'operational');
+      setModelType(table.model_type || 'logical');
+      setPhysicalName(table.physicalName || '');
+      setBusinessName(table.businessName || '');
 
       // Columns now have IDs assigned during import by processNestedColumns
       // No need to regenerate IDs here - they should already be unique
@@ -332,8 +340,11 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
         return;
       }
 
+      // Sort columns by their order property first, then update with sequential indices
+      const sortedColumns = [...columns].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
       // Update compound key tags on columns
-      const updatedColumns = columns.map((col, index) => {
+      const updatedColumns = sortedColumns.map((col, index) => {
         const compoundKey = compoundKeys.find((ck) => ck.column_ids.includes(col.id));
         if (compoundKey) {
           return {
@@ -1213,6 +1224,77 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
             className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
+
+        {/* Model Layer and ODCS Names */}
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label
+              htmlFor="table-model-type"
+              className="block text-xs font-medium text-gray-700 mb-0.5"
+            >
+              Model Layer
+            </label>
+            <select
+              id="table-model-type"
+              value={modelType}
+              onChange={(e) => {
+                const newModelType = e.target.value as 'conceptual' | 'logical' | 'physical';
+                setModelType(newModelType);
+                updateTable(tableId, { model_type: newModelType });
+                setHasUnsavedChanges(true);
+              }}
+              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="conceptual">Conceptual</option>
+              <option value="logical">Logical</option>
+              <option value="physical">Physical</option>
+            </select>
+          </div>
+          <div>
+            <label
+              htmlFor="table-business-name"
+              className="block text-xs font-medium text-gray-700 mb-0.5"
+            >
+              Business Name
+            </label>
+            <input
+              id="table-business-name"
+              type="text"
+              value={businessName}
+              onChange={(e) => {
+                setBusinessName(e.target.value);
+                updateTable(tableId, { businessName: e.target.value });
+                setHasUnsavedChanges(true);
+              }}
+              placeholder="Human-friendly name"
+              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
+
+        {/* Physical Name - only show for physical model layer */}
+        {modelType === 'physical' && (
+          <div>
+            <label
+              htmlFor="table-physical-name"
+              className="block text-xs font-medium text-gray-700 mb-0.5"
+            >
+              Physical Name
+            </label>
+            <input
+              id="table-physical-name"
+              type="text"
+              value={physicalName}
+              onChange={(e) => {
+                setPhysicalName(e.target.value);
+                updateTable(tableId, { physicalName: e.target.value });
+                setHasUnsavedChanges(true);
+              }}
+              placeholder="Database table name"
+              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        )}
 
         <div>
           <label

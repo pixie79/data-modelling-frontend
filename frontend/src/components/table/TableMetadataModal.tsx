@@ -36,8 +36,12 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
   const [tagsInput, setTagsInput] = useState('');
   const [metadata, setMetadata] = useState<Record<string, unknown>>({});
   const [qualityRules, setQualityRules] = useState<Record<string, unknown>>({});
+  const [status, setStatus] = useState<string>('');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Valid ODCS status values
+  const STATUS_OPTIONS = ['proposed', 'draft', 'active', 'deprecated', 'retired'] as const;
 
   // Initialize form when table changes
   useEffect(() => {
@@ -56,6 +60,7 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
       setTagsInput(editableTags.join(', '));
       setMetadata(table.metadata || {});
       setQualityRules(table.quality_rules || {});
+      setStatus(table.status || '');
       setHasUnsavedChanges(false);
     }
   }, [table]);
@@ -79,6 +84,7 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
       );
 
       const updates: Partial<Table> = {
+        status: status || undefined,
         owner: owner && (owner.name || owner.email) ? owner : undefined,
         roles: validRoles.length > 0 ? validRoles : undefined,
         support: validSupport.length > 0 ? validSupport : undefined,
@@ -201,6 +207,32 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
                 <span className="font-medium text-gray-600">Data Level:</span>{' '}
                 <span className="text-gray-900 capitalize">{table.data_level}</span>
               </div>
+            )}
+          </div>
+          {/* Status Dropdown */}
+          <div className="mt-3">
+            <label htmlFor="table-status" className="block text-sm font-medium text-gray-600 mb-1">
+              Status
+            </label>
+            {isEditable ? (
+              <select
+                id="table-status"
+                value={status}
+                onChange={(e) => {
+                  setStatus(e.target.value);
+                  setHasUnsavedChanges(true);
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              >
+                <option value="">Select status...</option>
+                {STATUS_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt.charAt(0).toUpperCase() + opt.slice(1)}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <span className="text-gray-900 capitalize">{status || 'Not set'}</span>
             )}
           </div>
         </div>

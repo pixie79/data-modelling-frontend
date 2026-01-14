@@ -306,6 +306,58 @@ The workflow runs on:
 
 See [frontend/ELECTRON_BUILD_GUIDE.md](frontend/ELECTRON_BUILD_GUIDE.md) for complete build instructions.
 
+## Development
+
+### Rebuilding Example Workspaces
+
+The application includes bundled example workspaces in `frontend/public/examples/`. When adding, modifying, or removing example workspaces, you must rebuild the examples index.
+
+```bash
+cd frontend
+
+# Rebuild the examples index (scans public/examples/ and updates index.json)
+npm run rebuild:examples
+
+# Rebuild with ODCS migration (converts legacy 'custom' to 'customProperties' array format)
+npm run rebuild:examples:migrate
+
+# Preview changes without modifying files
+node scripts/rebuild-examples.cjs --dry-run
+
+# Verbose output for debugging
+node scripts/rebuild-examples.cjs --verbose
+```
+
+The rebuild script:
+1. Scans all subdirectories in `public/examples/`
+2. Parses workspace files to extract metadata (name, description)
+3. Counts file types (ODCS, ODPS, BPMN, KB, ADR) for feature lists
+4. Generates `public/examples/index.json` used by the application
+
+**Adding a new example workspace:**
+1. Create a new folder in `frontend/public/examples/` (e.g., `my-example/`)
+2. Add a `.workspace.yaml` file with workspace metadata
+3. Add ODCS, ODPS, BPMN, or other supported files
+4. Run `npm run rebuild:examples` to update the index
+5. Test by loading the app and checking the Home page workspace list
+
+### ODCS Migration Script
+
+For migrating ODCS files in external directories (outside the app):
+
+```bash
+cd frontend
+
+# Migrate ODCS files in a directory
+node scripts/migrate-odcs.cjs --path /path/to/odcs/files
+
+# Merge contracts by system (uses workspace.yaml for system-contract mapping)
+node scripts/migrate-odcs.cjs --path /path/to/workspace --merge-by-system
+
+# Preview changes without modifying files
+node scripts/migrate-odcs.cjs --path /path/to/files --dry-run
+```
+
 ## Contributing
 
 1. Follow the project constitution (`.specify/memory/constitution.md`)

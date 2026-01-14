@@ -92,6 +92,10 @@ export class WorkspaceV2Loader {
     // 2. Categorize remaining files by pattern (handles both flat and subdirectory structures)
     // For subdirectory structure, webkitRelativePath contains the path
     const fileNames = fileArray.map((f) => (f as any).webkitRelativePath || f.name);
+
+    // Debug: log all file names to see what's being loaded
+    console.log('[WorkspaceV2Loader] All files being categorized:', fileNames);
+
     const categorized = this.categorizeFilesWithPaths(fileNames);
 
     console.log('[WorkspaceV2Loader] Categorized files:', {
@@ -141,6 +145,35 @@ export class WorkspaceV2Loader {
       allDecisionRecords.push(...result.decisionRecords);
     }
 
+    // 4.5 Load ALL KB articles and ADRs at workspace level
+    // Domain is determined by domain_id in the file content, not filename
+    const allKBFiles = fileArray.filter((f) => {
+      const fileName = ((f as any).webkitRelativePath || f.name).split('/').pop() || '';
+      return fileName.endsWith('.kb.yaml');
+    });
+    const allADRFiles = fileArray.filter((f) => {
+      const fileName = ((f as any).webkitRelativePath || f.name).split('/').pop() || '';
+      return fileName.endsWith('.adr.yaml');
+    });
+
+    if (allKBFiles.length > 0) {
+      console.log(`[WorkspaceV2Loader] Loading ${allKBFiles.length} KB article(s)`);
+      const kbArticles = await this.loadKnowledgeArticles(allKBFiles, {
+        id: 'workspace',
+        name: 'workspace',
+      } as DomainV2);
+      allKnowledgeArticles.push(...kbArticles);
+    }
+
+    if (allADRFiles.length > 0) {
+      console.log(`[WorkspaceV2Loader] Loading ${allADRFiles.length} ADR(s)`);
+      const adrRecords = await this.loadDecisionRecords(allADRFiles, {
+        id: 'workspace',
+        name: 'workspace',
+      } as DomainV2);
+      allDecisionRecords.push(...adrRecords);
+    }
+
     // 5. Load relationships from workspace.yaml (SDK schema stores them at workspace level)
     const allRelationships: Relationship[] = this.loadRelationships(
       workspaceV2.relationships || [],
@@ -173,6 +206,21 @@ export class WorkspaceV2Loader {
             }
           }
         }
+      }
+    }
+
+    // Debug: Log table ID mapping issues
+    if (allRelationships.length > 0 && allRelationships.filter((r) => r.domain_id).length === 0) {
+      const sampleRel = allRelationships[0];
+      const sampleTableIds = Array.from(tableIdToDomainId.keys()).slice(0, 5);
+      if (sampleRel) {
+        console.warn('[WorkspaceV2Loader] No relationships matched tables! Debug info:', {
+          sampleRelSourceId: sampleRel.source_table_id || sampleRel.source_id,
+          sampleRelTargetId: sampleRel.target_table_id || sampleRel.target_id,
+          sampleLoadedTableIds: sampleTableIds,
+          totalLoadedTables: tableIdToDomainId.size,
+          totalRelationships: allRelationships.length,
+        });
       }
     }
 
@@ -333,6 +381,29 @@ export class WorkspaceV2Loader {
       allDecisionRecords.push(...result.decisionRecords);
     }
 
+    // 4.5 Load ALL KB articles and ADRs at workspace level
+    // Domain is determined by domain_id in the file content, not filename
+    const allKBFiles = files.filter((f) => f.name.endsWith('.kb.yaml'));
+    const allADRFiles = files.filter((f) => f.name.endsWith('.adr.yaml'));
+
+    if (allKBFiles.length > 0) {
+      console.log(`[WorkspaceV2Loader] Loading ${allKBFiles.length} KB article(s) from strings`);
+      const kbArticles = await this.loadKnowledgeArticlesFromStrings(allKBFiles, {
+        id: 'workspace',
+        name: 'workspace',
+      } as DomainV2);
+      allKnowledgeArticles.push(...kbArticles);
+    }
+
+    if (allADRFiles.length > 0) {
+      console.log(`[WorkspaceV2Loader] Loading ${allADRFiles.length} ADR(s) from strings`);
+      const adrRecords = await this.loadDecisionRecordsFromStrings(allADRFiles, {
+        id: 'workspace',
+        name: 'workspace',
+      } as DomainV2);
+      allDecisionRecords.push(...adrRecords);
+    }
+
     // 5. Load relationships
     const allRelationships: Relationship[] = this.loadRelationships(
       workspaceV2.relationships || [],
@@ -452,11 +523,10 @@ export class WorkspaceV2Loader {
     // Load DMN decisions
     const decisions = await this.loadDecisions(domainFiles.dmn, domainSpec);
 
-    // Load knowledge articles
-    const knowledgeArticles = await this.loadKnowledgeArticles(domainFiles.kb, domainSpec);
-
-    // Load decision records (ADRs)
-    const decisionRecords = await this.loadDecisionRecords(domainFiles.adr, domainSpec);
+    // KB articles and ADRs are loaded at the workspace level (not per-domain)
+    // Domain is determined by domain_id in the file content
+    const knowledgeArticles: KnowledgeArticle[] = [];
+    const decisionRecords: Decision[] = [];
 
     // Convert systems from DomainV2 format to System format
     const systems = this.loadSystems(domainSpec.systems || [], domainSpec.id, workspaceId, tables);
@@ -476,7 +546,7 @@ export class WorkspaceV2Loader {
       processes: processes.map((p) => p.id),
       decisions: decisions.map((d) => d.id),
       // Load view-specific positions for canvas nodes (tables, systems, assets)
-      view_positions: (domainSpec as any).view_positions,
+      view_positions: domainSpec.view_positions,
     };
 
     return {
@@ -535,14 +605,10 @@ export class WorkspaceV2Loader {
     // Load DMN decisions
     const decisions = await this.loadDecisionsFromStrings(domainFiles.dmn, domainSpec);
 
-    // Load knowledge articles
-    const knowledgeArticles = await this.loadKnowledgeArticlesFromStrings(
-      domainFiles.kb,
-      domainSpec
-    );
-
-    // Load decision records (ADRs)
-    const decisionRecords = await this.loadDecisionRecordsFromStrings(domainFiles.adr, domainSpec);
+    // KB articles and ADRs are loaded at the workspace level (not per-domain)
+    // Domain is determined by domain_id in the file content
+    const knowledgeArticles: KnowledgeArticle[] = [];
+    const decisionRecords: Decision[] = [];
 
     // Convert systems from DomainV2 format to System format
     const systems = this.loadSystems(domainSpec.systems || [], domainSpec.id, workspaceId, tables);
@@ -562,7 +628,7 @@ export class WorkspaceV2Loader {
       processes: processes.map((p) => p.id),
       decisions: decisions.map((d) => d.id),
       // Load view-specific positions for canvas nodes (tables, systems, assets)
-      view_positions: (domainSpec as any).view_positions,
+      view_positions: domainSpec.view_positions,
     };
 
     return {
@@ -595,7 +661,9 @@ export class WorkspaceV2Loader {
     kb: Array<{ name: string; content: string }>;
     adr: Array<{ name: string; content: string }>;
   } {
-    const prefix = `${workspaceName}_${domainName}_`.toLowerCase();
+    // Match files that start with {workspace}_{domain}_ OR are exactly {workspace}_{domain}.{ext}
+    const prefixWithUnderscore = `${workspaceName}_${domainName}_`.toLowerCase();
+    const exactDomainPrefix = `${workspaceName}_${domainName}.`.toLowerCase();
 
     // Helper to get just the filename from a path (handles odcs/filename.odcs.yaml)
     const getFileName = (path: string): string => {
@@ -605,11 +673,17 @@ export class WorkspaceV2Loader {
 
     const filterByPrefix = (fileNames: string[]): Array<{ name: string; content: string }> => {
       return files.filter((f) => {
-        // Check if file is in the categorized list
-        const isInCategory = fileNames.includes(f.name);
-        // Extract just the filename (without directory path) for prefix matching
+        // Check if file is in the categorized list (compare by filename only, not full path)
         const fileName = getFileName(f.name);
-        const matchesPrefix = fileName.toLowerCase().startsWith(prefix);
+        const isInCategory = fileNames.some((p) => getFileName(p) === fileName);
+        // Extract just the filename (without directory path) for prefix matching
+        const fileNameLower = fileName.toLowerCase();
+        // Match either:
+        // 1. {workspace}_{domain}_{something}.ext (e.g., opendatamodelling_global_risk_table.odcs.yaml)
+        // 2. {workspace}_{domain}.ext (e.g., opendatamodelling_global_risk.odcs.yaml)
+        const matchesPrefix =
+          fileNameLower.startsWith(prefixWithUnderscore) ||
+          fileNameLower.startsWith(exactDomainPrefix);
         return isInCategory && matchesPrefix;
       });
     };
@@ -639,14 +713,22 @@ export class WorkspaceV2Loader {
       try {
         const parsed = await odcsService.parseYAML(file.content);
 
+        // Extract ALL tables from multi-table contracts
         if (parsed && typeof parsed === 'object' && 'tables' in parsed) {
           const workspace = parsed as any;
           if (workspace.tables && Array.isArray(workspace.tables) && workspace.tables.length > 0) {
-            const table = workspace.tables[0];
-            table.primary_domain_id = domainSpec.id;
-            table.workspace_id = workspaceId;
-            table.visible_domains = [domainSpec.id];
-            tables.push(table);
+            for (const table of workspace.tables) {
+              table.primary_domain_id = domainSpec.id;
+              table.workspace_id = workspaceId;
+              table.visible_domains = [domainSpec.id];
+              console.log(
+                `[WorkspaceV2Loader] Loaded table "${table.name}" with ID: ${table.id} from ${file.name}`
+              );
+              tables.push(table);
+            }
+            console.log(
+              `[WorkspaceV2Loader] Loaded ${workspace.tables.length} table(s) from ${file.name}`
+            );
           }
         }
       } catch (error) {
@@ -762,7 +844,7 @@ export class WorkspaceV2Loader {
    */
   private static async loadKnowledgeArticlesFromStrings(
     files: Array<{ name: string; content: string }>,
-    domainSpec: DomainV2
+    _domainSpec: DomainV2
   ): Promise<KnowledgeArticle[]> {
     const articles: KnowledgeArticle[] = [];
 
@@ -771,7 +853,7 @@ export class WorkspaceV2Loader {
         const article = await knowledgeService.parseKnowledgeYaml(file.content);
 
         if (article && typeof article === 'object' && 'id' in article) {
-          (article as any).domain_id = domainSpec.id;
+          // Preserve domain_id from the file content as-is
           articles.push(article as KnowledgeArticle);
         }
       } catch (error) {
@@ -790,7 +872,7 @@ export class WorkspaceV2Loader {
    */
   private static async loadDecisionRecordsFromStrings(
     files: Array<{ name: string; content: string }>,
-    domainSpec: DomainV2
+    _domainSpec: DomainV2
   ): Promise<Decision[]> {
     const records: Decision[] = [];
 
@@ -799,7 +881,7 @@ export class WorkspaceV2Loader {
         const record = await decisionService.parseDecisionYaml(file.content);
 
         if (record && typeof record === 'object' && 'id' in record) {
-          (record as any).domain_id = domainSpec.id;
+          // Preserve domain_id from the file content as-is
           records.push(record as Decision);
         }
       } catch (error) {
@@ -827,29 +909,53 @@ export class WorkspaceV2Loader {
     for (const spec of systemSpecs) {
       let tableIds: string[] = [];
 
-      // PRIORITY 1: Use table_ids from workspace.yaml if present
+      // PRIORITY 1: Use table_ids from workspace.yaml if they match loaded tables
       if (spec.table_ids && spec.table_ids.length > 0) {
-        tableIds = spec.table_ids;
-        console.log(
-          `[WorkspaceV2Loader] System "${spec.name}" has explicit table_ids in workspace.yaml: ${tableIds.length} table(s)`
-        );
-      } else {
-        // FALLBACK: Find tables by metadata.system_id or naming convention (legacy support)
+        // Check how many of these IDs actually match loaded tables
+        const matchedIds = spec.table_ids.filter((id) => tables.some((t) => t.id === id));
+
+        if (matchedIds.length > 0) {
+          tableIds = matchedIds;
+          console.log(
+            `[WorkspaceV2Loader] System "${spec.name}" matched ${matchedIds.length}/${spec.table_ids.length} table_ids from workspace.yaml`
+          );
+        } else {
+          // table_ids exist but none match - fall through to metadata.system_id matching
+          console.log(
+            `[WorkspaceV2Loader] System "${spec.name}" has ${spec.table_ids.length} table_ids in workspace.yaml but none match loaded tables - using metadata.system_id fallback`
+          );
+        }
+      }
+
+      // PRIORITY 2: If no tables matched via table_ids, find tables by metadata.system_id
+      // This handles the case where tables were regenerated with new IDs but have system_id in metadata
+      if (tableIds.length === 0) {
         const systemTables = tables.filter((t) => {
-          // Check if table has system_id in metadata
+          // Check if table has system_id in metadata matching this system's ID
           const tableSystemId = (t as any).metadata?.system_id;
-          if (tableSystemId === spec.id) {
-            return true;
-          }
-          // Fallback: check if table name contains system name
+          return tableSystemId === spec.id;
+        });
+
+        if (systemTables.length > 0) {
+          tableIds = systemTables.map((t) => t.id);
+          console.log(
+            `[WorkspaceV2Loader] System "${spec.name}" matched ${tableIds.length} table(s) via metadata.system_id`
+          );
+        }
+      }
+
+      // PRIORITY 3: Last resort - match by naming convention (legacy support)
+      if (tableIds.length === 0) {
+        const systemTables = tables.filter((t) => {
           const tableName = t.name?.toLowerCase() || '';
           const systemName = spec.name?.toLowerCase() || '';
           return tableName.includes(systemName) || systemName.includes(tableName);
         });
-        tableIds = systemTables.map((t) => t.id);
-        if (tableIds.length > 0) {
+
+        if (systemTables.length > 0) {
+          tableIds = systemTables.map((t) => t.id);
           console.log(
-            `[WorkspaceV2Loader] System "${spec.name}" matched ${tableIds.length} table(s) via fallback (metadata/naming)`
+            `[WorkspaceV2Loader] System "${spec.name}" matched ${tableIds.length} table(s) via naming convention fallback`
           );
         }
       }
@@ -949,7 +1055,9 @@ export class WorkspaceV2Loader {
     workspaceName: string,
     domainName: string
   ): DomainFiles {
-    const prefix = `${workspaceName}_${domainName}_`.toLowerCase();
+    // Match files that start with {workspace}_{domain}_ OR are exactly {workspace}_{domain}.{ext}
+    const prefixWithUnderscore = `${workspaceName}_${domainName}_`.toLowerCase();
+    const exactDomainPrefix = `${workspaceName}_${domainName}.`.toLowerCase();
 
     // Helper to get filename from path or file.name
     const getFileName = (path: string) => {
@@ -958,19 +1066,31 @@ export class WorkspaceV2Loader {
     };
 
     const filterByPrefix = (filePaths: string[]): File[] => {
-      return fileArray.filter((f) => {
+      const matched: File[] = [];
+
+      for (const f of fileArray) {
         // Get the path (webkitRelativePath for directory picker, or name for file picker)
         const filePath = (f as any).webkitRelativePath || f.name;
         const fileName = getFileName(filePath);
 
-        if (!fileName) return false;
+        if (!fileName) continue;
 
-        // Check if this file path is in our categorized list and matches the domain prefix
+        // Check if this file path is in our categorized list
         const isInCategory = filePaths.some((p) => getFileName(p) === fileName);
-        const matchesPrefix = fileName.toLowerCase().startsWith(prefix);
 
-        return isInCategory && matchesPrefix;
-      });
+        // Match either:
+        // 1. {workspace}_{domain}_{something}.ext (e.g., opendatamodelling_global_risk_table.odcs.yaml)
+        // 2. {workspace}_{domain}.ext (e.g., opendatamodelling_global_risk.odcs.yaml)
+        const fileNameLower = fileName.toLowerCase();
+        const matchesPrefix =
+          fileNameLower.startsWith(prefixWithUnderscore) ||
+          fileNameLower.startsWith(exactDomainPrefix);
+
+        if (isInCategory && matchesPrefix) {
+          matched.push(f);
+        }
+      }
+      return matched;
     };
 
     return {
@@ -999,16 +1119,23 @@ export class WorkspaceV2Loader {
         const content = await browserFileService.readFile(file);
         const parsed = await odcsService.parseYAML(content);
 
-        // SDK returns ODCSWorkspace with tables array, extract first table
+        // SDK returns ODCSWorkspace with tables array, extract ALL tables (supports multi-table contracts)
         if (parsed && typeof parsed === 'object' && 'tables' in parsed) {
           const workspace = parsed as any;
           if (workspace.tables && Array.isArray(workspace.tables) && workspace.tables.length > 0) {
-            const table = workspace.tables[0];
-            table.primary_domain_id = domainSpec.id;
-            table.workspace_id = workspaceId;
-            table.visible_domains = [domainSpec.id];
+            for (const table of workspace.tables) {
+              table.primary_domain_id = domainSpec.id;
+              table.workspace_id = workspaceId;
+              table.visible_domains = [domainSpec.id];
 
-            tables.push(table);
+              console.log(
+                `[WorkspaceV2Loader] Loaded table "${table.name}" with ID: ${table.id} from ${file.name}`
+              );
+              tables.push(table);
+            }
+            console.log(
+              `[WorkspaceV2Loader] Loaded ${workspace.tables.length} table(s) from ${file.name}`
+            );
           }
         }
       } catch (error) {
@@ -1116,7 +1243,7 @@ export class WorkspaceV2Loader {
    */
   private static async loadKnowledgeArticles(
     files: File[],
-    domainSpec: DomainV2
+    _domainSpec: DomainV2
   ): Promise<KnowledgeArticle[]> {
     const articles: KnowledgeArticle[] = [];
 
@@ -1126,9 +1253,14 @@ export class WorkspaceV2Loader {
         const article = await knowledgeService.parseKnowledgeYaml(content);
 
         if (article && typeof article === 'object' && 'id' in article) {
-          (article as any).domain_id = domainSpec.id;
+          // Preserve domain_id from the file content as-is
+          // If domain_id is null/undefined → global article
+          // If domain_id has a value → domain-specific article
           articles.push(article as KnowledgeArticle);
-          console.log(`[WorkspaceV2Loader] Loaded knowledge article: ${article.title}`);
+          const isGlobal = !(article as any).domain_id;
+          console.log(
+            `[WorkspaceV2Loader] Loaded knowledge article: ${article.title}${isGlobal ? ' (global)' : ` (domain: ${(article as any).domain_id})`}`
+          );
         }
       } catch (error) {
         console.error(
@@ -1146,7 +1278,7 @@ export class WorkspaceV2Loader {
    */
   private static async loadDecisionRecords(
     files: File[],
-    domainSpec: DomainV2
+    _domainSpec: DomainV2
   ): Promise<Decision[]> {
     const decisions: Decision[] = [];
 
@@ -1156,9 +1288,12 @@ export class WorkspaceV2Loader {
         const decision = await decisionService.parseDecisionYaml(content);
 
         if (decision && typeof decision === 'object' && 'id' in decision) {
-          (decision as any).domain_id = domainSpec.id;
+          // Preserve domain_id from the file content as-is
           decisions.push(decision as Decision);
-          console.log(`[WorkspaceV2Loader] Loaded decision record: ${decision.title}`);
+          const isGlobal = !(decision as any).domain_id;
+          console.log(
+            `[WorkspaceV2Loader] Loaded decision record: ${decision.title}${isGlobal ? ' (global)' : ` (domain: ${(decision as any).domain_id})`}`
+          );
         }
       } catch (error) {
         console.error(

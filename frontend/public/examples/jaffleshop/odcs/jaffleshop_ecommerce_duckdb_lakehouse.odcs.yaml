@@ -1,0 +1,1055 @@
+apiVersion: v3.1.0
+kind: DataContract
+id: ad789620-a825-4bc4-afd7-429db96a6359
+version: 1.0.0
+status: active
+name: DuckDB Lakehouse
+description:
+  purpose: Multi-table contract containing 19 tables
+schema:
+  - name: customers
+    description: Customer dimension table with lifetime metrics and segmentation
+    logicalType: object
+    properties:
+      - name: customer_id
+        description: Unique customer identifier
+        logicalType: integer
+        physicalType: INTEGER
+        required: true
+        primaryKey: true
+      - name: customer_name
+        description: Customer full name
+        logicalType: string
+        physicalType: STRING
+        required: true
+      - name: first_order_date
+        description: Date of customer first order
+        logicalType: date
+        physicalType: DATE
+        required: false
+      - name: most_recent_order_date
+        description: Date of customer most recent order
+        logicalType: date
+        physicalType: DATE
+        required: false
+      - name: lifetime_order_count
+        description: Total number of orders placed
+        logicalType: integer
+        physicalType: INTEGER
+        required: false
+      - name: lifetime_order_value
+        description: Total value of all orders in dollars
+        logicalType: string
+        physicalType: NUMBER
+        required: false
+    id: a1b365b7-9562-4036-85e5-032324ca59a2
+    tags:
+      - mart
+      - customers
+      - dimension
+      - dm_level:Gold
+    customProperties:
+      - property: tableIndex
+        value: '0'
+      - property: apiVersion
+        value: v3.1.0
+      - property: version
+        value: 1.0.0
+      - property: status
+        value: active
+      - property: kind
+        value: DataContract
+      - property: odcsMetadata
+        value: '[object Object]'
+      - property: customProperties
+        value: '[object Object]'
+      - property: system_id
+        value: ad789620-a825-4bc4-afd7-429db96a6359
+  - name: locations
+    description: Location dimension table with store information
+    logicalType: object
+    properties:
+      - name: location_id
+        description: Unique location identifier
+        logicalType: string
+        physicalType: STRING
+        required: true
+        primaryKey: true
+      - name: location_name
+        description: Location display name
+        logicalType: string
+        physicalType: STRING
+        required: true
+      - name: opened_date
+        description: Date location opened
+        logicalType: date
+        physicalType: DATE
+        required: false
+      - name: tax_rate
+        description: Location tax rate
+        logicalType: string
+        physicalType: NUMBER
+        required: false
+    id: 2d2cd506-372f-48a0-a880-a7399d8208a5
+    tags:
+      - mart
+      - locations
+      - dimension
+      - dm_level:Gold
+    customProperties:
+      - property: tableIndex
+        value: '0'
+      - property: apiVersion
+        value: v3.1.0
+      - property: version
+        value: 1.0.0
+      - property: status
+        value: active
+      - property: kind
+        value: DataContract
+      - property: odcsMetadata
+        value: '[object Object]'
+      - property: customProperties
+        value: '[object Object]'
+      - property: system_id
+        value: ad789620-a825-4bc4-afd7-429db96a6359
+  - name: metricflow_time_spine
+    description: Time dimension table for MetricFlow time-series analytics
+    logicalType: object
+    properties:
+      - name: date_day
+        description: Calendar date (grain is daily)
+        logicalType: date
+        physicalType: DATE
+        required: true
+        primaryKey: true
+      - name: date_week
+        description: Start of week date
+        logicalType: date
+        physicalType: DATE
+        required: false
+      - name: date_month
+        description: Start of month date
+        logicalType: date
+        physicalType: DATE
+        required: false
+      - name: date_quarter
+        description: Start of quarter date
+        logicalType: date
+        physicalType: DATE
+        required: false
+      - name: date_year
+        description: Start of year date
+        logicalType: date
+        physicalType: DATE
+        required: false
+      - name: day_of_week
+        description: Day of week (1-7)
+        logicalType: integer
+        physicalType: INTEGER
+        required: false
+      - name: day_of_month
+        description: Day of month (1-31)
+        logicalType: integer
+        physicalType: INTEGER
+        required: false
+      - name: day_of_year
+        description: Day of year (1-366)
+        logicalType: integer
+        physicalType: INTEGER
+        required: false
+      - name: week_of_year
+        description: ISO week of year (1-53)
+        logicalType: integer
+        physicalType: INTEGER
+        required: false
+      - name: month_of_year
+        description: Month of year (1-12)
+        logicalType: integer
+        physicalType: INTEGER
+        required: false
+      - name: quarter_of_year
+        description: Quarter of year (1-4)
+        logicalType: integer
+        physicalType: INTEGER
+        required: false
+      - name: year_number
+        description: Calendar year
+        logicalType: integer
+        physicalType: INTEGER
+        required: false
+    id: 1a5e3e4e-80ee-4ecd-836a-fc303bad3d36
+    tags:
+      - mart
+      - time
+      - dimension
+      - metricflow
+      - dm_level:Gold
+    customProperties:
+      - property: tableIndex
+        value: '0'
+      - property: apiVersion
+        value: v3.1.0
+      - property: version
+        value: 1.0.0
+      - property: status
+        value: active
+      - property: kind
+        value: DataContract
+      - property: odcsMetadata
+        value: '[object Object]'
+      - property: customProperties
+        value: '[object Object]'
+      - property: system_id
+        value: ad789620-a825-4bc4-afd7-429db96a6359
+  - name: order_items
+    description: Order line item fact table with product details
+    logicalType: object
+    properties:
+      - name: order_item_id
+        description: Unique order item identifier
+        logicalType: string
+        physicalType: STRING
+        required: true
+        primaryKey: true
+      - name: order_id
+        description: Order identifier (FK to orders fact)
+        logicalType: string
+        physicalType: STRING
+        required: true
+      - name: product_id
+        description: Product identifier (FK to products dimension)
+        logicalType: string
+        physicalType: STRING
+        required: true
+      - name: product_price
+        description: Price at time of order
+        logicalType: string
+        physicalType: NUMBER
+        required: false
+      - name: supply_cost
+        description: Total supply cost for item
+        logicalType: string
+        physicalType: NUMBER
+        required: false
+      - name: is_food_item
+        description: Whether item is food
+        logicalType: boolean
+        physicalType: BOOLEAN
+        required: false
+      - name: is_drink_item
+        description: Whether item is drink
+        logicalType: boolean
+        physicalType: BOOLEAN
+        required: false
+    id: 11bd83b4-c10a-47f3-8e52-d5f0295b645e
+    tags:
+      - mart
+      - order_items
+      - fact
+      - dm_level:Gold
+    customProperties:
+      - property: tableIndex
+        value: '0'
+      - property: apiVersion
+        value: v3.1.0
+      - property: version
+        value: 1.0.0
+      - property: status
+        value: active
+      - property: kind
+        value: DataContract
+      - property: odcsMetadata
+        value: '[object Object]'
+      - property: customProperties
+        value: '[object Object]'
+      - property: system_id
+        value: ad789620-a825-4bc4-afd7-429db96a6359
+  - name: orders
+    description: Order fact table with enriched order details
+    logicalType: object
+    properties:
+      - name: order_id
+        description: Unique order identifier
+        logicalType: string
+        physicalType: STRING
+        required: true
+        primaryKey: true
+      - name: customer_id
+        description: Customer identifier (FK to customers dimension)
+        logicalType: integer
+        physicalType: INTEGER
+        required: true
+      - name: location_id
+        description: Location identifier (FK to locations dimension)
+        logicalType: string
+        physicalType: STRING
+        required: true
+      - name: order_date
+        description: Date order was placed
+        logicalType: date
+        physicalType: DATE
+        required: true
+      - name: ordered_at
+        description: Timestamp order was placed
+        logicalType: timestamp
+        physicalType: TIMESTAMP
+        required: true
+      - name: order_total
+        description: Total order amount in dollars
+        logicalType: string
+        physicalType: NUMBER
+        required: false
+      - name: tax_paid
+        description: Tax amount in dollars
+        logicalType: string
+        physicalType: NUMBER
+        required: false
+      - name: subtotal
+        description: Subtotal in dollars
+        logicalType: string
+        physicalType: NUMBER
+        required: false
+      - name: item_count
+        description: Number of items in order
+        logicalType: integer
+        physicalType: INTEGER
+        required: false
+      - name: is_first_order
+        description: Whether this is customer first order
+        logicalType: boolean
+        physicalType: BOOLEAN
+        required: false
+    id: 2636c98e-0dec-4d3d-895a-e7ba8339d6be
+    tags:
+      - mart
+      - orders
+      - fact
+      - dm_level:Gold
+    customProperties:
+      - property: tableIndex
+        value: '0'
+      - property: apiVersion
+        value: v3.1.0
+      - property: version
+        value: 1.0.0
+      - property: status
+        value: active
+      - property: kind
+        value: DataContract
+      - property: odcsMetadata
+        value: '[object Object]'
+      - property: customProperties
+        value: '[object Object]'
+      - property: system_id
+        value: ad789620-a825-4bc4-afd7-429db96a6359
+  - name: products
+    description: Product dimension table with pricing and categorization
+    logicalType: object
+    properties:
+      - name: product_id
+        description: Unique product identifier
+        logicalType: string
+        physicalType: STRING
+        required: true
+        primaryKey: true
+      - name: product_name
+        description: Product display name
+        logicalType: string
+        physicalType: STRING
+        required: true
+      - name: product_type
+        description: Product category type
+        logicalType: string
+        physicalType: STRING
+        required: false
+      - name: product_price
+        description: Current product price in dollars
+        logicalType: string
+        physicalType: NUMBER
+        required: false
+      - name: product_description
+        description: Product description text
+        logicalType: string
+        physicalType: STRING
+        required: false
+      - name: is_food_item
+        description: Whether product is food
+        logicalType: boolean
+        physicalType: BOOLEAN
+        required: false
+      - name: is_drink_item
+        description: Whether product is drink
+        logicalType: boolean
+        physicalType: BOOLEAN
+        required: false
+    id: bfe4654e-ede1-4750-827e-54b5fbb3ecd1
+    tags:
+      - mart
+      - products
+      - dimension
+      - dm_level:Gold
+    customProperties:
+      - property: tableIndex
+        value: '0'
+      - property: apiVersion
+        value: v3.1.0
+      - property: version
+        value: 1.0.0
+      - property: status
+        value: active
+      - property: kind
+        value: DataContract
+      - property: odcsMetadata
+        value: '[object Object]'
+      - property: customProperties
+        value: '[object Object]'
+      - property: system_id
+        value: ad789620-a825-4bc4-afd7-429db96a6359
+  - name: raw_customers
+    description: Raw customer data ingested from source systems
+    logicalType: object
+    properties:
+      - name: id
+        description: Unique customer identifier from source system
+        logicalType: integer
+        physicalType: INTEGER
+        required: true
+        primaryKey: true
+      - name: name
+        description: Customer full name
+        logicalType: string
+        physicalType: STRING
+        required: true
+    id: 9f910cbb-3abe-4235-812e-faa33d66dee0
+    tags:
+      - raw
+      - customers
+      - dm_level:Bronze
+    customProperties:
+      - property: tableIndex
+        value: '0'
+      - property: apiVersion
+        value: v3.1.0
+      - property: version
+        value: 1.0.0
+      - property: status
+        value: active
+      - property: kind
+        value: DataContract
+      - property: odcsMetadata
+        value: '[object Object]'
+      - property: customProperties
+        value: '[object Object]'
+      - property: system_id
+        value: ad789620-a825-4bc4-afd7-429db96a6359
+  - name: raw_items
+    description: Raw order line items ingested from source systems
+    logicalType: object
+    properties:
+      - name: id
+        description: Unique item identifier from source system
+        logicalType: string
+        physicalType: STRING
+        required: true
+        primaryKey: true
+      - name: order_id
+        description: Order identifier (FK to raw_orders.id)
+        logicalType: string
+        physicalType: STRING
+        required: true
+      - name: sku
+        description: Product SKU (FK to raw_products.sku)
+        logicalType: string
+        physicalType: STRING
+        required: true
+    id: 01739458-f08c-4e9b-a75c-41ac95732595
+    tags:
+      - raw
+      - items
+      - dm_level:Bronze
+    customProperties:
+      - property: tableIndex
+        value: '0'
+      - property: apiVersion
+        value: v3.1.0
+      - property: version
+        value: 1.0.0
+      - property: status
+        value: active
+      - property: kind
+        value: DataContract
+      - property: odcsMetadata
+        value: '[object Object]'
+      - property: customProperties
+        value: '[object Object]'
+      - property: system_id
+        value: ad789620-a825-4bc4-afd7-429db96a6359
+  - name: raw_orders
+    description: Raw order data ingested from source systems
+    logicalType: object
+    properties:
+      - name: id
+        description: Unique order identifier from source system
+        logicalType: string
+        physicalType: STRING
+        required: true
+        primaryKey: true
+      - name: customer
+        description: Customer identifier (FK to raw_customers.id)
+        logicalType: integer
+        physicalType: INTEGER
+        required: true
+      - name: ordered_at
+        description: Timestamp when order was placed
+        logicalType: timestamp
+        physicalType: TIMESTAMP
+        required: true
+      - name: store_id
+        description: Store identifier (FK to raw_stores.id)
+        logicalType: string
+        physicalType: STRING
+        required: true
+      - name: subtotal
+        description: Order subtotal in cents
+        logicalType: integer
+        physicalType: INTEGER
+        required: false
+      - name: tax_paid
+        description: Tax amount paid in cents
+        logicalType: integer
+        physicalType: INTEGER
+        required: false
+      - name: order_total
+        description: Total order amount in cents
+        logicalType: integer
+        physicalType: INTEGER
+        required: false
+    id: 7a973d8e-db4d-451d-bf7f-9c6255243590
+    tags:
+      - raw
+      - orders
+      - dm_level:Bronze
+    customProperties:
+      - property: tableIndex
+        value: '0'
+      - property: apiVersion
+        value: v3.1.0
+      - property: version
+        value: 1.0.0
+      - property: status
+        value: active
+      - property: kind
+        value: DataContract
+      - property: odcsMetadata
+        value: '[object Object]'
+      - property: customProperties
+        value: '[object Object]'
+      - property: system_id
+        value: ad789620-a825-4bc4-afd7-429db96a6359
+  - name: raw_products
+    description: Raw product catalog data ingested from source systems
+    logicalType: object
+    properties:
+      - name: sku
+        description: Unique product SKU identifier
+        logicalType: string
+        physicalType: STRING
+        required: true
+        primaryKey: true
+      - name: name
+        description: Product display name
+        logicalType: string
+        physicalType: STRING
+        required: true
+      - name: type
+        description: Product type category
+        logicalType: string
+        physicalType: STRING
+        required: false
+      - name: price
+        description: Product price in cents
+        logicalType: integer
+        physicalType: INTEGER
+        required: false
+      - name: description
+        description: Product description text
+        logicalType: string
+        physicalType: STRING
+        required: false
+    id: 57003496-b863-45b5-805d-efa4082917f8
+    tags:
+      - raw
+      - products
+      - dm_level:Bronze
+    customProperties:
+      - property: tableIndex
+        value: '0'
+      - property: apiVersion
+        value: v3.1.0
+      - property: version
+        value: 1.0.0
+      - property: status
+        value: active
+      - property: kind
+        value: DataContract
+      - property: odcsMetadata
+        value: '[object Object]'
+      - property: customProperties
+        value: '[object Object]'
+      - property: system_id
+        value: ad789620-a825-4bc4-afd7-429db96a6359
+  - name: raw_stores
+    description: Raw store/location data ingested from source systems
+    logicalType: object
+    properties:
+      - name: id
+        description: Unique store identifier
+        logicalType: string
+        physicalType: STRING
+        required: true
+        primaryKey: true
+      - name: name
+        description: Store display name
+        logicalType: string
+        physicalType: STRING
+        required: true
+      - name: opened_at
+        description: Date store opened
+        logicalType: timestamp
+        physicalType: TIMESTAMP
+        required: false
+      - name: tax_rate
+        description: Store tax rate as decimal
+        logicalType: string
+        physicalType: NUMBER
+        required: false
+    id: 87d05b19-4a56-40ea-93bc-e58a3481b759
+    tags:
+      - raw
+      - stores
+      - dm_level:Bronze
+    customProperties:
+      - property: tableIndex
+        value: '0'
+      - property: apiVersion
+        value: v3.1.0
+      - property: version
+        value: 1.0.0
+      - property: status
+        value: active
+      - property: kind
+        value: DataContract
+      - property: odcsMetadata
+        value: '[object Object]'
+      - property: customProperties
+        value: '[object Object]'
+      - property: system_id
+        value: ad789620-a825-4bc4-afd7-429db96a6359
+  - name: raw_supplies
+    description: Raw supply chain data for products
+    logicalType: object
+    properties:
+      - name: id
+        description: Unique supply record identifier
+        logicalType: string
+        physicalType: STRING
+        required: true
+        primaryKey: true
+      - name: name
+        description: Supply item name
+        logicalType: string
+        physicalType: STRING
+        required: true
+      - name: cost
+        description: Supply cost in cents
+        logicalType: integer
+        physicalType: INTEGER
+        required: false
+      - name: perishable
+        description: Whether supply item is perishable
+        logicalType: boolean
+        physicalType: BOOLEAN
+        required: false
+      - name: sku
+        description: Product SKU (FK to raw_products.sku)
+        logicalType: string
+        physicalType: STRING
+        required: true
+    id: 6d7a3e84-2b63-4815-8613-789fe04592d0
+    tags:
+      - raw
+      - supplies
+      - dm_level:Bronze
+    customProperties:
+      - property: tableIndex
+        value: '0'
+      - property: apiVersion
+        value: v3.1.0
+      - property: version
+        value: 1.0.0
+      - property: status
+        value: active
+      - property: kind
+        value: DataContract
+      - property: odcsMetadata
+        value: '[object Object]'
+      - property: customProperties
+        value: '[object Object]'
+      - property: system_id
+        value: ad789620-a825-4bc4-afd7-429db96a6359
+  - name: stg_customers
+    description: Staged customer data with standardized fields and data quality checks
+    logicalType: object
+    properties:
+      - name: customer_id
+        description: Standardized customer identifier
+        logicalType: integer
+        physicalType: INTEGER
+        required: true
+        primaryKey: true
+      - name: customer_name
+        description: Customer full name (cleaned)
+        logicalType: string
+        physicalType: STRING
+        required: true
+    id: 4ec969d7-7f62-40b8-81dc-86ab915dd26a
+    tags:
+      - staging
+      - customers
+      - dm_level:Silver
+    customProperties:
+      - property: tableIndex
+        value: '0'
+      - property: apiVersion
+        value: v3.1.0
+      - property: version
+        value: 1.0.0
+      - property: status
+        value: active
+      - property: kind
+        value: DataContract
+      - property: odcsMetadata
+        value: '[object Object]'
+      - property: customProperties
+        value: '[object Object]'
+      - property: system_id
+        value: ad789620-a825-4bc4-afd7-429db96a6359
+  - name: stg_locations
+    description: Staged store location data with standardized attributes
+    logicalType: object
+    properties:
+      - name: location_id
+        description: Standardized location identifier
+        logicalType: string
+        physicalType: STRING
+        required: true
+        primaryKey: true
+      - name: location_name
+        description: Location display name
+        logicalType: string
+        physicalType: STRING
+        required: true
+      - name: opened_date
+        description: Date location opened
+        logicalType: date
+        physicalType: DATE
+        required: false
+      - name: tax_rate
+        description: Location tax rate as decimal
+        logicalType: string
+        physicalType: NUMBER
+        required: false
+    id: 9931fece-ad3b-46ad-8872-10ae4327501a
+    tags:
+      - staging
+      - locations
+      - dm_level:Silver
+    customProperties:
+      - property: tableIndex
+        value: '0'
+      - property: apiVersion
+        value: v3.1.0
+      - property: version
+        value: 1.0.0
+      - property: status
+        value: active
+      - property: kind
+        value: DataContract
+      - property: odcsMetadata
+        value: '[object Object]'
+      - property: customProperties
+        value: '[object Object]'
+      - property: system_id
+        value: ad789620-a825-4bc4-afd7-429db96a6359
+  - name: stg_order_items
+    description: Staged order line items with product references
+    logicalType: object
+    properties:
+      - name: order_item_id
+        description: Standardized order item identifier
+        logicalType: string
+        physicalType: STRING
+        required: true
+        primaryKey: true
+      - name: order_id
+        description: Order identifier (FK to stg_orders)
+        logicalType: string
+        physicalType: STRING
+        required: true
+      - name: product_id
+        description: Product identifier (FK to stg_products)
+        logicalType: string
+        physicalType: STRING
+        required: true
+    id: 54f89d6c-900c-4403-b53c-4df32d8c47e8
+    tags:
+      - staging
+      - order_items
+      - dm_level:Silver
+    customProperties:
+      - property: tableIndex
+        value: '0'
+      - property: apiVersion
+        value: v3.1.0
+      - property: version
+        value: 1.0.0
+      - property: status
+        value: active
+      - property: kind
+        value: DataContract
+      - property: odcsMetadata
+        value: '[object Object]'
+      - property: customProperties
+        value: '[object Object]'
+      - property: system_id
+        value: ad789620-a825-4bc4-afd7-429db96a6359
+  - name: stg_orders
+    description: Staged order data with standardized fields and business logic applied
+    logicalType: object
+    properties:
+      - name: order_id
+        description: Standardized order identifier
+        logicalType: string
+        physicalType: STRING
+        required: true
+        primaryKey: true
+      - name: customer_id
+        description: Customer identifier (FK to stg_customers)
+        logicalType: integer
+        physicalType: INTEGER
+        required: true
+      - name: location_id
+        description: Location identifier (FK to stg_locations)
+        logicalType: string
+        physicalType: STRING
+        required: true
+      - name: ordered_at
+        description: Order timestamp (standardized timezone)
+        logicalType: timestamp
+        physicalType: TIMESTAMP
+        required: true
+      - name: order_total
+        description: Total order amount in dollars
+        logicalType: string
+        physicalType: NUMBER
+        required: false
+      - name: tax_paid
+        description: Tax amount in dollars
+        logicalType: string
+        physicalType: NUMBER
+        required: false
+      - name: subtotal
+        description: Subtotal in dollars
+        logicalType: string
+        physicalType: NUMBER
+        required: false
+    id: 01f8fd58-5c57-4ccf-8bb0-7e5ad0bbaa96
+    tags:
+      - staging
+      - orders
+      - dm_level:Silver
+    customProperties:
+      - property: tableIndex
+        value: '0'
+      - property: apiVersion
+        value: v3.1.0
+      - property: version
+        value: 1.0.0
+      - property: status
+        value: active
+      - property: kind
+        value: DataContract
+      - property: odcsMetadata
+        value: '[object Object]'
+      - property: customProperties
+        value: '[object Object]'
+      - property: system_id
+        value: ad789620-a825-4bc4-afd7-429db96a6359
+  - name: stg_products
+    description: Staged product catalog with standardized attributes
+    logicalType: object
+    properties:
+      - name: product_id
+        description: Standardized product identifier (derived from SKU)
+        logicalType: string
+        physicalType: STRING
+        required: true
+        primaryKey: true
+      - name: product_name
+        description: Product display name (cleaned)
+        logicalType: string
+        physicalType: STRING
+        required: true
+      - name: product_type
+        description: Product category type
+        logicalType: string
+        physicalType: STRING
+        required: false
+      - name: product_price
+        description: Product price in dollars
+        logicalType: string
+        physicalType: NUMBER
+        required: false
+      - name: product_description
+        description: Product description text
+        logicalType: string
+        physicalType: STRING
+        required: false
+      - name: is_food_item
+        description: Whether product is a food item
+        logicalType: boolean
+        physicalType: BOOLEAN
+        required: false
+      - name: is_drink_item
+        description: Whether product is a drink item
+        logicalType: boolean
+        physicalType: BOOLEAN
+        required: false
+    id: 0072c7c7-38ad-48f4-81a8-eff0b2ac403e
+    tags:
+      - staging
+      - products
+      - dm_level:Silver
+    customProperties:
+      - property: tableIndex
+        value: '0'
+      - property: apiVersion
+        value: v3.1.0
+      - property: version
+        value: 1.0.0
+      - property: status
+        value: active
+      - property: kind
+        value: DataContract
+      - property: odcsMetadata
+        value: '[object Object]'
+      - property: customProperties
+        value: '[object Object]'
+      - property: system_id
+        value: ad789620-a825-4bc4-afd7-429db96a6359
+  - name: stg_supplies
+    description: Staged supply chain data with cost calculations
+    logicalType: object
+    properties:
+      - name: supply_id
+        description: Standardized supply record identifier
+        logicalType: string
+        physicalType: STRING
+        required: true
+        primaryKey: true
+      - name: supply_name
+        description: Supply item name
+        logicalType: string
+        physicalType: STRING
+        required: true
+      - name: product_id
+        description: Product identifier (FK to stg_products)
+        logicalType: string
+        physicalType: STRING
+        required: true
+      - name: supply_cost
+        description: Supply cost in dollars
+        logicalType: string
+        physicalType: NUMBER
+        required: false
+      - name: is_perishable
+        description: Whether supply item is perishable
+        logicalType: boolean
+        physicalType: BOOLEAN
+        required: false
+    id: e54b55db-e643-4558-8314-7b2b3c2231ea
+    tags:
+      - staging
+      - supplies
+      - dm_level:Silver
+    customProperties:
+      - property: tableIndex
+        value: '0'
+      - property: apiVersion
+        value: v3.1.0
+      - property: version
+        value: 1.0.0
+      - property: status
+        value: active
+      - property: kind
+        value: DataContract
+      - property: odcsMetadata
+        value: '[object Object]'
+      - property: customProperties
+        value: '[object Object]'
+      - property: system_id
+        value: ad789620-a825-4bc4-afd7-429db96a6359
+  - name: supplies
+    description: Supply dimension table with cost and perishability info
+    logicalType: object
+    properties:
+      - name: supply_id
+        description: Unique supply record identifier
+        logicalType: string
+        physicalType: STRING
+        required: true
+        primaryKey: true
+      - name: supply_name
+        description: Supply item name
+        logicalType: string
+        physicalType: STRING
+        required: true
+      - name: product_id
+        description: Product identifier (FK to products dimension)
+        logicalType: string
+        physicalType: STRING
+        required: true
+      - name: supply_cost
+        description: Supply cost in dollars
+        logicalType: string
+        physicalType: NUMBER
+        required: false
+      - name: is_perishable
+        description: Whether supply is perishable
+        logicalType: boolean
+        physicalType: BOOLEAN
+        required: false
+    id: 8460a400-04e8-4b17-992d-b4d025557b4a
+    tags:
+      - mart
+      - supplies
+      - dimension
+      - dm_level:Gold
+    customProperties:
+      - property: tableIndex
+        value: '0'
+      - property: apiVersion
+        value: v3.1.0
+      - property: version
+        value: 1.0.0
+      - property: status
+        value: active
+      - property: kind
+        value: DataContract
+      - property: odcsMetadata
+        value: '[object Object]'
+      - property: customProperties
+        value: '[object Object]'
+      - property: system_id
+        value: ad789620-a825-4bc4-afd7-429db96a6359

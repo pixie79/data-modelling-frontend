@@ -7,7 +7,7 @@
 import React, { useState, useEffect } from 'react';
 import { DraggableModal } from '@/components/common/DraggableModal';
 import { useUIStore } from '@/stores/uiStore';
-import type { Column, AuthoritativeDefinition } from '@/types/table';
+import type { Column, AuthoritativeDefinition, CustomProperty } from '@/types/table';
 
 export interface ColumnDetailsModalProps {
   column: Column;
@@ -93,6 +93,72 @@ const CLASSIFICATION_OPTIONS = [
   { value: 'sensitive', label: 'Sensitive' },
 ];
 
+// ODCS v3.1.0 Logical Types
+const LOGICAL_TYPE_OPTIONS = [
+  { value: '', label: 'Select logical type...' },
+  { value: 'string', label: 'String' },
+  { value: 'date', label: 'Date' },
+  { value: 'timestamp', label: 'Timestamp' },
+  { value: 'time', label: 'Time' },
+  { value: 'number', label: 'Number' },
+  { value: 'integer', label: 'Integer' },
+  { value: 'object', label: 'Object' },
+  { value: 'array', label: 'Array' },
+  { value: 'boolean', label: 'Boolean' },
+];
+
+// Common Physical Types by Database
+const PHYSICAL_TYPE_OPTIONS = [
+  { value: '', label: 'Select physical type...' },
+  // String types
+  { value: 'VARCHAR', label: 'VARCHAR' },
+  { value: 'VARCHAR(255)', label: 'VARCHAR(255)' },
+  { value: 'TEXT', label: 'TEXT' },
+  { value: 'CHAR', label: 'CHAR' },
+  { value: 'STRING', label: 'STRING (Databricks/Cassandra)' },
+  // Numeric types
+  { value: 'INT', label: 'INT' },
+  { value: 'INTEGER', label: 'INTEGER' },
+  { value: 'BIGINT', label: 'BIGINT' },
+  { value: 'SMALLINT', label: 'SMALLINT' },
+  { value: 'TINYINT', label: 'TINYINT' },
+  { value: 'FLOAT', label: 'FLOAT' },
+  { value: 'DOUBLE', label: 'DOUBLE' },
+  { value: 'DECIMAL', label: 'DECIMAL' },
+  { value: 'DECIMAL(10,2)', label: 'DECIMAL(10,2)' },
+  { value: 'NUMERIC', label: 'NUMERIC' },
+  { value: 'REAL', label: 'REAL' },
+  // Date/Time types
+  { value: 'DATE', label: 'DATE' },
+  { value: 'TIME', label: 'TIME' },
+  { value: 'TIMESTAMP', label: 'TIMESTAMP' },
+  { value: 'DATETIME', label: 'DATETIME' },
+  { value: 'TIMESTAMP_NTZ', label: 'TIMESTAMP_NTZ (Databricks)' },
+  { value: 'TIMESTAMP_LTZ', label: 'TIMESTAMP_LTZ (Databricks)' },
+  // Boolean
+  { value: 'BOOLEAN', label: 'BOOLEAN' },
+  { value: 'BIT', label: 'BIT (MSSQL)' },
+  // Binary
+  { value: 'BINARY', label: 'BINARY' },
+  { value: 'VARBINARY', label: 'VARBINARY' },
+  { value: 'BLOB', label: 'BLOB' },
+  { value: 'BYTEA', label: 'BYTEA (PostgreSQL)' },
+  // UUID
+  { value: 'UUID', label: 'UUID' },
+  { value: 'UNIQUEIDENTIFIER', label: 'UNIQUEIDENTIFIER (MSSQL)' },
+  // JSON/Complex
+  { value: 'JSON', label: 'JSON' },
+  { value: 'JSONB', label: 'JSONB (PostgreSQL)' },
+  { value: 'ARRAY', label: 'ARRAY' },
+  { value: 'MAP', label: 'MAP (Databricks/Cassandra)' },
+  { value: 'STRUCT', label: 'STRUCT (Databricks)' },
+  // Cassandra specific
+  { value: 'COUNTER', label: 'COUNTER (Cassandra)' },
+  { value: 'TIMEUUID', label: 'TIMEUUID (Cassandra)' },
+  { value: 'INET', label: 'INET (Cassandra/PostgreSQL)' },
+  { value: 'VARINT', label: 'VARINT (Cassandra)' },
+];
+
 // Authoritative definition type options
 const AUTH_DEFINITION_TYPES = [
   { value: 'business-glossary', label: 'Business Glossary' },
@@ -130,6 +196,8 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
   // ODCS Naming
   const [businessName, setBusinessName] = useState<string>('');
   const [physicalName, setPhysicalName] = useState<string>('');
+  const [physicalType, setPhysicalType] = useState<string>('');
+  const [logicalType, setLogicalType] = useState<string>('');
 
   // Data Governance
   const [classification, setClassification] = useState<string>('');
@@ -152,7 +220,7 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
   // Documentation
   const [examples, setExamples] = useState<string[]>([]);
   const [tags, setTags] = useState<Array<{ key?: string; value: string }>>([]);
-  const [customProperties, setCustomProperties] = useState<Record<string, unknown>>({});
+  const [customProperties, setCustomProperties] = useState<CustomProperty[]>([]);
 
   // Quality Rules
   const [qualityRules, setQualityRules] = useState<QualityRule[]>([]);
@@ -173,6 +241,8 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
     // ODCS Naming
     setBusinessName(column.businessName || '');
     setPhysicalName(column.physicalName || '');
+    setPhysicalType(column.physicalType || '');
+    setLogicalType(column.logicalType || '');
 
     // Data Governance
     setClassification(column.classification || '');
@@ -193,7 +263,7 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
     // Documentation
     setExamples(column.examples || []);
     setTags(column.tags || []);
-    setCustomProperties(column.customProperties || {});
+    setCustomProperties(column.customProperties || []);
 
     // Parse quality rules from constraints
     const allConstraints: Record<string, unknown> = {
@@ -353,25 +423,21 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
     setTags((t) => t.filter((_, i) => i !== index));
   };
 
-  // Custom property handlers
+  // Custom property handlers (using ODCS v3.1.0 array format)
   const handleAddCustomProperty = () => {
-    const key = `property_${Object.keys(customProperties).length + 1}`;
-    setCustomProperties({ ...customProperties, [key]: '' });
+    const newProp: CustomProperty = {
+      property: `property_${customProperties.length + 1}`,
+      value: '',
+    };
+    setCustomProperties([...customProperties, newProp]);
   };
 
-  const handleUpdateCustomProperty = (oldKey: string, newKey: string, value: unknown) => {
-    const newProps = { ...customProperties };
-    if (oldKey !== newKey) {
-      delete newProps[oldKey];
-    }
-    newProps[newKey] = value;
-    setCustomProperties(newProps);
+  const handleUpdateCustomProperty = (index: number, property: string, value: unknown) => {
+    setCustomProperties((props) => props.map((p, i) => (i === index ? { property, value } : p)));
   };
 
-  const handleRemoveCustomProperty = (key: string) => {
-    const newProps = { ...customProperties };
-    delete newProps[key];
-    setCustomProperties(newProps);
+  const handleRemoveCustomProperty = (index: number) => {
+    setCustomProperties((props) => props.filter((_, i) => i !== index));
   };
 
   // Quality rule handlers
@@ -439,6 +505,8 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
         // ODCS Naming
         businessName: businessName || undefined,
         physicalName: physicalName || undefined,
+        physicalType: physicalType || undefined,
+        logicalType: logicalType || undefined,
 
         // Data Governance
         classification: classification || undefined,
@@ -463,7 +531,7 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
         // Documentation
         examples: examples.length > 0 ? examples.filter((e) => e) : undefined,
         tags: tags.length > 0 ? tags.filter((t) => t.value) : undefined,
-        customProperties: Object.keys(customProperties).length > 0 ? customProperties : undefined,
+        customProperties: customProperties.length > 0 ? customProperties : undefined,
       };
 
       await onSave(column.id, columnUpdate);
@@ -769,6 +837,48 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
           {activeTab === 'engineering' && (
             <div className="space-y-6">
               <SectionHeader
+                title="Physical & Logical Types"
+                description="Define physical storage type and logical data type for this column"
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <LabelWithTooltip
+                    label="Physical Type"
+                    tooltip="The actual database column type (e.g., VARCHAR(255), INT8, DECIMAL(10,2)). This is the type used in the physical database."
+                  />
+                  <select
+                    value={physicalType}
+                    onChange={(e) => setPhysicalType(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {PHYSICAL_TYPE_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <LabelWithTooltip
+                    label="Logical Type"
+                    tooltip="The abstract data type (e.g., string, integer, boolean, date). Used for logical data modeling independent of database."
+                  />
+                  <select
+                    value={logicalType}
+                    onChange={(e) => setLogicalType(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {LOGICAL_TYPE_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <SectionHeader
                 title="Storage & Performance"
                 description="Configure how this column is stored and optimized"
               />
@@ -837,25 +947,29 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
               />
 
               <div className="space-y-3">
-                {Object.entries(customProperties).map(([key, value]) => (
-                  <div key={key} className="flex gap-2 items-center">
+                {customProperties.map((prop, index) => (
+                  <div key={index} className="flex gap-2 items-center">
                     <input
                       type="text"
-                      value={key}
-                      onChange={(e) => handleUpdateCustomProperty(key, e.target.value, value)}
+                      value={prop.property}
+                      onChange={(e) =>
+                        handleUpdateCustomProperty(index, e.target.value, prop.value)
+                      }
                       placeholder="Property name"
                       className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded"
                     />
                     <span className="text-gray-400">:</span>
                     <input
                       type="text"
-                      value={String(value)}
-                      onChange={(e) => handleUpdateCustomProperty(key, key, e.target.value)}
+                      value={String(prop.value)}
+                      onChange={(e) =>
+                        handleUpdateCustomProperty(index, prop.property, e.target.value)
+                      }
                       placeholder="Value"
                       className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded"
                     />
                     <button
-                      onClick={() => handleRemoveCustomProperty(key)}
+                      onClick={() => handleRemoveCustomProperty(index)}
                       className="text-red-600 hover:text-red-800 text-sm"
                     >
                       ✕

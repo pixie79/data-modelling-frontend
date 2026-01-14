@@ -86,19 +86,72 @@ export class WorkspaceV2Saver {
       const domainKnowledge = allKnowledgeArticles.filter((k) => k.domain_id === domain.id);
       const domainADRs = allDecisionRecords.filter((d) => d.domain_id === domain.id);
 
-      // Generate ODCS table files in odcs/ directory
+      // Generate ODCS files grouped by system in odcs/ directory
+      // Group tables by their system (lookup via system.table_ids)
+      const tablesBySystem = new Map<string, Table[]>();
+      const tablesWithoutSystem: Table[] = [];
+
+      // Build a reverse lookup: table_id -> system_id
+      const tableToSystemMap = new Map<string, string>();
+      for (const system of domainSystems) {
+        if (system.table_ids) {
+          for (const tableId of system.table_ids) {
+            tableToSystemMap.set(tableId, system.id);
+          }
+        }
+      }
+
       for (const table of domainTables) {
-        const systemName = FileMigration.getSystemName(table, domainSystems);
+        const systemId = tableToSystemMap.get(table.id);
+        if (systemId) {
+          const existing = tablesBySystem.get(systemId) || [];
+          existing.push(table);
+          tablesBySystem.set(systemId, existing);
+        } else {
+          tablesWithoutSystem.push(table);
+        }
+      }
+
+      // Generate one ODCS file per system (containing all tables for that system)
+      for (const [systemId, systemTables] of tablesBySystem) {
+        const system = domainSystems.find((s) => s.id === systemId);
+        const systemName = system?.name || systemId;
         const fileName = FileMigration.generateFileName(
           workspaceName,
           domainName,
-          table.name,
-          systemName,
+          systemName, // Use system name as the resource name
+          undefined, // No need for separate system prefix since it's grouped by system
           'odcs.yaml'
         );
 
         try {
-          // Wrap single table in workspace format expected by SDK
+          // Wrap all system tables in workspace format expected by SDK
+          // Include system_id so it becomes the contract.id in the ODCS file
+          const tableWorkspace = { tables: systemTables, relationships: [], system_id: systemId };
+          const content = await odcsService.toYAML(tableWorkspace as any);
+          files.push({ name: fileName, content, directory: 'odcs' });
+          console.log(
+            `[WorkspaceV2Saver] Generated ODCS file for system "${systemName}" with ${systemTables.length} table(s)`
+          );
+        } catch (error) {
+          console.error(
+            `[WorkspaceV2Saver] Failed to export tables for system ${systemName}:`,
+            error
+          );
+        }
+      }
+
+      // Generate individual ODCS files for tables without a system
+      for (const table of tablesWithoutSystem) {
+        const fileName = FileMigration.generateFileName(
+          workspaceName,
+          domainName,
+          table.name,
+          undefined,
+          'odcs.yaml'
+        );
+
+        try {
           const tableWorkspace = { tables: [table], relationships: [] };
           const content = await odcsService.toYAML(tableWorkspace as any);
           files.push({ name: fileName, content, directory: 'odcs' });
@@ -237,6 +290,57 @@ export class WorkspaceV2Saver {
           } catch (fallbackError) {
             console.error(`[WorkspaceV2Saver] Fallback also failed for ADR:`, fallbackError);
           }
+        }
+      }
+    }
+
+    // 4. Generate global KB articles (no domain_id) - save with workspace prefix only
+    const globalKnowledge = allKnowledgeArticles.filter((k) => !k.domain_id);
+    for (const article of globalKnowledge) {
+      const articleName = FileMigration.sanitizeFileName(article.title || `kb_${article.id}`);
+      const fileName = `${workspaceName}_global_${articleName}.kb.yaml`;
+
+      try {
+        let content = await knowledgeService.exportKnowledgeToYaml(article);
+        if (!content) {
+          content = yaml.dump(article, { lineWidth: -1, noRefs: true });
+        }
+        files.push({ name: fileName, content, directory: 'kb' });
+        console.log(`[WorkspaceV2Saver] Generated global KB article: ${article.title}`);
+      } catch (error) {
+        console.error(
+          `[WorkspaceV2Saver] Failed to export global KB article ${article.title}:`,
+          error
+        );
+        try {
+          const content = yaml.dump(article, { lineWidth: -1, noRefs: true });
+          files.push({ name: fileName, content, directory: 'kb' });
+        } catch (fallbackError) {
+          console.error(`[WorkspaceV2Saver] Fallback also failed for global KB:`, fallbackError);
+        }
+      }
+    }
+
+    // 5. Generate global ADRs (no domain_id) - save with workspace prefix only
+    const globalADRs = allDecisionRecords.filter((d) => !d.domain_id);
+    for (const adr of globalADRs) {
+      const adrName = FileMigration.sanitizeFileName(adr.title || `adr_${adr.id}`);
+      const fileName = `${workspaceName}_global_${adrName}.adr.yaml`;
+
+      try {
+        let content = await decisionService.exportDecisionToYaml(adr);
+        if (!content) {
+          content = yaml.dump(adr, { lineWidth: -1, noRefs: true });
+        }
+        files.push({ name: fileName, content, directory: 'adr' });
+        console.log(`[WorkspaceV2Saver] Generated global ADR: ${adr.title}`);
+      } catch (error) {
+        console.error(`[WorkspaceV2Saver] Failed to export global ADR ${adr.title}:`, error);
+        try {
+          const content = yaml.dump(adr, { lineWidth: -1, noRefs: true });
+          files.push({ name: fileName, content, directory: 'adr' });
+        } catch (fallbackError) {
+          console.error(`[WorkspaceV2Saver] Fallback also failed for global ADR:`, fallbackError);
         }
       }
     }

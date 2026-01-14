@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-01-14
+
+### Added
+- **Version Information Panel**: Workspace Settings dialog now displays version information
+  - Application version (from package.json)
+  - WASM SDK version (minimum required: 2.0.6+)
+  - DuckDB WASM version (from runtime)
+- **Developer Documentation**: Added Development section to README with:
+  - Example workspace rebuild instructions (`npm run rebuild:examples`)
+  - ODCS migration script usage (`npm run migrate:odcs`)
+  - Step-by-step guide for adding new example workspaces
+
+### Changed
+- **SDK Version**: Upgraded to data-modelling-sdk 2.0.6+ (minimum requirement)
+  - Removed support for SDK versions prior to 2.0.6
+  - Removed fallback YAML parsing logic (~930 lines of dead code)
+  - V2 methods now required for lossless ODCS round-trip
+
+### Fixed
+- **Table-System Linkage**: Fixed tables not being linked to systems after workspace reload
+  - Tables now preserve `metadata.system_id` from `contract.id` during ODCS import
+  - System loading uses smart fallback: workspace.yaml table_ids → metadata.system_id → naming convention
+- **Column Order Persistence**: Fixed column `order` field not persisting correctly across save/load cycles
+- **Contract ID Preservation**: Contract-level `id` field now preserved correctly as system ID
+
 ## [2.2.0] - 2026-01-12
 
 ### Added
@@ -427,7 +452,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - TypeScript strict mode
 - GitHub Actions CI/CD workflow
 
-[Unreleased]: https://github.com/your-org/data-modelling-app/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/your-org/data-modelling-app/compare/v2.4.0...HEAD
+[2.4.0]: https://github.com/your-org/data-modelling-app/compare/v2.2.0...v2.4.0
+[2.2.0]: https://github.com/your-org/data-modelling-app/compare/v2.0.0...v2.2.0
 [2.0.0]: https://github.com/your-org/data-modelling-app/compare/v1.1.2...v2.0.0
 [1.1.2]: https://github.com/your-org/data-modelling-app/compare/v1.1.0...v1.1.2
 [1.1.0]: https://github.com/your-org/data-modelling-app/compare/v0.1.0...v1.1.0

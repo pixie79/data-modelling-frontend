@@ -13,7 +13,7 @@ import type {
 } from '../types/workspace';
 import type { Domain } from '../types/domain';
 import type { System } from '../types/system';
-import type { Table } from '../types/table';
+import type { Table, Column, CustomProperty } from '../types/table';
 import type { ComputeAsset } from '../types/cads';
 
 export class FileMigration {
@@ -258,6 +258,90 @@ export class FileMigration {
       last_modified_at: workspaceV2.last_modified_at,
       domains: domains,
     };
+  }
+
+  /**
+   * Migrate column from legacy 'custom' field to ODCS v3.1.0 'customProperties' array format
+   * Also extracts order and is_foreign_key into customProperties
+   */
+  static migrateColumnCustomToCustomProperties(column: Column, colIndex: number): Column {
+    const customProps: CustomProperty[] = [];
+
+    // Preserve existing customProperties if already in array format
+    if (column.customProperties && Array.isArray(column.customProperties)) {
+      customProps.push(...column.customProperties);
+    }
+
+    // Migrate from legacy 'custom' object field if present
+    const legacyCustom = (column as any).custom;
+    if (legacyCustom && typeof legacyCustom === 'object') {
+      for (const [key, value] of Object.entries(legacyCustom)) {
+        if (!customProps.find((p) => p.property === key)) {
+          customProps.push({ property: key, value });
+        }
+      }
+    }
+
+    // Ensure order is in customProperties
+    const orderVal = column.order ?? (legacyCustom?.order as number | undefined) ?? colIndex;
+    if (!customProps.find((p) => p.property === 'order')) {
+      customProps.push({ property: 'order', value: orderVal });
+    }
+
+    // Ensure is_foreign_key is in customProperties if true
+    const isFk = column.is_foreign_key || legacyCustom?.is_foreign_key;
+    if (isFk && !customProps.find((p) => p.property === 'is_foreign_key')) {
+      customProps.push({ property: 'is_foreign_key', value: true });
+    }
+
+    // Create migrated column without legacy 'custom' field
+    const { ...rest } = column;
+    delete (rest as any).custom;
+
+    return {
+      ...rest,
+      order: orderVal,
+      customProperties: customProps.length > 0 ? customProps : undefined,
+    };
+  }
+
+  /**
+   * Migrate table/schema item: move schema-level 'status' to customProperties
+   * Per ODCS spec, 'status' is only valid at contract level, not schema level
+   */
+  static migrateTableStatusToCustomProperties(table: Table): Table {
+    const customProps: CustomProperty[] = [];
+
+    // Preserve existing customProperties if already in array format
+    if (table.customProperties && Array.isArray(table.customProperties)) {
+      customProps.push(...table.customProperties);
+    }
+
+    // Move status to customProperties if present at table level
+    if (table.status && !customProps.find((p) => p.property === 'status')) {
+      customProps.push({ property: 'status', value: table.status });
+    }
+
+    // Migrate all columns
+    const migratedColumns = (table.columns || []).map((col, index) =>
+      this.migrateColumnCustomToCustomProperties(col, index)
+    );
+
+    return {
+      ...table,
+      columns: migratedColumns,
+      customProperties: customProps.length > 0 ? customProps : undefined,
+    };
+  }
+
+  /**
+   * Full migration of workspace tables to ODCS v3.1.0 compliant format
+   * - Converts 'custom' to 'customProperties' array on columns
+   * - Moves schema-level 'status' to 'customProperties'
+   * - Ensures contract-level ID is present
+   */
+  static migrateToODCSv310(tables: Table[]): Table[] {
+    return tables.map((table) => this.migrateTableStatusToCustomProperties(table));
   }
 
   /**

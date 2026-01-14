@@ -320,11 +320,34 @@ function compareODCSSchemas(original: any, exported: any): ComparisonResult {
       continue;
     }
 
-    const tableProps = ['physicalName', 'physicalType', 'businessName', 'description', 'status'];
+    // Note: 'status' is contract-level in ODCS spec, table-level status should be in customProperties
+    const tableProps = ['physicalName', 'physicalType', 'businessName', 'description'];
     for (const prop of tableProps) {
       if (origTable[prop] !== expTable[prop] && origTable[prop] !== undefined) {
         differences.push(
           `Table "${tableName}" property "${prop}" mismatch: original="${origTable[prop]}", exported="${expTable[prop]}"`
+        );
+      }
+    }
+
+    // Check table-level tags
+    if (origTable.tags && Array.isArray(origTable.tags) && origTable.tags.length > 0) {
+      const origTags = JSON.stringify(origTable.tags.sort());
+      const expTags = JSON.stringify((expTable.tags || []).sort());
+      if (origTags !== expTags) {
+        differences.push(
+          `Table "${tableName}" tags mismatch: original=${origTags}, exported=${expTags}`
+        );
+      }
+    }
+
+    // Check table-level customProperties
+    if (origTable.customProperties && Array.isArray(origTable.customProperties)) {
+      const origCustom = JSON.stringify(origTable.customProperties);
+      const expCustom = JSON.stringify(expTable.customProperties || []);
+      if (origCustom !== expCustom) {
+        differences.push(
+          `Table "${tableName}" customProperties mismatch: original=${origCustom}, exported=${expCustom}`
         );
       }
     }
@@ -364,6 +387,10 @@ function compareODCSSchemas(original: any, exported: any): ComparisonResult {
         'encryptedName',
         'transformLogic',
         'transformDescription',
+        'transformSourceObjects',
+        'examples',
+        'logicalTypeOptions',
+        'authoritativeDefinitions',
       ];
 
       for (const prop of colProps) {
@@ -378,10 +405,72 @@ function compareODCSSchemas(original: any, exported: any): ComparisonResult {
               `Column "${tableName}.${colName}" property "${prop}" mismatch: original=${origVal}, exported=${expVal}`
             );
           }
-        } else if (JSON.stringify(origVal) !== JSON.stringify(expVal)) {
-          differences.push(`Column "${tableName}.${colName}" property "${prop}" mismatch`);
+        } else {
+          // For complex objects/arrays, normalize by sorting keys and normalizing dates before comparison
+          const normalizeForComparison = (val: any): string => {
+            return JSON.stringify(val, (_, v) => {
+              // Normalize Date objects to YYYY-MM-DD format (matching YAML date output)
+              if (v instanceof Date) {
+                return v.toISOString().split('T')[0];
+              }
+              // Normalize ISO date strings to YYYY-MM-DD format
+              if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(v)) {
+                return v.split('T')[0];
+              }
+              if (v && typeof v === 'object' && !Array.isArray(v)) {
+                return Object.keys(v)
+                  .sort()
+                  .reduce((sorted: any, key) => {
+                    sorted[key] = v[key];
+                    return sorted;
+                  }, {});
+              }
+              return v;
+            });
+          };
+          if (normalizeForComparison(origVal) !== normalizeForComparison(expVal)) {
+            differences.push(
+              `Column "${tableName}.${colName}" property "${prop}" mismatch: original=${JSON.stringify(origVal)}, exported=${JSON.stringify(expVal)}`
+            );
+          }
         }
       }
+
+      // Check column-level tags
+      if (origCol.tags && Array.isArray(origCol.tags) && origCol.tags.length > 0) {
+        const origTags = JSON.stringify(origCol.tags.sort());
+        const expTags = JSON.stringify((expCol.tags || []).sort());
+        if (origTags !== expTags) {
+          differences.push(
+            `Column "${tableName}.${colName}" tags mismatch: original=${origTags}, exported=${expTags}`
+          );
+        }
+      }
+
+      // Check column-level customProperties (ODCS v3.1.0 array format)
+      // Note: order and is_foreign_key are now stored in customProperties, so we need to compare
+      // but ignore ordering differences in the array
+      if (origCol.customProperties && Array.isArray(origCol.customProperties)) {
+        // Sort both arrays by property name for consistent comparison
+        const sortByProperty = (arr: any[]) =>
+          [...arr].sort((a, b) => (a.property || '').localeCompare(b.property || ''));
+        const origSorted = sortByProperty(origCol.customProperties);
+        const expSorted = sortByProperty(expCol.customProperties || []);
+
+        // Filter out 'order' property for comparison since it may be added during export
+        const filterOrder = (arr: any[]) => arr.filter((p: any) => p.property !== 'order');
+        const origFiltered = filterOrder(origSorted);
+        const expFiltered = filterOrder(expSorted);
+
+        const origCustom = JSON.stringify(origFiltered);
+        const expCustom = JSON.stringify(expFiltered);
+        if (origCustom !== expCustom) {
+          differences.push(
+            `Column "${tableName}.${colName}" customProperties mismatch: original=${origCustom}, exported=${expCustom}`
+          );
+        }
+      }
+      // Note: 'custom' field has been removed in favor of ODCS-compliant 'customProperties' array
     }
   }
 
@@ -566,6 +655,207 @@ test.describe('ODCS Import/Export Integration', () => {
   });
 });
 
+// Test for column order persistence
+test.describe('Column Order Persistence', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    await waitForAppReady(page);
+  });
+
+  test('should preserve column order after reordering and saving', async ({ page }) => {
+    const originalYAML = fs.readFileSync(FIXTURE_PATH, 'utf-8');
+    const originalParsed = yaml.load(originalYAML) as any;
+
+    // Step 1: Create workspace and import table
+    console.log('Step 1: Creating workspace and importing table...');
+    await createWorkspace(page, `${TEST_WORKSPACE_NAME} - Column Order`);
+    await createSystem(page, TEST_SYSTEM_NAME);
+    await selectSystem(page, TEST_SYSTEM_NAME);
+    await openCreateTableDialog(page);
+    await importODCSContent(page, originalYAML);
+
+    // Step 2: Open the table editor
+    const firstTableName = originalParsed.schema?.[0]?.name || 'tbl';
+    const tableNode = page.locator('.react-flow__node').filter({ hasText: firstTableName }).first();
+    await expect(tableNode).toBeVisible({ timeout: 10000 });
+
+    console.log('Step 2: Opening table editor...');
+    await tableNode.dispatchEvent('click');
+    await page.waitForTimeout(500);
+
+    const tableEditor = page.locator('h2:has-text("Edit Table")');
+    await expect(tableEditor).toBeVisible({ timeout: 10000 });
+
+    // Step 3: Get the initial column order from the column list
+    console.log('Step 3: Getting initial column order...');
+
+    // Find all column name inputs in the table editor
+    const columnInputs = page.locator('input[placeholder="Column name"]');
+    const initialColumnCount = await columnInputs.count();
+    console.log(`Found ${initialColumnCount} columns`);
+
+    // Get initial column names in order
+    const initialColumnNames: string[] = [];
+    for (let i = 0; i < Math.min(initialColumnCount, 5); i++) {
+      const value = await columnInputs.nth(i).inputValue();
+      initialColumnNames.push(value);
+    }
+    console.log('Initial column order (first 5):', initialColumnNames);
+
+    // Step 4: Find and click the "move down" button for the first column
+    console.log('Step 4: Moving first column down...');
+
+    // The move buttons are in the column editor rows
+    // Look for the down arrow button (▼) in the first column row
+    const moveDownButtons = page.locator('button[title="Move down"]');
+    const moveDownCount = await moveDownButtons.count();
+    console.log(`Found ${moveDownCount} move down buttons`);
+
+    if (moveDownCount > 0) {
+      // Click the first "move down" button to move the first column down
+      await moveDownButtons.first().click();
+      await page.waitForTimeout(300);
+
+      // Step 5: Click Save Table button
+      console.log('Step 5: Saving table...');
+      const saveButton = page.locator('button:has-text("Save Table")');
+      await expect(saveButton).toBeVisible({ timeout: 5000 });
+      await saveButton.click();
+      await page.waitForTimeout(1000);
+
+      // Step 6: Verify the column order has changed after save
+      console.log('Step 6: Verifying column order after save...');
+
+      // Get the new column order
+      const newColumnNames: string[] = [];
+      const newColumnInputs = page.locator('input[placeholder="Column name"]');
+      const newColumnCount = await newColumnInputs.count();
+
+      for (let i = 0; i < Math.min(newColumnCount, 5); i++) {
+        const value = await newColumnInputs.nth(i).inputValue();
+        newColumnNames.push(value);
+      }
+      console.log('New column order (first 5):', newColumnNames);
+
+      // The first two columns should have swapped positions
+      if (initialColumnNames.length >= 2 && newColumnNames.length >= 2) {
+        // After moving first column down, the second column should now be first
+        expect(newColumnNames[0]).toBe(initialColumnNames[1]);
+        // And the first column should now be second
+        expect(newColumnNames[1]).toBe(initialColumnNames[0]);
+        console.log('Column order correctly persisted after save!');
+      }
+
+      // Step 7: Close and reopen table editor to verify persistence
+      console.log('Step 7: Closing and reopening table editor...');
+
+      // Close the editor
+      const closeButton = page.locator('button:has-text("Close")');
+      if (await closeButton.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await closeButton.click();
+        await page.waitForTimeout(500);
+      }
+
+      // Reopen the table editor
+      await tableNode.dispatchEvent('click');
+      await page.waitForTimeout(500);
+      await expect(tableEditor).toBeVisible({ timeout: 10000 });
+
+      // Verify the order is still correct after reopening
+      const reopenedColumnNames: string[] = [];
+      const reopenedColumnInputs = page.locator('input[placeholder="Column name"]');
+
+      for (let i = 0; i < Math.min(await reopenedColumnInputs.count(), 5); i++) {
+        const value = await reopenedColumnInputs.nth(i).inputValue();
+        reopenedColumnNames.push(value);
+      }
+      console.log('Column order after reopening (first 5):', reopenedColumnNames);
+
+      // Verify the order persisted after reopening
+      if (initialColumnNames.length >= 2 && reopenedColumnNames.length >= 2) {
+        expect(reopenedColumnNames[0]).toBe(initialColumnNames[1]);
+        expect(reopenedColumnNames[1]).toBe(initialColumnNames[0]);
+        console.log('Column order correctly persisted after close/reopen!');
+      }
+    } else {
+      console.log('No move down buttons found - skipping reorder test');
+    }
+  });
+
+  test('should preserve column order in ODCS export after reordering', async ({ page }) => {
+    const originalYAML = fs.readFileSync(FIXTURE_PATH, 'utf-8');
+    const originalParsed = yaml.load(originalYAML) as any;
+
+    // Step 1: Create workspace and import table
+    console.log('Step 1: Creating workspace and importing table...');
+    await createWorkspace(page, `${TEST_WORKSPACE_NAME} - Export Order`);
+    await createSystem(page, TEST_SYSTEM_NAME);
+    await selectSystem(page, TEST_SYSTEM_NAME);
+    await openCreateTableDialog(page);
+    await importODCSContent(page, originalYAML);
+
+    // Step 2: Open the table editor
+    const firstTableName = originalParsed.schema?.[0]?.name || 'tbl';
+    const tableNode = page.locator('.react-flow__node').filter({ hasText: firstTableName }).first();
+    await expect(tableNode).toBeVisible({ timeout: 10000 });
+
+    console.log('Step 2: Opening table editor...');
+    await tableNode.dispatchEvent('click');
+    await page.waitForTimeout(500);
+
+    const tableEditor = page.locator('h2:has-text("Edit Table")');
+    await expect(tableEditor).toBeVisible({ timeout: 10000 });
+
+    // Get initial column names
+    const columnInputs = page.locator('input[placeholder="Column name"]');
+    const initialColumnNames: string[] = [];
+    for (let i = 0; i < Math.min(await columnInputs.count(), 3); i++) {
+      initialColumnNames.push(await columnInputs.nth(i).inputValue());
+    }
+    console.log('Initial column order (first 3):', initialColumnNames);
+
+    // Step 3: Move first column down
+    console.log('Step 3: Moving first column down...');
+    const moveDownButtons = page.locator('button[title="Move down"]');
+    if ((await moveDownButtons.count()) > 0) {
+      await moveDownButtons.first().click();
+      await page.waitForTimeout(300);
+    }
+
+    // Step 4: Save the table
+    console.log('Step 4: Saving table...');
+    const saveButton = page.locator('button:has-text("Save Table")');
+    await saveButton.click();
+    await page.waitForTimeout(1000);
+
+    // Step 5: Export the table as ODCS
+    console.log('Step 5: Exporting as ODCS...');
+    const exportButton = page.locator('button:has-text("Export")').first();
+    await exportButton.click();
+
+    const downloadPromise = page.waitForEvent('download', { timeout: 30000 });
+    await page.locator('button:has-text("ODCS (Default)")').click();
+
+    const download = await downloadPromise;
+    const downloadPath = await download.path();
+    const exportedContent = fs.readFileSync(downloadPath!, 'utf-8');
+    const exportedParsed = yaml.load(exportedContent) as any;
+
+    // Step 6: Verify the column order in the export matches the reordered state
+    console.log('Step 6: Verifying column order in export...');
+    const exportedProperties = exportedParsed.schema?.[0]?.properties || [];
+    const exportedColumnNames = exportedProperties.slice(0, 3).map((p: any) => p.name);
+    console.log('Exported column order (first 3):', exportedColumnNames);
+
+    // After moving first column down, the order should be: [original[1], original[0], original[2], ...]
+    if (initialColumnNames.length >= 2 && exportedColumnNames.length >= 2) {
+      expect(exportedColumnNames[0]).toBe(initialColumnNames[1]);
+      expect(exportedColumnNames[1]).toBe(initialColumnNames[0]);
+      console.log('Column order correctly preserved in ODCS export!');
+    }
+  });
+});
+
 // Additional test for export functionality
 test.describe('ODCS Export', () => {
   test.beforeEach(async ({ page }) => {
@@ -578,11 +868,15 @@ test.describe('ODCS Export', () => {
     const originalYAML = fs.readFileSync(FIXTURE_PATH, 'utf-8');
     const originalParsed = yaml.load(originalYAML) as any;
 
-    // Capture console logs from the browser
+    // Capture console logs from the browser to verify V2 SDK usage
     const consoleLogs: string[] = [];
     page.on('console', (msg) => {
       const text = msg.text();
-      if (text.includes('[ODCSService]') || text.includes('export')) {
+      if (
+        text.includes('[ODCSService]') ||
+        text.includes('[SDKLoader]') ||
+        text.includes('export')
+      ) {
         consoleLogs.push(text);
       }
     });
@@ -686,11 +980,47 @@ test.describe('ODCS Export', () => {
       consoleLogs.forEach((log) => console.log(log));
       console.log('=== End Export Console Logs ===\n');
     }
+
+    // CRITICAL: Verify SDK V2 was used for export (not fallback)
+    // The V2 path should log "toYAMLv2 called" and NOT "Falling back to JavaScript YAML converter"
+    const usedV2Export = consoleLogs.some((log) => log.includes('toYAMLv2 called'));
+    const usedFallback = consoleLogs.some(
+      (log) =>
+        log.includes('Falling back to JavaScript YAML converter') ||
+        log.includes('V2 export failed, falling back')
+    );
+
+    // Log SDK version detection for debugging
+    const sdkVersionLog = consoleLogs.find((log) => log.includes('Detected SDK version'));
+    if (sdkVersionLog) {
+      console.log(`SDK Version: ${sdkVersionLog}`);
+    }
+
+    // Fail the test if fallback was used - we must use V2 for lossless export
+    expect(usedFallback).toBe(false);
+    expect(usedV2Export).toBe(true);
   });
 
   test('should preserve column properties in export round-trip', async ({ page }) => {
     const originalYAML = fs.readFileSync(FIXTURE_PATH, 'utf-8');
     const originalParsed = yaml.load(originalYAML) as any;
+
+    // Capture console logs to verify V2 SDK usage and field preservation
+    const consoleLogs: string[] = [];
+    page.on('console', (msg) => {
+      const text = msg.text();
+      if (
+        text.includes('[ODCSService]') ||
+        text.includes('[SDKLoader]') ||
+        text.includes('[CreateTableDialog]') ||
+        text.includes('[App]') ||
+        text.includes('WASM') ||
+        text.includes('V2') ||
+        msg.type() === 'error'
+      ) {
+        consoleLogs.push(`[${msg.type()}] ${text}`);
+      }
+    });
 
     // Step 1: Create workspace and import
     await createWorkspace(page, `${TEST_WORKSPACE_NAME} - Round Trip`);
@@ -729,6 +1059,18 @@ test.describe('ODCS Export', () => {
     const originalTable = originalParsed.schema?.[0];
     const exportedTable = exportedParsed.schema?.[0];
 
+    // Debug: Log status fields from both original and exported
+    // Note: Table-level status should be in customProperties, not as direct field
+    const getStatusFromCustomProps = (customProps: any[]) =>
+      customProps?.find((p: any) => p.property === 'status')?.value;
+
+    console.log('Status comparison:', {
+      originalRootStatus: originalParsed.status,
+      originalSchemaStatusInCustomProps: getStatusFromCustomProps(originalTable?.customProperties),
+      exportedRootStatus: exportedParsed.status,
+      exportedSchemaStatusInCustomProps: getStatusFromCustomProps(exportedTable?.customProperties),
+    });
+
     if (originalTable && exportedTable) {
       // Compare table-level properties
       const result = compareODCSSchemas({ schema: [originalTable] }, { schema: [exportedTable] });
@@ -743,11 +1085,35 @@ test.describe('ODCS Export', () => {
         }
       }
 
-      // We expect some differences due to SDK limitations, but core properties should match
+      // With V2 SDK, we should have NO differences - lossless round-trip
       // Check that at least the column count matches
       const originalColumnCount = originalTable.properties?.length || 0;
       const exportedColumnCount = exportedTable.properties?.length || 0;
       expect(exportedColumnCount).toBe(originalColumnCount);
+
+      // V2 should preserve all properties - fail if there are differences
+      if (result.differences.length > 0) {
+        console.log('\n=== Round-trip Console Logs ===');
+        consoleLogs.forEach((log) => console.log(log));
+        console.log('=== End Console Logs ===\n');
+      }
+
+      // With SDK 2.0.4+ V2 methods, round-trip should be lossless
+      expect(result.differences.length).toBe(0);
     }
+
+    // CRITICAL: Verify SDK V2 was used (not fallback)
+    const usedV2Import = consoleLogs.some((log) => log.includes('Using SDK 2.0.6+ V2 methods'));
+    const usedV2Export = consoleLogs.some((log) => log.includes('toYAMLv2 called'));
+    const usedFallback = consoleLogs.some(
+      (log) =>
+        log.includes('Falling back to JavaScript YAML converter') ||
+        log.includes('V2 export failed, falling back') ||
+        log.includes('V2 parsing failed, falling back')
+    );
+
+    expect(usedFallback).toBe(false);
+    expect(usedV2Import).toBe(true);
+    expect(usedV2Export).toBe(true);
   });
 });

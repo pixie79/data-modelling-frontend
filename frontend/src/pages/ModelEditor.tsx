@@ -219,13 +219,14 @@ const ModelEditor: React.FC = () => {
     };
   }, [workspaceId]);
 
-  // Clear model store when leaving workspace (navigating away)
-  // This prevents stale data from appearing when returning to a different workspace
+  // Clear model store when workspace changes (not on initial mount or same workspace reload)
+  // This prevents stale data from appearing when switching to a different workspace
+  const previousWorkspaceIdRef = React.useRef<string | undefined>(undefined);
   useEffect(() => {
-    return () => {
-      // Cleanup on unmount - clear model store to prevent stale data
+    // Only clear if switching TO a different workspace (not on initial mount)
+    if (previousWorkspaceIdRef.current && previousWorkspaceIdRef.current !== workspaceId) {
       const modelStore = useModelStore.getState();
-      console.log('[ModelEditor] Unmounting - clearing stores to prevent stale data');
+      console.log('[ModelEditor] Workspace changed - clearing stores for new workspace');
       modelStore.setTables([]);
       modelStore.setRelationships([]);
       modelStore.setSystems([]);
@@ -238,15 +239,18 @@ const ModelEditor: React.FC = () => {
       modelStore.setSelectedTable(null);
       modelStore.setSelectedSystem(null);
 
-      // Also clear knowledge and decision stores
+      // Also clear knowledge and decision stores (including filters)
+      // These are synchronous to avoid race conditions
       import('@/stores/knowledgeStore').then(({ useKnowledgeStore }) => {
         useKnowledgeStore.getState().setArticles([]);
+        useKnowledgeStore.getState().setFilter({});
       });
       import('@/stores/decisionStore').then(({ useDecisionStore }) => {
         useDecisionStore.getState().setDecisions([]);
       });
-    };
-  }, []);
+    }
+    previousWorkspaceIdRef.current = workspaceId;
+  }, [workspaceId]);
 
   // Handle browser refresh
   useEffect(() => {

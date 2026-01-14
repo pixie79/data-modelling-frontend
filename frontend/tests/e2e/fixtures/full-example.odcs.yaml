@@ -1,20 +1,12 @@
-# Full ODCS Example for Integration Testing
-# Based on: https://github.com/bitol-io/open-data-contract-standard/blob/main/docs/examples/all/full-example.odcs.yaml
-# Enhanced with custom fields used by the data modelling application (position, order, etc.)
-
-# What's this data contract about?
 domain: seller
 dataProduct: my quantum
 version: 1.1.0
 status: active
 id: 53581432-6c55-4ba2-a65f-72344a91553a
-
 authoritativeDefinitions:
   - type: canonical
     url: https://github.com/bitol-io/open-data-contract-standard/blob/main/docs/examples/all/full-example.odcs.yaml
     description: Canonical URL to the latest version of the contract.
-
-# Description section
 description:
   purpose: Views built on top of the seller tables.
   limitations: Data based on seller perspective, no buyer information
@@ -23,11 +15,8 @@ description:
     - type: privacy-statement
       url: https://example.com/gdpr.pdf
 tenant: ClimateQuantumInc
-
 kind: DataContract
 apiVersion: v3.1.0
-
-# Infrastructure & servers
 servers:
   - server: my-postgres
     type: postgres
@@ -35,17 +24,20 @@ servers:
     port: 5432
     database: pypl-edw
     schema: pp_access_views
-
-# Dataset, schema, and quality
 schema:
-  # Main transaction table with all ODCS column properties
   - id: tbl_obj
     name: tbl
     physicalName: tbl_1
     physicalType: table
     businessName: Core Payment Metrics
     description: Provides core payment metrics including transaction references and receiver information
-    status: active
+    customProperties:
+      - property: status
+        value: active
+      - property: business-key
+        value:
+          - txn_ref_dt
+          - rcvr_id
     authoritativeDefinitions:
       - url: https://catalog.data.gov/dataset/air-quality
         type: businessDefinition
@@ -55,8 +47,6 @@ schema:
       - finance
       - payments
     dataGranularityDescription: Aggregation on columns txn_ref_dt, pmt_txn_id
-
-    # Schema-level relationships (for composite keys)
     relationships:
       - type: foreignKey
         from:
@@ -67,12 +57,10 @@ schema:
           - receivers.country_code
         customProperties:
           - property: description
-            value: 'Composite key linking to receivers table'
+            value: Composite key linking to receivers table
           - property: cardinality
-            value: 'many-to-one'
-
+            value: many-to-one
     properties:
-      # Date column with partitioning
       - id: txn_ref_dt_prop
         name: transaction_reference_date
         physicalName: txn_ref_dt
@@ -94,19 +82,18 @@ schema:
           - table_name_1
           - table_name_2
           - table_name_3
-        transformLogic: sel t1.txn_dt as txn_ref_dt from table_name_1 as t1, table_name_2 as t2, table_name_3 as t3 where t1.txn_dt=date-3
+        transformLogic:
+          sel t1.txn_dt as txn_ref_dt from table_name_1 as t1, table_name_2 as t2, table_name_3 as t3 where
+          t1.txn_dt=date-3
         transformDescription: defines the logic in business terms; logic for dummies
         examples:
-          - '2022-10-03'
-          - '2020-01-28'
+          - 2022-10-03
+          - 2020-01-28
         customProperties:
           - property: anonymizationStrategy
             value: none
-        # Custom field: column order for UI positioning
-        custom:
-          order: 0
-
-      # Primary key column with relationship
+          - property: order
+            value: 0
       - id: rcvr_id_prop
         name: rcvr_id
         primaryKey: true
@@ -124,18 +111,17 @@ schema:
         tags:
           - uid
         classification: restricted
-        # Property-level relationship
         relationships:
           - to: receivers.id
             type: foreignKey
             customProperties:
               - property: description
-                value: 'Links to receiver master data'
-        custom:
-          order: 1
-          is_foreign_key: true
-
-      # Country code column with authoritative definitions
+                value: Links to receiver master data
+        customProperties:
+          - property: order
+            value: 1
+          - property: is_foreign_key
+            value: true
       - id: rcvr_cntry_code_prop
         name: rcvr_cntry_code
         primaryKey: false
@@ -172,15 +158,14 @@ schema:
             scheduler: cron
             customProperties:
               - property: FIELD_NAME
-                value:
+                value: null
               - property: COMPARE_TO
-                value:
+                value: null
               - property: COMPARISON_TYPE
                 value: Greater than
-        custom:
-          order: 2
-
-      # Amount column with numeric constraints
+        customProperties:
+          - property: order
+            value: 2
       - id: txn_amount_prop
         name: txn_amount
         primaryKey: false
@@ -205,10 +190,9 @@ schema:
           precision: 18
           scale: 2
         default: '0.00'
-        custom:
-          order: 3
-
-    # Table-level quality rules
+        customProperties:
+          - property: order
+            value: 3
     quality:
       - metric: rowCount
         mustBeGreaterThan: 1000000
@@ -220,28 +204,19 @@ schema:
         businessImpact: operational
         schedule: 0 20 * * *
         scheduler: cron
-
-    # Table-level custom properties
-    customProperties:
-      - property: business-key
-        value:
-          - txn_ref_dt
-          - rcvr_id
-
-  # Receivers master table
   - id: receivers_obj
     name: receivers
     physicalName: receivers_master
     physicalType: table
     businessName: Receivers Master Data
     description: Master data for all receivers with composite primary key
-    status: active
+    customProperties:
+      - property: status
+        value: active
     tags:
       - master-data
       - receivers
-
     properties:
-      # Composite primary key - first column
       - id: receiver_id_prop
         name: id
         primaryKey: true
@@ -253,10 +228,9 @@ schema:
         unique: true
         description: Unique identifier for receiver (part of composite PK)
         classification: restricted
-        custom:
-          order: 0
-
-      # Composite primary key - second column
+        customProperties:
+          - property: order
+            value: 0
       - id: country_code_prop
         name: country_code
         primaryKey: true
@@ -271,11 +245,10 @@ schema:
         logicalTypeOptions:
           minLength: 2
           maxLength: 2
-          pattern: '^[A-Z]{2}$'
-        custom:
-          order: 1
-
-      # Regular columns
+          pattern: ^[A-Z]{2}$
+        customProperties:
+          - property: order
+            value: 1
       - id: receiver_name_prop
         name: receiver_name
         businessName: receiver name
@@ -289,9 +262,9 @@ schema:
         logicalTypeOptions:
           minLength: 1
           maxLength: 255
-        custom:
-          order: 2
-
+        customProperties:
+          - property: order
+            value: 2
       - id: receiver_type_prop
         name: receiver_type
         businessName: receiver type
@@ -312,15 +285,14 @@ schema:
             dimension: validity
             type: library
             severity: warning
-        # Relationship to lookup table
         relationships:
           - to: receiver_types.type_code
             customProperties:
               - property: description
-                value: 'Links to receiver type definitions'
-        custom:
-          order: 3
-
+                value: Links to receiver type definitions
+        customProperties:
+          - property: order
+            value: 3
       - id: receiver_email_prop
         name: email
         businessName: receiver email
@@ -335,9 +307,9 @@ schema:
         logicalTypeOptions:
           format: email
           maxLength: 255
-        custom:
-          order: 4
-
+        customProperties:
+          - property: order
+            value: 4
       - id: created_at_prop
         name: created_at
         businessName: creation timestamp
@@ -348,21 +320,21 @@ schema:
         description: Timestamp when the receiver record was created
         classification: internal
         default: CURRENT_TIMESTAMP
-        custom:
-          order: 5
-
-  # Receiver types lookup table
+        customProperties:
+          - property: order
+            value: 5
   - id: receiver_types_obj
     name: receiver_types
     physicalName: lkp_receiver_types
     physicalType: table
     businessName: Receiver Type Lookup
     description: Lookup table for valid receiver types
-    status: active
+    customProperties:
+      - property: status
+        value: active
     tags:
       - lookup
       - reference-data
-
     properties:
       - id: type_code_prop
         name: type_code
@@ -375,9 +347,9 @@ schema:
         unique: true
         description: Unique code for the receiver type
         classification: public
-        custom:
-          order: 0
-
+        customProperties:
+          - property: order
+            value: 0
       - id: type_name_prop
         name: type_name
         businessName: type name
@@ -387,9 +359,9 @@ schema:
         unique: false
         description: Human-readable name for the receiver type
         classification: public
-        custom:
-          order: 1
-
+        customProperties:
+          - property: order
+            value: 1
       - id: type_description_prop
         name: type_description
         businessName: type description
@@ -399,34 +371,29 @@ schema:
         unique: false
         description: Detailed description of the receiver type
         classification: public
-        custom:
-          order: 2
-
-# Pricing
+        customProperties:
+          - property: order
+            value: 2
 price:
   priceAmount: 9.95
   priceCurrency: USD
   priceUnit: megabyte
-
-# Team
 team:
   name: my-team
   description: The team owning the data contract
   members:
     - username: ceastwood
       role: Data Scientist
-      dateIn: '2022-08-02'
-      dateOut: '2022-10-01'
+      dateIn: 2022-08-02
+      dateOut: 2022-10-01
       replacedByUsername: mhopper
     - username: mhopper
       role: Data Scientist
-      dateIn: '2022-10-01'
+      dateIn: 2022-10-01
     - username: daustin
       role: Owner
       description: Keeper of the grail
-      dateIn: '2022-10-01'
-
-# Roles
+      dateIn: 2022-10-01
 roles:
   - role: microstrategy_user_opr
     access: read
@@ -444,19 +411,17 @@ roles:
     access: write
     firstLevelApprovers: Reporting Manager
     secondLevelApprovers: mickey
-
-# SLA Properties
 slaProperties:
   - property: latency
     value: 4
     unit: d
     element: tab1.txn_ref_dt
   - property: generalAvailability
-    value: '2022-05-12T09:30:10-08:00'
+    value: 2022-05-12T09:30:10-08:00
   - property: endOfSupport
-    value: '2032-05-12T09:30:10-08:00'
+    value: 2032-05-12T09:30:10-08:00
   - property: endOfLife
-    value: '2042-05-12T09:30:10-08:00'
+    value: 2042-05-12T09:30:10-08:00
   - property: retention
     value: 3
     unit: y
@@ -474,8 +439,6 @@ slaProperties:
     value: 08:00-08:00
     element: tab1.txn_ref_dt
     driver: analytics
-
-# Support
 support:
   - channel: '#product-help'
     tool: slack
@@ -491,12 +454,8 @@ support:
     customProperties:
       - property: servicehours
         value: 9-5 CET
-
-# Tags
 tags:
   - transactions
-
-# Custom properties
 customProperties:
   - property: refRulesetName
     value: gcsc.ruleset.name
@@ -504,5 +463,4 @@ customProperties:
     value: property.value
   - property: dataprocClusterName
     value: cluster name
-
-contractCreatedTs: '2022-11-15T02:59:43+00:00'
+contractCreatedTs: 2022-11-15T02:59:43+00:00

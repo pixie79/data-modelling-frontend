@@ -124,6 +124,8 @@ export const WorkspaceList: React.FC<WorkspaceListProps> = ({
     // Load knowledge and decision records if present
     if (workspaceData.knowledgeArticles && Array.isArray(workspaceData.knowledgeArticles)) {
       const { useKnowledgeStore } = await import('@/stores/knowledgeStore');
+      // Clear filter first to prevent stale domain_id filtering out new articles
+      useKnowledgeStore.getState().setFilter({});
       useKnowledgeStore.getState().setArticles(workspaceData.knowledgeArticles);
     }
     if (workspaceData.decisionRecords && Array.isArray(workspaceData.decisionRecords)) {

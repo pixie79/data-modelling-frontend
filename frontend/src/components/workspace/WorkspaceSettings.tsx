@@ -10,6 +10,12 @@ import { useUIStore } from '@/stores/uiStore';
 import type { Workspace } from '@/types/workspace';
 import { AutoSaveSettings } from '@/components/settings/AutoSaveSettings';
 import { DatabaseSettings } from '@/components/settings/DatabaseSettings';
+import { sdkLoader } from '@/services/sdk/sdkLoader';
+import { getDuckDBService } from '@/services/database/duckdbService';
+
+// App version from build-time constant
+declare const __APP_VERSION__: string;
+const APP_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.0.0';
 
 export interface WorkspaceSettingsProps {
   workspaceId: string;
@@ -34,6 +40,21 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [newCollaboratorEmail, setNewCollaboratorEmail] = useState('');
   const [newCollaboratorAccess, setNewCollaboratorAccess] = useState<'read' | 'edit'>('edit');
+  const [duckdbVersion, setDuckdbVersion] = useState<string>('Not initialized');
+
+  // Load DuckDB version on mount
+  useEffect(() => {
+    const loadDuckDBVersion = async () => {
+      try {
+        const duckdb = getDuckDBService();
+        const stats = await duckdb.getStats();
+        setDuckdbVersion(stats.version || 'Unknown');
+      } catch {
+        setDuckdbVersion('Not available');
+      }
+    };
+    loadDuckDBVersion();
+  }, []);
 
   useEffect(() => {
     const ws = workspaces.find((w) => w.id === workspaceId);
@@ -242,6 +263,27 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({
         {/* Auto-Save Settings */}
         <div className="mb-6 border-t pt-6">
           <AutoSaveSettings />
+        </div>
+
+        {/* Version Information */}
+        <div className="mb-6 border-t pt-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Version Information</h3>
+          <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-gray-600">Application Version</span>
+              <span className="text-sm text-gray-900 font-mono">{APP_VERSION}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-gray-600">WASM SDK Version</span>
+              <span className="text-sm text-gray-900 font-mono">
+                {sdkLoader.isLoaded() ? sdkLoader.getSDKVersion() : 'Not loaded'}+
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-gray-600">DuckDB WASM Version</span>
+              <span className="text-sm text-gray-900 font-mono">{duckdbVersion}</span>
+            </div>
+          </div>
         </div>
 
         {/* Database Settings (SDK 1.13.1+) */}

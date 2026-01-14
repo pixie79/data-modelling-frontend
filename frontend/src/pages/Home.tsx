@@ -216,6 +216,8 @@ const Home: React.FC = () => {
         modelStore.setDMNDecisions((workspace as any).dmnDecisions);
       }
       if ((workspace as any).knowledgeArticles) {
+        // Clear filter first to prevent stale domain_id filtering out new articles
+        knowledgeStore.setFilter({});
         knowledgeStore.setArticles((workspace as any).knowledgeArticles);
       }
       if ((workspace as any).decisionRecords) {
@@ -361,12 +363,24 @@ const Home: React.FC = () => {
       // Set knowledge articles
       if ((workspace as any).knowledgeArticles) {
         const { useKnowledgeStore } = await import('@/stores/knowledgeStore');
+        console.log(
+          '[Home] Setting knowledge articles:',
+          (workspace as any).knowledgeArticles.length,
+          'article(s)'
+        );
+        // Clear filter first to prevent stale domain_id filtering out new articles
+        useKnowledgeStore.getState().setFilter({});
         useKnowledgeStore.getState().setArticles((workspace as any).knowledgeArticles);
       }
 
       // Set decision records (ADRs)
       if ((workspace as any).decisionRecords) {
         const { useDecisionStore } = await import('@/stores/decisionStore');
+        console.log(
+          '[Home] Setting decision records:',
+          (workspace as any).decisionRecords.length,
+          'record(s)'
+        );
         useDecisionStore.getState().setDecisions((workspace as any).decisionRecords);
       }
 

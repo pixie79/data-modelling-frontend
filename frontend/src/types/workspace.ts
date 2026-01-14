@@ -90,6 +90,7 @@ export interface DomainV2 {
   // Optional fields
   description?: string;
   systems?: SystemV2[]; // Nested system references
+  view_positions?: ViewPositions; // Canvas positions for nodes per view mode
 }
 
 /**

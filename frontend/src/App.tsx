@@ -1,13 +1,14 @@
 import { BrowserRouter, HashRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import React, { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { AuthProvider } from './components/auth/AuthProvider';
 import { ToastContainer } from './components/common/Toast';
 import { GlobalLoading } from './components/common/Loading';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
+import { SDKErrorPage } from './components/common/SDKErrorPage';
 import { useUIStore } from './stores/uiStore';
 import { useSDKModeStore } from './services/sdk/sdkMode';
-import { sdkLoader } from './services/sdk/sdkLoader';
+import { sdkLoader, SDKLoadError } from './services/sdk/sdkLoader';
 import { getDuckDBService } from './services/database';
 import { DUCKDB_CDN_URL } from './types/duckdb';
 import { getPlatform } from './services/platform/platform';
@@ -35,8 +36,10 @@ const queryClient = new QueryClient({
 
 function App() {
   const { addToast } = useUIStore();
-  const { mode, initialize } = useSDKModeStore();
-  const [modeInitialized, setModeInitialized] = React.useState(false);
+  const { initialize } = useSDKModeStore();
+  const [modeInitialized, setModeInitialized] = useState(false);
+  const [sdkError, setSdkError] = useState<SDKLoadError | null>(null);
+  const [sdkLoaded, setSdkLoaded] = useState(false);
 
   // Initialize SDK mode first
   useEffect(() => {
@@ -47,48 +50,43 @@ function App() {
     initMode();
   }, [initialize]);
 
-  // Check WASM availability and preload DuckDB on startup
+  // Load SDK WASM - required for app to function
   useEffect(() => {
     if (!modeInitialized) {
       return; // Wait for mode initialization
     }
 
-    const initializeWASMDependencies = async () => {
-      const isElectron = getPlatform() === 'electron';
-      const currentMode = mode || 'offline'; // Default to offline if not set
-      const isOffline = currentMode === 'offline';
-
-      // === 1. SDK WASM Check (for offline mode) ===
-      if (isElectron || isOffline) {
-        try {
-          await sdkLoader.load();
-          const isActuallyLoaded = sdkLoader.isActuallyLoaded();
-
-          if (!isActuallyLoaded) {
-            addToast({
-              type: 'error',
-              message:
-                'SDK WASM not loaded - offline functionality will be limited. Check that the SDK was downloaded during build.',
-              duration: 15000,
-            });
-            console.error(
-              '[App] SDK WASM not available - offline mode functionality will be limited'
-            );
-            console.error(
-              '[App] For Cloudflare Pages: Check that cloudflare-build.sh downloaded the SDK from GitHub Releases'
-            );
-          } else {
-            console.log('[App] SDK WASM loaded successfully');
-          }
-        } catch (error) {
-          addToast({
-            type: 'error',
-            message: 'Failed to load SDK WASM - offline functionality will be limited.',
-            duration: 15000,
-          });
-          console.error('[App] Failed to load SDK WASM:', error);
+    const loadSDK = async () => {
+      try {
+        await sdkLoader.load();
+        console.log('[App] SDK WASM loaded successfully');
+        setSdkLoaded(true);
+      } catch (error) {
+        console.error('[App] Failed to load SDK WASM:', error);
+        if (error instanceof SDKLoadError) {
+          setSdkError(error);
+        } else {
+          setSdkError(
+            new SDKLoadError(
+              error instanceof Error ? error.message : 'Unknown SDK loading error',
+              error instanceof Error ? error : undefined
+            )
+          );
         }
       }
+    };
+
+    loadSDK();
+  }, [modeInitialized]);
+
+  // Preload DuckDB on startup (after SDK is loaded)
+  useEffect(() => {
+    if (!sdkLoaded) {
+      return; // Wait for SDK to load
+    }
+
+    const initializeDuckDB = async () => {
+      const isElectron = getPlatform() === 'electron';
 
       // === 2. DuckDB-WASM Preload and Cache ===
       // Preload DuckDB-WASM early so it's ready when needed
@@ -129,11 +127,28 @@ function App() {
 
     // Delay slightly to allow app to fully initialize
     const timeoutId = setTimeout(() => {
-      initializeWASMDependencies();
+      initializeDuckDB();
     }, 100);
 
     return () => clearTimeout(timeoutId);
-  }, [addToast, mode, modeInitialized]);
+  }, [addToast, sdkLoaded]);
+
+  // Show SDK error page if SDK failed to load
+  if (sdkError) {
+    return <SDKErrorPage error={sdkError} />;
+  }
+
+  // Show loading while SDK is initializing
+  if (!sdkLoaded) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading data modelling SDK...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <ErrorBoundary

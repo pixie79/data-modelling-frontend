@@ -117,7 +117,18 @@ export const useKnowledgeStore = create<KnowledgeState>()(
         set({ articles });
         // Update filtered articles
         const filter = get().filter;
-        set({ filteredArticles: applyFilter(articles, filter) });
+        const filtered = applyFilter(articles, filter);
+        console.log('[KnowledgeStore] setArticles:', {
+          articlesCount: articles.length,
+          filter,
+          filteredCount: filtered.length,
+          articles: articles.map((a) => ({
+            id: a.id,
+            title: a.title,
+            domain_id: a.domain_id,
+          })),
+        });
+        set({ filteredArticles: filtered });
       },
 
       setSelectedArticle: (article) => set({ selectedArticle: article }),
@@ -128,7 +139,13 @@ export const useKnowledgeStore = create<KnowledgeState>()(
         set({ filter });
         // Update filtered articles
         const articles = get().articles;
-        set({ filteredArticles: applyFilter(articles, filter) });
+        const filtered = applyFilter(articles, filter);
+        console.log('[KnowledgeStore] setFilter:', {
+          filter,
+          articlesCount: articles.length,
+          filteredCount: filtered.length,
+        });
+        set({ filteredArticles: filtered });
       },
 
       setSearchQuery: (query) => set({ searchQuery: query }),
@@ -396,18 +413,27 @@ export const useKnowledgeStore = create<KnowledgeState>()(
  */
 function applyFilter(articles: KnowledgeArticle[], filter: KnowledgeFilter): KnowledgeArticle[] {
   let filtered = [...articles];
+  console.log('[KnowledgeStore] applyFilter start:', filtered.length, 'articles');
 
   if (filter.domain_id) {
     // Include items matching the domain OR cross-domain items (no domain_id)
+    const beforeCount = filtered.length;
     filtered = filtered.filter((a) => a.domain_id === filter.domain_id || !a.domain_id);
+    console.log(
+      `[KnowledgeStore] After domain filter (${filter.domain_id}): ${beforeCount} -> ${filtered.length}`
+    );
   }
 
   if (filter.type && filter.type.length > 0) {
+    const beforeCount = filtered.length;
     filtered = filtered.filter((a) => filter.type!.includes(a.type));
+    console.log(`[KnowledgeStore] After type filter: ${beforeCount} -> ${filtered.length}`);
   }
 
   if (filter.status && filter.status.length > 0) {
+    const beforeCount = filtered.length;
     filtered = filtered.filter((a) => filter.status!.includes(a.status));
+    console.log(`[KnowledgeStore] After status filter: ${beforeCount} -> ${filtered.length}`);
   }
 
   if (filter.author) {
@@ -427,5 +453,6 @@ function applyFilter(articles: KnowledgeArticle[], filter: KnowledgeFilter): Kno
   // Sort by number descending (newest first)
   filtered.sort((a, b) => b.number - a.number);
 
+  console.log('[KnowledgeStore] applyFilter result:', filtered.length, 'articles');
   return filtered;
 }

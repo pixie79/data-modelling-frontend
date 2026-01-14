@@ -43,6 +43,15 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
   // Valid ODCS status values
   const STATUS_OPTIONS = ['proposed', 'draft', 'active', 'deprecated', 'retired'] as const;
 
+  // Helper to get status from customProperties
+  const getStatusFromCustomProperties = (
+    customProps: Array<{ property: string; value: unknown }> | undefined
+  ): string => {
+    if (!customProps || !Array.isArray(customProps)) return '';
+    const statusProp = customProps.find((p) => p.property === 'status');
+    return typeof statusProp?.value === 'string' ? statusProp.value : '';
+  };
+
   // Initialize form when table changes
   useEffect(() => {
     if (table) {
@@ -60,7 +69,8 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
       setTagsInput(editableTags.join(', '));
       setMetadata(table.metadata || {});
       setQualityRules(table.quality_rules || {});
-      setStatus(table.status || '');
+      // Read status from customProperties (ODCS compliant)
+      setStatus(getStatusFromCustomProperties(table.customProperties));
       setHasUnsavedChanges(false);
     }
   }, [table]);
@@ -83,8 +93,16 @@ export const TableMetadataModal: React.FC<TableMetadataModalProps> = ({
         (t) => (t.username && t.username.trim().length > 0) || (t.name && t.name.trim().length > 0)
       );
 
+      // Build customProperties with status (ODCS compliant)
+      const updatedCustomProperties: Array<{ property: string; value: unknown }> = [
+        // Keep existing customProperties except status
+        ...(table.customProperties || []).filter((p) => p.property !== 'status'),
+        // Add status if set
+        ...(status ? [{ property: 'status', value: status }] : []),
+      ];
+
       const updates: Partial<Table> = {
-        status: status || undefined,
+        customProperties: updatedCustomProperties.length > 0 ? updatedCustomProperties : undefined,
         owner: owner && (owner.name || owner.email) ? owner : undefined,
         roles: validRoles.length > 0 ? validRoles : undefined,
         support: validSupport.length > 0 ? validSupport : undefined,

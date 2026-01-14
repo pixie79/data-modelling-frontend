@@ -45,9 +45,6 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
   const [alias, setAlias] = useState(table?.alias || '');
   const [description, setDescription] = useState(table?.description || '');
   const [dataLevel, setDataLevel] = useState<DataLevel>(table?.data_level || 'operational');
-  const [modelType, setModelType] = useState<'conceptual' | 'logical' | 'physical'>(
-    table?.model_type || 'logical'
-  );
   const [physicalName, setPhysicalName] = useState(table?.physicalName || '');
   const [businessName, setBusinessName] = useState(table?.businessName || '');
   const [columns, setColumns] = useState<Column[]>(table?.columns || []);
@@ -108,7 +105,6 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
       setAlias(table.alias || '');
       setDescription(table.description || '');
       setDataLevel(table.data_level || 'operational');
-      setModelType(table.model_type || 'logical');
       setPhysicalName(table.physicalName || '');
       setBusinessName(table.businessName || '');
 
@@ -1225,31 +1221,8 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
           />
         </div>
 
-        {/* Model Layer and ODCS Names */}
+        {/* ODCS Names */}
         <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label
-              htmlFor="table-model-type"
-              className="block text-xs font-medium text-gray-700 mb-0.5"
-            >
-              Model Layer
-            </label>
-            <select
-              id="table-model-type"
-              value={modelType}
-              onChange={(e) => {
-                const newModelType = e.target.value as 'conceptual' | 'logical' | 'physical';
-                setModelType(newModelType);
-                updateTable(tableId, { model_type: newModelType });
-                setHasUnsavedChanges(true);
-              }}
-              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="conceptual">Conceptual</option>
-              <option value="logical">Logical</option>
-              <option value="physical">Physical</option>
-            </select>
-          </div>
           <div>
             <label
               htmlFor="table-business-name"
@@ -1270,10 +1243,6 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
               className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-        </div>
-
-        {/* Physical Name - only show for physical model layer */}
-        {modelType === 'physical' && (
           <div>
             <label
               htmlFor="table-physical-name"
@@ -1290,11 +1259,11 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
                 updateTable(tableId, { physicalName: e.target.value });
                 setHasUnsavedChanges(true);
               }}
-              placeholder="Database table name"
+              placeholder={name || 'Database table name'}
               className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-        )}
+        </div>
 
         <div>
           <label

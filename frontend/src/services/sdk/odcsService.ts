@@ -498,7 +498,7 @@ class ODCSService {
       name: tableName,
       alias: table.alias || table.businessName || table.business_name,
       description,
-      status: table.status || 'draft',
+      // Note: status is stored in customProperties per ODCS spec
       tags: tableTags.length > 0 ? tableTags : undefined,
       model_type: table.model_type || 'logical',
       columns: normalizedColumns,
@@ -835,7 +835,7 @@ class ODCSService {
         physicalType: table.physicalType || 'table',
         ...(table.businessName && { businessName: table.businessName }),
         ...(table.description && { description: table.description }),
-        status: table.status || 'draft',
+        // Note: status is stored in customProperties per ODCS spec
         ...(table.dataGranularityDescription && {
           dataGranularityDescription: table.dataGranularityDescription,
         }),
@@ -1097,19 +1097,14 @@ class ODCSService {
       });
 
       // Build table data with full ODCS field set
-      // Debug: Log incoming table status to trace where it gets lost
-      console.log(`[ODCSService] tablesToContract - Input table "${table.name}" status:`, {
-        directStatus: table.status,
-        metadataStatus: table.metadata?.status,
-        willUse: table.status || table.metadata?.status || 'draft',
-      });
+      // Note: status is stored in customProperties per ODCS spec
 
       const tableData: any = {
         id: table.id || generateUUID(),
         workspace_id: table.workspace_id || normalized.workspace_id,
         name: table.name,
         model_type: table.model_type || 'logical',
-        status: table.status || table.metadata?.status || 'draft',
+        // Note: status is in customProperties per ODCS spec
         columns,
         created_at: table.created_at || now,
         updated_at: table.last_modified_at || table.updated_at || now,
@@ -1121,6 +1116,8 @@ class ODCSService {
         dataGranularityDescription:
           table.dataGranularityDescription || table.data_granularity_description,
         authoritativeDefinitions: table.authoritativeDefinitions || table.authoritative_definitions,
+        // Preserve customProperties which includes status
+        customProperties: table.customProperties,
       };
 
       // Add optional fields
@@ -1362,7 +1359,10 @@ class ODCSService {
           ...(originalTable?.physicalType && { physicalType: originalTable.physicalType }),
           ...(originalTable?.businessName && { businessName: originalTable.businessName }),
           ...(originalTable?.description && { description: originalTable.description }),
-          ...(originalTable?.status && { status: originalTable.status }),
+          // Note: status is in customProperties per ODCS spec
+          ...(originalTable?.customProperties && {
+            customProperties: originalTable.customProperties,
+          }),
           ...(originalTable?.dataGranularityDescription && {
             dataGranularityDescription: originalTable.dataGranularityDescription,
           }),
@@ -1371,9 +1371,6 @@ class ODCSService {
           }),
           ...(originalTable?.tags && originalTable.tags.length > 0 && { tags: originalTable.tags }),
         };
-
-        // Debug: Log patched result
-        console.log(`[ODCSService] Patched entry status: ${patchedEntry.status}`);
 
         if (originalTable?.id && !schemaEntry.id) {
           console.log(

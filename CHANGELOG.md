@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Columns with `parent_column_id` now correctly rebuilt into `items.properties` (array) or `properties` (object)
   - Child columns excluded from root level during export
   - Preserves full nested hierarchy on round-trip (import → edit → export)
+- **Nested Column Hierarchy Preservation**: Fixed `processNestedColumns` overwriting ODCS hierarchy
+  - Now preserves existing `parent_column_id` from ODCS import instead of only using dot notation
+  - Dot notation detection only used as fallback for SQL imports without existing hierarchy
+  - Fixes nested columns being lost when saving after ODCS import
 - **KnowledgeStore Infinite Loop**: Fixed `setFilter` being called hundreds of times per second
   - Updated `setFilter` to support functional updates: `setFilter(prev => ({ ...prev, ... }))`
   - Removed `filter` from useEffect dependency arrays in KnowledgeList and DecisionList

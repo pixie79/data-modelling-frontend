@@ -326,7 +326,12 @@ describe('KnowledgeList', () => {
 
       vi.advanceTimersByTime(300);
 
-      expect(mockSetFilter).toHaveBeenCalledWith(expect.objectContaining({ search: 'API' }));
+      // setFilter is now called with a functional updater
+      expect(mockSetFilter).toHaveBeenCalled();
+      const lastCall = mockSetFilter.mock.calls[mockSetFilter.mock.calls.length - 1][0];
+      // If it's a function, call it with empty filter to get the result
+      const result = typeof lastCall === 'function' ? lastCall({}) : lastCall;
+      expect(result).toEqual(expect.objectContaining({ search: 'API' }));
 
       vi.useRealTimers();
     });

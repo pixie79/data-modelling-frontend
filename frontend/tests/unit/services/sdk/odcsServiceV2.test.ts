@@ -660,6 +660,232 @@ describe('Nested Column Processing', () => {
   });
 });
 
+describe('Nested Column Export', () => {
+  it('should rebuild items.properties for array type columns on export', async () => {
+    // Simulate flat columns with parent_column_id (as stored in the app)
+    const flatColumnsWithParent = [
+      {
+        id: 'col-1',
+        name: 'alert_id',
+        logicalType: 'string',
+        physicalType: 'varchar',
+      },
+      {
+        id: 'col-2',
+        name: 'rulesTriggered',
+        logicalType: 'array',
+        physicalType: 'array',
+      },
+      {
+        id: 'col-3',
+        name: 'ruleId',
+        logicalType: 'string',
+        physicalType: 'varchar',
+        parent_column_id: 'col-2',
+      },
+      {
+        id: 'col-4',
+        name: 'ruleName',
+        logicalType: 'string',
+        physicalType: 'varchar',
+        parent_column_id: 'col-2',
+      },
+    ];
+
+    // Import the singleton odcsService
+    const { odcsService } = await import('@/services/sdk/odcsService');
+
+    // Access the private toYAMLv2 through the public toYAML
+    const workspace = {
+      tables: [
+        {
+          id: 'table-1',
+          name: 'alerts',
+          columns: flatColumnsWithParent,
+        },
+      ],
+      relationships: [],
+    };
+
+    const yaml = await odcsService.toYAML(workspace);
+
+    // Parse the YAML to verify structure
+    const { load } = await import('js-yaml');
+    const parsed = load(yaml) as any;
+
+    // Verify the rulesTriggered column has items.properties
+    const rulesCol = parsed.schema[0].properties.find((p: any) => p.name === 'rulesTriggered');
+    expect(rulesCol).toBeDefined();
+    expect(rulesCol.items).toBeDefined();
+    expect(rulesCol.items.properties).toBeInstanceOf(Array);
+    expect(rulesCol.items.properties.length).toBe(2);
+    expect(rulesCol.items.properties[0].name).toBe('ruleId');
+    expect(rulesCol.items.properties[1].name).toBe('ruleName');
+
+    // Root alert_id should NOT have items or properties
+    const alertIdCol = parsed.schema[0].properties.find((p: any) => p.name === 'alert_id');
+    expect(alertIdCol).toBeDefined();
+    expect(alertIdCol.items).toBeUndefined();
+    expect(alertIdCol.properties).toBeUndefined();
+  });
+
+  it('should rebuild properties for object type columns on export', async () => {
+    // Simulate flat columns with parent_column_id for object/record type
+    const flatColumnsWithParent = [
+      {
+        id: 'col-1',
+        name: 'bet_metadata',
+        logicalType: 'object',
+        physicalType: 'record',
+      },
+      {
+        id: 'col-2',
+        name: 'bet_type',
+        logicalType: 'string',
+        physicalType: 'varchar',
+        parent_column_id: 'col-1',
+      },
+      {
+        id: 'col-3',
+        name: 'bet_amount',
+        logicalType: 'number',
+        physicalType: 'decimal',
+        parent_column_id: 'col-1',
+      },
+    ];
+
+    const { odcsService } = await import('@/services/sdk/odcsService');
+
+    const workspace = {
+      tables: [
+        {
+          id: 'table-1',
+          name: 'bets',
+          columns: flatColumnsWithParent,
+        },
+      ],
+      relationships: [],
+    };
+
+    const yaml = await odcsService.toYAML(workspace);
+
+    const { load } = await import('js-yaml');
+    const parsed = load(yaml) as any;
+
+    // Verify the bet_metadata column has properties (not items.properties)
+    const metadataCol = parsed.schema[0].properties.find((p: any) => p.name === 'bet_metadata');
+    expect(metadataCol).toBeDefined();
+    expect(metadataCol.properties).toBeInstanceOf(Array);
+    expect(metadataCol.properties.length).toBe(2);
+    expect(metadataCol.properties[0].name).toBe('bet_type');
+    expect(metadataCol.properties[1].name).toBe('bet_amount');
+
+    // Object types should NOT have items
+    expect(metadataCol.items).toBeUndefined();
+  });
+
+  it('should handle deeply nested columns (3 levels) on export', async () => {
+    const flatColumnsWithParent = [
+      {
+        id: 'col-1',
+        name: 'events',
+        logicalType: 'array',
+        physicalType: 'array',
+      },
+      {
+        id: 'col-2',
+        name: 'event_data',
+        logicalType: 'object',
+        physicalType: 'record',
+        parent_column_id: 'col-1',
+      },
+      {
+        id: 'col-3',
+        name: 'event_name',
+        logicalType: 'string',
+        physicalType: 'varchar',
+        parent_column_id: 'col-2',
+      },
+    ];
+
+    const { odcsService } = await import('@/services/sdk/odcsService');
+
+    const workspace = {
+      tables: [
+        {
+          id: 'table-1',
+          name: 'deep_nested',
+          columns: flatColumnsWithParent,
+        },
+      ],
+      relationships: [],
+    };
+
+    const yaml = await odcsService.toYAML(workspace);
+
+    const { load } = await import('js-yaml');
+    const parsed = load(yaml) as any;
+
+    // Level 1: events (array)
+    const eventsCol = parsed.schema[0].properties.find((p: any) => p.name === 'events');
+    expect(eventsCol.items).toBeDefined();
+    expect(eventsCol.items.properties).toBeInstanceOf(Array);
+
+    // Level 2: event_data (object inside array)
+    const eventDataCol = eventsCol.items.properties.find((p: any) => p.name === 'event_data');
+    expect(eventDataCol.properties).toBeInstanceOf(Array);
+
+    // Level 3: event_name (string inside object inside array)
+    const eventNameCol = eventDataCol.properties.find((p: any) => p.name === 'event_name');
+    expect(eventNameCol).toBeDefined();
+    expect(eventNameCol.logicalType).toBe('string');
+  });
+
+  it('should not include child columns at root level', async () => {
+    const flatColumnsWithParent = [
+      {
+        id: 'col-1',
+        name: 'parent_col',
+        logicalType: 'array',
+        physicalType: 'array',
+      },
+      {
+        id: 'col-2',
+        name: 'child_col',
+        logicalType: 'string',
+        physicalType: 'varchar',
+        parent_column_id: 'col-1',
+      },
+    ];
+
+    const { odcsService } = await import('@/services/sdk/odcsService');
+
+    const workspace = {
+      tables: [
+        {
+          id: 'table-1',
+          name: 'test_table',
+          columns: flatColumnsWithParent,
+        },
+      ],
+      relationships: [],
+    };
+
+    const yaml = await odcsService.toYAML(workspace);
+
+    const { load } = await import('js-yaml');
+    const parsed = load(yaml) as any;
+
+    // Root level should only have parent_col
+    expect(parsed.schema[0].properties.length).toBe(1);
+    expect(parsed.schema[0].properties[0].name).toBe('parent_col');
+
+    // child_col should only be inside items.properties
+    const childAtRoot = parsed.schema[0].properties.find((p: any) => p.name === 'child_col');
+    expect(childAtRoot).toBeUndefined();
+  });
+});
+
 describe('ODCS Field Coverage', () => {
   it('should cover all ODCS v3.1.0 table-level fields', () => {
     const requiredTableFields = [

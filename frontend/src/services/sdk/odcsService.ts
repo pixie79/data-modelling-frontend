@@ -913,10 +913,14 @@ class ODCSService {
         ...(table.customProperties && { customProperties: table.customProperties }),
       };
 
-      // Build properties array from columns
+      // Build properties array from columns, handling nested structures
       const columns = table.columns || [];
-      schemaEntry.properties = columns.map((col: any) => {
-        const prop: any = {
+
+      /**
+       * Convert a column to ODCS property format
+       */
+      const columnToProperty = (col: any): any => {
+        return {
           name: col.name,
           ...(col.physicalName && { physicalName: col.physicalName }),
           logicalType: col.logicalType || col.data_type || 'string',
@@ -972,8 +976,45 @@ class ODCSService {
           })(),
           ...(col.quality && col.quality.length > 0 && { quality: col.quality }),
         };
-        return prop;
-      });
+      };
+
+      /**
+       * Recursively build properties with nested structure for array/object types
+       * Reconstructs items.properties for arrays and properties for objects
+       */
+      const buildPropertiesRecursively = (allColumns: any[], parentId?: string): any[] => {
+        // Get columns at this level (root or children of parentId)
+        const levelColumns = allColumns.filter((col) =>
+          parentId ? col.parent_column_id === parentId : !col.parent_column_id
+        );
+
+        return levelColumns.map((col) => {
+          const prop = columnToProperty(col);
+
+          // Check if this column has children (nested columns)
+          const childColumns = allColumns.filter((c) => c.parent_column_id === col.id);
+
+          if (childColumns.length > 0) {
+            // Recursively build nested properties
+            const nestedProps = buildPropertiesRecursively(allColumns, col.id);
+            const logicalType = (col.logicalType || col.data_type || '').toLowerCase();
+
+            // For array types, nest under items.properties
+            if (logicalType === 'array') {
+              prop.items = {
+                properties: nestedProps,
+              };
+            } else {
+              // For object/record types, nest directly under properties
+              prop.properties = nestedProps;
+            }
+          }
+
+          return prop;
+        });
+      };
+
+      schemaEntry.properties = buildPropertiesRecursively(columns);
 
       return schemaEntry;
     });

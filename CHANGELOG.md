@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Columns with `items.properties` (array types) and `properties` (object types) now recursively processed
   - Child columns correctly linked via `parent_column_id` for hierarchical display
   - Supports arbitrarily deep nesting (3+ levels tested)
+- **Nested Column Export**: Fixed ODCS export not rebuilding nested structure from flat columns
+  - Columns with `parent_column_id` now correctly rebuilt into `items.properties` (array) or `properties` (object)
+  - Child columns excluded from root level during export
+  - Preserves full nested hierarchy on round-trip (import → edit → export)
 - **KnowledgeStore Infinite Loop**: Fixed `setFilter` being called hundreds of times per second
   - Updated `setFilter` to support functional updates: `setFilter(prev => ({ ...prev, ... }))`
   - Removed `filter` from useEffect dependency arrays in KnowledgeList and DecisionList
@@ -25,6 +29,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `bet_metadata` object with direct `properties`
   - Deeply nested `operation` object (3 levels)
   - New test suite for nested column import verification
+- **Nested Column Export Tests**: Added unit tests for nested column export
+  - Tests for array type columns rebuilding `items.properties`
+  - Tests for object type columns rebuilding `properties`
+  - Tests for deeply nested columns (3 levels)
+  - Tests ensuring child columns excluded from root level
 
 ## [2.4.0] - 2026-01-14
 

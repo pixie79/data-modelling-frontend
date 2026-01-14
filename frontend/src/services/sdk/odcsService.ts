@@ -286,8 +286,53 @@ class ODCSService {
       columns = table.properties;
     }
 
-    // Normalize columns with V2 field set
-    const normalizedColumns = columns.map((col: any, colIndex: number) => {
+    /**
+     * Helper to normalize a single column from ODCS format
+     * Returns the normalized column with all ODCS v3.1.0 fields
+     */
+    const normalizeColumn = (
+      col: any,
+      colIndex: number,
+      parentColumnId?: string
+    ): {
+      id: string;
+      table_id: string;
+      name: string;
+      data_type: string;
+      nullable: boolean;
+      is_primary_key: boolean;
+      is_foreign_key: boolean;
+      is_unique: boolean;
+      foreign_key_reference?: string;
+      default_value?: string;
+      description?: string;
+      constraints?: Record<string, unknown>;
+      quality_rules?: Record<string, unknown> | unknown[];
+      quality?: unknown[];
+      order: number;
+      created_at: string;
+      parent_column_id?: string;
+      nested_columns?: any[];
+      physicalName?: string;
+      physicalType?: string;
+      logicalType?: string;
+      businessName?: string;
+      primaryKeyPosition?: number;
+      partitioned?: boolean;
+      partitionKeyPosition?: number;
+      clustered?: boolean;
+      classification?: string;
+      criticalDataElement?: boolean;
+      encryptedName?: string;
+      transformSourceObjects?: string[];
+      transformLogic?: string;
+      transformDescription?: string;
+      examples?: string[];
+      logicalTypeOptions?: any;
+      authoritativeDefinitions?: any[];
+      tags?: any[];
+      customProperties?: any[];
+    } => {
       const columnId = col.id && isValidUUID(col.id) ? col.id : generateUUID();
 
       // Extract constraints from logicalTypeOptions
@@ -312,18 +357,6 @@ class ODCSService {
       // Determine data_type from physicalType or logicalType
       const dataType =
         col.physicalType || col.physical_type || col.logicalType || col.logical_type || 'VARCHAR';
-
-      // Debug: Log column type mapping
-      if (col.name === 'rcvr_id') {
-        console.log(
-          '[ODCSService] normalizeTableV2 rcvr_id column:',
-          JSON.stringify({
-            inputLogicalType: col.logicalType,
-            inputPhysicalType: col.physicalType,
-            dataType,
-          })
-        );
-      }
 
       // Determine nullable from required field
       const nullable = col.required === true ? false : (col.nullable ?? true);
@@ -376,6 +409,7 @@ class ODCSService {
           return col.order ?? colIndex;
         })(),
         created_at: col.created_at || now,
+        parent_column_id: parentColumnId,
         // V2 ODCS 3.1.0 fields
         physicalName: col.physicalName || col.physical_name,
         physicalType: col.physicalType || col.physical_type,
@@ -405,7 +439,42 @@ class ODCSService {
         tags: col.tags,
         customProperties: col.customProperties || col.custom_properties,
       };
-    });
+    };
+
+    /**
+     * Recursively process columns including nested properties from array/object types
+     * For arrays with items.properties or objects with properties, creates child columns
+     * Returns a flat array of all columns with parent_column_id set for hierarchy
+     */
+    const processColumnsRecursively = (
+      cols: any[],
+      parentColumnId?: string
+    ): ReturnType<typeof normalizeColumn>[] => {
+      const result: ReturnType<typeof normalizeColumn>[] = [];
+
+      cols.forEach((col, colIndex) => {
+        // Normalize the current column
+        const normalizedCol = normalizeColumn(col, colIndex, parentColumnId);
+        result.push(normalizedCol);
+
+        // Check for nested properties in array types (items.properties)
+        const nestedProperties = col.items?.properties || col.properties; // array type with items containing properties // object/record type with direct properties
+
+        if (Array.isArray(nestedProperties) && nestedProperties.length > 0) {
+          // Recursively process nested columns
+          const nestedColumns = processColumnsRecursively(nestedProperties, normalizedCol.id);
+          // Add nested_columns reference to parent for display hierarchy
+          normalizedCol.nested_columns = nestedColumns;
+          // Add all nested columns to the flat result
+          result.push(...nestedColumns);
+        }
+      });
+
+      return result;
+    };
+
+    // Normalize columns with V2 field set, including nested columns
+    const normalizedColumns = processColumnsRecursively(columns);
 
     // Extract owner
     const owner = table.owner

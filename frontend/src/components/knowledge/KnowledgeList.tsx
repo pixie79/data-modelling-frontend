@@ -72,13 +72,13 @@ export const KnowledgeList: React.FC<KnowledgeListProps> = ({
     }
   }, [domainId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Debounced search
+  // Debounced search - use functional update to avoid filter in dependencies
   React.useEffect(() => {
     const timer = setTimeout(() => {
-      setFilter({ ...filter, search: searchInput || undefined });
+      setFilter((prev) => ({ ...prev, search: searchInput || undefined }));
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchInput, filter, setFilter]);
+  }, [searchInput, setFilter]);
 
   // Sort articles
   const sortedArticles = useMemo(() => {

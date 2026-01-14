@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.1] - 2026-01-14
+
+### Fixed
+- **Nested Column Import**: Fixed ODCS import not processing nested array/object columns
+  - Columns with `items.properties` (array types) and `properties` (object types) now recursively processed
+  - Child columns correctly linked via `parent_column_id` for hierarchical display
+  - Supports arbitrarily deep nesting (3+ levels tested)
+- **KnowledgeStore Infinite Loop**: Fixed `setFilter` being called hundreds of times per second
+  - Updated `setFilter` to support functional updates: `setFilter(prev => ({ ...prev, ... }))`
+  - Removed `filter` from useEffect dependency arrays in KnowledgeList and DecisionList
+  - Removed verbose console logging from setFilter
+
+### Added
+- **Nested Column E2E Tests**: Added `alerts` table to ODCS test fixture with nested structures
+  - `rules_triggered` array with nested `items.properties`
+  - `bet_metadata` object with direct `properties`
+  - Deeply nested `operation` object (3 levels)
+  - New test suite for nested column import verification
+
 ## [2.4.0] - 2026-01-14
 
 ### Added

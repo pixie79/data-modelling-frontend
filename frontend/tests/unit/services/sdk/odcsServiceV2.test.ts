@@ -472,6 +472,194 @@ describe('ODCS Service V2 API', () => {
   });
 });
 
+// Sample ODCS contract with nested array/object columns (like GAM alert data)
+const sampleODCSContractWithNestedColumns = {
+  apiVersion: 'v3.1.0',
+  kind: 'DataContract',
+  id: 'nested-contract-id',
+  version: '1.0.0',
+  status: 'active',
+  name: 'Nested Columns Test Contract',
+  schema: [
+    {
+      id: 'table-nested',
+      name: 'alerts',
+      physicalName: 'tbl_alerts',
+      properties: [
+        {
+          id: 'col-id',
+          name: 'id',
+          physicalType: 'string',
+          logicalType: 'string',
+          primaryKey: true,
+          description: 'Unique alert identifier',
+        },
+        {
+          id: 'col-rules',
+          name: 'rulesTriggered',
+          physicalType: 'array',
+          logicalType: 'array',
+          description: 'Array of triggered rules',
+          items: {
+            physicalType: 'object',
+            logicalType: 'object',
+            properties: [
+              {
+                name: 'ruleId',
+                physicalType: 'string',
+                logicalType: 'string',
+                description: 'Rule identifier',
+              },
+              {
+                name: 'ruleName',
+                physicalType: 'string',
+                logicalType: 'string',
+                description: 'Rule name',
+              },
+              {
+                name: 'priority',
+                physicalType: 'int',
+                logicalType: 'integer',
+                description: 'Rule priority (0-30)',
+              },
+              {
+                name: 'alertOperation',
+                physicalType: 'record',
+                logicalType: 'object',
+                description: 'Nested operation details',
+                properties: [
+                  {
+                    name: 'operationName',
+                    physicalType: 'string',
+                    logicalType: 'string',
+                    description: 'Name of the operation',
+                  },
+                  {
+                    name: 'operationField',
+                    physicalType: 'string',
+                    logicalType: 'string',
+                    description: 'Field affected by operation',
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        {
+          id: 'col-metadata',
+          name: 'betMetadata',
+          physicalType: 'record',
+          logicalType: 'object',
+          description: 'Bet metadata object',
+          properties: [
+            {
+              name: 'betId',
+              physicalType: 'string',
+              logicalType: 'string',
+              description: 'Bet identifier',
+            },
+            {
+              name: 'betAmount',
+              physicalType: 'decimal',
+              logicalType: 'number',
+              description: 'Bet amount',
+            },
+            {
+              name: 'customerId',
+              physicalType: 'string',
+              logicalType: 'string',
+              description: 'Customer identifier',
+            },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
+describe('Nested Column Processing', () => {
+  it('should have array column with items.properties', () => {
+    const rulesColumn = sampleODCSContractWithNestedColumns.schema[0].properties[1];
+    expect(rulesColumn.name).toBe('rulesTriggered');
+    expect(rulesColumn.physicalType).toBe('array');
+    expect(rulesColumn.items).toBeDefined();
+    expect(rulesColumn.items?.properties).toBeInstanceOf(Array);
+    expect(rulesColumn.items?.properties?.length).toBe(4);
+  });
+
+  it('should have nested properties inside array items', () => {
+    const rulesColumn = sampleODCSContractWithNestedColumns.schema[0].properties[1];
+    const nestedProps = rulesColumn.items?.properties;
+
+    expect(nestedProps?.[0].name).toBe('ruleId');
+    expect(nestedProps?.[1].name).toBe('ruleName');
+    expect(nestedProps?.[2].name).toBe('priority');
+    expect(nestedProps?.[3].name).toBe('alertOperation');
+  });
+
+  it('should have deeply nested properties (3 levels)', () => {
+    const rulesColumn = sampleODCSContractWithNestedColumns.schema[0].properties[1];
+    const alertOperation = rulesColumn.items?.properties?.[3];
+
+    expect(alertOperation?.name).toBe('alertOperation');
+    expect(alertOperation?.physicalType).toBe('record');
+    expect(alertOperation?.properties).toBeInstanceOf(Array);
+    expect(alertOperation?.properties?.length).toBe(2);
+    expect(alertOperation?.properties?.[0].name).toBe('operationName');
+    expect(alertOperation?.properties?.[1].name).toBe('operationField');
+  });
+
+  it('should have object column with direct properties', () => {
+    const metadataColumn = sampleODCSContractWithNestedColumns.schema[0].properties[2];
+    expect(metadataColumn.name).toBe('betMetadata');
+    expect(metadataColumn.physicalType).toBe('record');
+    expect(metadataColumn.properties).toBeInstanceOf(Array);
+    expect(metadataColumn.properties?.length).toBe(3);
+  });
+
+  it('should count total nested columns correctly', () => {
+    const table = sampleODCSContractWithNestedColumns.schema[0];
+
+    // Count all columns recursively
+    const countColumnsRecursively = (props: any[]): number => {
+      let count = 0;
+      for (const prop of props) {
+        count += 1; // Count this column
+
+        // Check for nested in items.properties (array type)
+        if (prop.items?.properties) {
+          count += countColumnsRecursively(prop.items.properties);
+        }
+        // Check for nested in properties (object type)
+        if (prop.properties) {
+          count += countColumnsRecursively(prop.properties);
+        }
+      }
+      return count;
+    };
+
+    const totalColumns = countColumnsRecursively(table.properties);
+
+    // Expected: 3 root + 4 in rulesTriggered + 2 in alertOperation + 3 in betMetadata = 12
+    expect(totalColumns).toBe(12);
+  });
+
+  it('should preserve descriptions on nested columns', () => {
+    const rulesColumn = sampleODCSContractWithNestedColumns.schema[0].properties[1];
+    const priorityProp = rulesColumn.items?.properties?.[2];
+
+    expect(priorityProp?.description).toBe('Rule priority (0-30)');
+  });
+
+  it('should preserve physicalType and logicalType on nested columns', () => {
+    const metadataColumn = sampleODCSContractWithNestedColumns.schema[0].properties[2];
+    const betAmountProp = metadataColumn.properties?.[1];
+
+    expect(betAmountProp?.physicalType).toBe('decimal');
+    expect(betAmountProp?.logicalType).toBe('number');
+  });
+});
+
 describe('ODCS Field Coverage', () => {
   it('should cover all ODCS v3.1.0 table-level fields', () => {
     const requiredTableFields = [

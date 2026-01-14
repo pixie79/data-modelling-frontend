@@ -374,6 +374,176 @@ schema:
         customProperties:
           - property: order
             value: 2
+  # Table with nested array/object columns (to test recursive column processing)
+  - id: alerts_obj
+    name: alerts
+    physicalName: tbl_alerts
+    physicalType: table
+    businessName: Alert Records
+    description: Alert data with nested structures for rules and metadata
+    customProperties:
+      - property: status
+        value: active
+    tags:
+      - alerts
+      - nested-data
+    properties:
+      - id: alert_id_prop
+        name: alert_id
+        primaryKey: true
+        primaryKeyPosition: 1
+        businessName: alert identifier
+        logicalType: string
+        physicalType: varchar(36)
+        required: true
+        unique: true
+        description: Unique identifier for the alert
+        customProperties:
+          - property: order
+            value: 0
+      - id: alert_type_prop
+        name: alert_type
+        businessName: alert type
+        logicalType: string
+        physicalType: varchar(50)
+        required: true
+        description: Type of alert (e.g., LIABILITY, CASHOUT)
+        customProperties:
+          - property: order
+            value: 1
+      # Nested array column with items.properties
+      - id: rules_triggered_prop
+        name: rules_triggered
+        businessName: triggered rules
+        logicalType: array
+        physicalType: array
+        required: true
+        description: Array of rules that triggered this alert
+        customProperties:
+          - property: order
+            value: 2
+        items:
+          logicalType: object
+          physicalType: object
+          properties:
+            - name: rule_id
+              logicalType: string
+              physicalType: varchar(36)
+              required: true
+              description: Unique rule identifier
+            - name: rule_name
+              logicalType: string
+              physicalType: varchar(100)
+              required: true
+              description: Name of the triggered rule
+            - name: priority
+              logicalType: integer
+              physicalType: int
+              required: true
+              description: Rule priority (0-30)
+            - name: group_name
+              logicalType: string
+              physicalType: varchar(50)
+              description: Group this rule belongs to
+            # Deeply nested object (3 levels)
+            - name: operation
+              logicalType: object
+              physicalType: record
+              description: Automated operation triggered by this rule
+              properties:
+                - name: operation_name
+                  logicalType: string
+                  physicalType: varchar(100)
+                  description: Name of the operation
+                - name: operation_field
+                  logicalType: string
+                  physicalType: varchar(100)
+                  description: Field affected by operation
+                - name: revert_action
+                  logicalType: string
+                  physicalType: varchar(100)
+                  description: Action to revert the operation
+      # Nested object column with direct properties
+      - id: bet_metadata_prop
+        name: bet_metadata
+        businessName: bet metadata
+        logicalType: object
+        physicalType: record
+        description: Metadata about the bet associated with this alert
+        customProperties:
+          - property: order
+            value: 3
+        properties:
+          - name: bet_id
+            logicalType: string
+            physicalType: varchar(36)
+            description: Unique bet identifier
+          - name: bet_amount
+            logicalType: number
+            physicalType: decimal(18,2)
+            description: Total bet amount
+          - name: customer_id
+            logicalType: string
+            physicalType: varchar(36)
+            description: Customer who placed the bet
+          - name: placement_time
+            logicalType: timestamp
+            physicalType: timestamp_tz
+            description: When the bet was placed
+      # Another nested array for selection metadata
+      - id: selection_metadata_prop
+        name: selection_metadata
+        businessName: selection metadata
+        logicalType: array
+        physicalType: array
+        description: Metadata for each selection in the bet
+        customProperties:
+          - property: order
+            value: 4
+        items:
+          logicalType: object
+          physicalType: object
+          properties:
+            - name: selection_id
+              logicalType: string
+              physicalType: varchar(36)
+              description: Selection identifier
+            - name: selection_name
+              logicalType: string
+              physicalType: varchar(255)
+              description: Name of the selection
+            - name: selection_price
+              logicalType: number
+              physicalType: decimal(10,4)
+              description: Price at which selection was taken
+            - name: market_id
+              logicalType: string
+              physicalType: varchar(36)
+              description: Market identifier
+            - name: event_id
+              logicalType: string
+              physicalType: varchar(36)
+              description: Event identifier
+      - id: raised_at_prop
+        name: raised_at
+        businessName: raised timestamp
+        logicalType: timestamp
+        physicalType: timestamp_tz
+        required: true
+        description: When the alert was raised
+        customProperties:
+          - property: order
+            value: 5
+      - id: completed_at_prop
+        name: completed_at
+        businessName: completed timestamp
+        logicalType: timestamp
+        physicalType: timestamp_tz
+        required: true
+        description: When the alert was completed
+        customProperties:
+          - property: order
+            value: 6
 price:
   priceAmount: 9.95
   priceCurrency: USD

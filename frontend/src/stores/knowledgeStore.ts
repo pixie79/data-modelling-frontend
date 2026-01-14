@@ -40,7 +40,7 @@ interface KnowledgeState {
   setArticles: (articles: KnowledgeArticle[]) => void;
   setSelectedArticle: (article: KnowledgeArticle | null) => void;
   setKnowledgeIndex: (index: KnowledgeIndex | null) => void;
-  setFilter: (filter: KnowledgeFilter) => void;
+  setFilter: (filter: KnowledgeFilter | ((prev: KnowledgeFilter) => KnowledgeFilter)) => void;
   setSearchQuery: (query: string) => void;
   setSearchResults: (results: KnowledgeSearchResult[]) => void;
   setLoading: (isLoading: boolean) => void;
@@ -135,16 +135,16 @@ export const useKnowledgeStore = create<KnowledgeState>()(
 
       setKnowledgeIndex: (index) => set({ knowledgeIndex: index }),
 
-      setFilter: (filter) => {
-        set({ filter });
+      setFilter: (filterOrUpdater) => {
+        // Support both direct filter object and functional updater
+        const currentFilter = get().filter;
+        const newFilter =
+          typeof filterOrUpdater === 'function' ? filterOrUpdater(currentFilter) : filterOrUpdater;
+
+        set({ filter: newFilter });
         // Update filtered articles
         const articles = get().articles;
-        const filtered = applyFilter(articles, filter);
-        console.log('[KnowledgeStore] setFilter:', {
-          filter,
-          articlesCount: articles.length,
-          filteredCount: filtered.length,
-        });
+        const filtered = applyFilter(articles, newFilter);
         set({ filteredArticles: filtered });
       },
 

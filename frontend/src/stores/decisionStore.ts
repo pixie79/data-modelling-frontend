@@ -32,7 +32,7 @@ interface DecisionState {
   setDecisions: (decisions: Decision[]) => void;
   setSelectedDecision: (decision: Decision | null) => void;
   setDecisionIndex: (index: DecisionIndex | null) => void;
-  setFilter: (filter: DecisionFilter) => void;
+  setFilter: (filter: DecisionFilter | ((prev: DecisionFilter) => DecisionFilter)) => void;
   setLoading: (isLoading: boolean) => void;
   setSaving: (isSaving: boolean) => void;
   setError: (error: string | null) => void;
@@ -113,11 +113,16 @@ export const useDecisionStore = create<DecisionState>()(
 
       setDecisionIndex: (index) => set({ decisionIndex: index }),
 
-      setFilter: (filter) => {
-        set({ filter });
+      setFilter: (filterOrUpdater) => {
+        // Support both direct filter object and functional updater
+        const currentFilter = get().filter;
+        const newFilter =
+          typeof filterOrUpdater === 'function' ? filterOrUpdater(currentFilter) : filterOrUpdater;
+
+        set({ filter: newFilter });
         // Update filtered decisions
         const decisions = get().decisions;
-        set({ filteredDecisions: applyFilter(decisions, filter) });
+        set({ filteredDecisions: applyFilter(decisions, newFilter) });
       },
 
       setLoading: (isLoading) => set({ isLoading }),

@@ -219,15 +219,22 @@ export function processNestedColumns(columns: any[], tableId: string): any[] {
   });
 
   const columnMap = new Map<string, any>(); // Map column names to column objects
-  const columnIdMap = new Map<string, any>(); // Map column IDs to column objects
+  const originalIdToColumn = new Map<string, any>(); // Map original column IDs to column objects
+  const oldIdToNewId = new Map<string, string>(); // Map old IDs to new IDs for parent_column_id updates
 
   // First pass: Assign UUIDs to all columns and build maps
   columns.forEach((col, index) => {
     const colCopy = { ...col };
+    const originalId = col.id;
 
-    // Assign UUID if missing
+    // Assign UUID if missing or invalid
     if (!colCopy.id) {
       colCopy.id = generateUUID();
+    }
+
+    // Track ID mapping for parent_column_id updates
+    if (originalId && originalId !== colCopy.id) {
+      oldIdToNewId.set(originalId, colCopy.id);
     }
 
     // Ensure table_id is set
@@ -241,17 +248,26 @@ export function processNestedColumns(columns: any[], tableId: string): any[] {
     }
 
     columnMap.set(colCopy.name, colCopy);
-    columnIdMap.set(colCopy.id, colCopy);
+    // Map by ORIGINAL ID so we can find parents when child has parent_column_id
+    if (originalId) {
+      originalIdToColumn.set(originalId, colCopy);
+    }
+    // Also map by new ID in case IDs weren't changed
+    originalIdToColumn.set(colCopy.id, colCopy);
   });
 
   // If columns already have parent_column_id (from ODCS import), preserve that hierarchy
   // Only use dot notation detection as a fallback for SQL imports
   if (hasExistingHierarchy) {
-    // Build nested_columns arrays from existing parent_column_id references
-    columnIdMap.forEach((col) => {
+    // Second pass: Update parent_column_id to new IDs and build nested_columns arrays
+    columnMap.forEach((col) => {
       if (col.parent_column_id) {
-        const parentCol = columnIdMap.get(col.parent_column_id);
+        // Find parent using the ORIGINAL parent_column_id
+        const parentCol = originalIdToColumn.get(col.parent_column_id);
         if (parentCol) {
+          // Update parent_column_id to use the parent's NEW ID
+          col.parent_column_id = parentCol.id;
+
           if (!parentCol.nested_columns) {
             parentCol.nested_columns = [];
           }
@@ -259,6 +275,12 @@ export function processNestedColumns(columns: any[], tableId: string): any[] {
           if (!parentCol.nested_columns.find((c: any) => c.id === col.id)) {
             parentCol.nested_columns.push(col);
           }
+        } else {
+          // Parent not found - this shouldn't happen but clear the invalid reference
+          console.warn(
+            `[processNestedColumns] Parent column not found for ${col.name}, parent_column_id: ${col.parent_column_id}`
+          );
+          col.parent_column_id = undefined;
         }
       }
     });

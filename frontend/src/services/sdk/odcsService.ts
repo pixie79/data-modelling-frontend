@@ -957,19 +957,20 @@ class ODCSService {
           // Build customProperties array including order and is_foreign_key
           ...(() => {
             const customProps: Array<{ property: string; value: unknown }> = [];
-            // Add existing customProperties
+            // Add existing customProperties, excluding order and is_foreign_key (we'll add those fresh)
             if (col.customProperties && Array.isArray(col.customProperties)) {
-              customProps.push(...col.customProperties);
+              customProps.push(
+                ...col.customProperties.filter(
+                  (p: any) => p.property !== 'order' && p.property !== 'is_foreign_key'
+                )
+              );
             }
-            // Add order if not already in customProperties
-            if (col.order !== undefined && !customProps.find((p) => p.property === 'order')) {
+            // Always add current order value (from col.order, which reflects UI changes)
+            if (col.order !== undefined) {
               customProps.push({ property: 'order', value: col.order });
             }
-            // Add is_foreign_key if true and not already in customProperties
-            if (
-              col.is_foreign_key === true &&
-              !customProps.find((p) => p.property === 'is_foreign_key')
-            ) {
+            // Add is_foreign_key if true
+            if (col.is_foreign_key === true) {
               customProps.push({ property: 'is_foreign_key', value: true });
             }
             return customProps.length > 0 ? { customProperties: customProps } : {};

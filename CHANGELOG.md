@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `logicalType`, `physicalType`, `businessName`, `classification`, `quality_rules`, and other ODCS v3.1.0 fields were being ignored when saving
   - Changed `handleColumnChange` in TableEditor to use spread operator instead of field whitelist
   - All column properties from the Details modal are now correctly persisted and exported
+- **Quality Rules Export**: Fixed quality rules not being exported to ODCS format
+  - Quality rules set in Column Details Modal (valid values, min/max, pattern, etc.) are now converted to ODCS great-expectations format during export
+  - Added `constraintsToQualityArray` helper to convert constraint objects to ODCS `quality` array format
 - **Comma-Separated Input Fields**: Fixed inability to type commas in comma-separated value inputs
   - Valid Values (enum), Examples, and Source Objects fields now allow typing commas
   - Created `CommaSeparatedInput` component that parses values on blur instead of on every keystroke

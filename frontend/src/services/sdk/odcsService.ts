@@ -828,6 +828,106 @@ class ODCSService {
   }
 
   /**
+   * Convert constraints/quality_rules object to ODCS quality array format
+   * ODCS v3.1.0 uses great-expectations format for quality rules
+   *
+   * @param constraints - Simple constraints object (e.g., { validValues: [...], minimum: 5 })
+   * @param qualityRules - Quality rules object or existing quality array
+   * @returns ODCS quality array or undefined if no rules
+   */
+  private constraintsToQualityArray(
+    constraints?: Record<string, unknown>,
+    qualityRules?: Record<string, unknown> | unknown[]
+  ): unknown[] | undefined {
+    // If qualityRules is already an array, return it (already in ODCS format)
+    if (Array.isArray(qualityRules) && qualityRules.length > 0) {
+      return qualityRules;
+    }
+
+    const qualityArray: unknown[] = [];
+
+    // Merge constraints and qualityRules objects
+    const allRules: Record<string, unknown> = {
+      ...(constraints || {}),
+      ...(qualityRules && typeof qualityRules === 'object' && !Array.isArray(qualityRules)
+        ? qualityRules
+        : {}),
+    };
+
+    // Convert validValues to expect_column_values_to_be_in_set
+    if (allRules.validValues && Array.isArray(allRules.validValues)) {
+      qualityArray.push({
+        type: 'expect_column_values_to_be_in_set',
+        implementation: {
+          kwargs: {
+            value_set: allRules.validValues,
+          },
+        },
+      });
+    }
+
+    // Convert minimum to expect_column_values_to_be_between
+    if (allRules.minimum !== undefined || allRules.maximum !== undefined) {
+      const kwargs: Record<string, unknown> = {};
+      if (allRules.minimum !== undefined) kwargs.min_value = allRules.minimum;
+      if (allRules.maximum !== undefined) kwargs.max_value = allRules.maximum;
+      qualityArray.push({
+        type: 'expect_column_values_to_be_between',
+        implementation: {
+          kwargs,
+        },
+      });
+    }
+
+    // Convert pattern to expect_column_values_to_match_regex
+    if (allRules.pattern) {
+      qualityArray.push({
+        type: 'expect_column_values_to_match_regex',
+        implementation: {
+          kwargs: {
+            regex: allRules.pattern,
+          },
+        },
+      });
+    }
+
+    // Convert minLength/maxLength to expect_column_value_lengths_to_be_between
+    if (allRules.minLength !== undefined || allRules.maxLength !== undefined) {
+      const kwargs: Record<string, unknown> = {};
+      if (allRules.minLength !== undefined) kwargs.min_value = allRules.minLength;
+      if (allRules.maxLength !== undefined) kwargs.max_value = allRules.maxLength;
+      qualityArray.push({
+        type: 'expect_column_value_lengths_to_be_between',
+        implementation: {
+          kwargs,
+        },
+      });
+    }
+
+    // Convert notNull to expect_column_values_to_not_be_null
+    if (allRules.notNull === true) {
+      qualityArray.push({
+        type: 'expect_column_values_to_not_be_null',
+        implementation: {
+          kwargs: {},
+        },
+      });
+    }
+
+    // Convert unique to expect_column_values_to_be_unique
+    if (allRules.unique === true) {
+      qualityArray.push({
+        type: 'expect_column_values_to_be_unique',
+        implementation: {
+          kwargs: {},
+        },
+      });
+    }
+
+    return qualityArray.length > 0 ? qualityArray : undefined;
+  }
+
+  /**
    * Convert workspace object to ODCS YAML format
    * Uses API when online, WASM SDK when offline
    */
@@ -975,7 +1075,14 @@ class ODCSService {
             }
             return customProps.length > 0 ? { customProperties: customProps } : {};
           })(),
-          ...(col.quality && col.quality.length > 0 && { quality: col.quality }),
+          // Convert constraints/quality_rules to ODCS quality array format
+          ...(() => {
+            const qualityArray = this.constraintsToQualityArray(
+              col.constraints,
+              col.quality || col.quality_rules
+            );
+            return qualityArray ? { quality: qualityArray } : {};
+          })(),
         };
       };
 

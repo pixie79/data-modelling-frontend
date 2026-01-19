@@ -569,7 +569,7 @@ class ODCSService {
       tags: tableTags.length > 0 ? tableTags : undefined,
       model_type: table.model_type || 'logical',
       columns: normalizedColumns,
-      compoundKeys: this.normalizeCompoundKeys(table, tableId, now),
+      compoundKeys: this.normalizeCompoundKeys(table, tableId, now, normalizedColumns),
       owner,
       roles: table.roles,
       support: table.support,
@@ -1140,6 +1140,56 @@ class ODCSService {
       };
 
       schemaEntry.properties = buildPropertiesRecursively(columns);
+
+      // Handle compound keys export
+      // 1. For compound PRIMARY keys: set primaryKeyPosition on columns (ODCS standard)
+      // 2. Store all compound keys in customProperties for round-trip (especially unique keys)
+      const compoundKeys = table.compoundKeys || table.compound_keys;
+      if (Array.isArray(compoundKeys) && compoundKeys.length > 0) {
+        // Build a map of column_id -> column name for lookup
+        const columnIdToName: Record<string, string> = {};
+        columns.forEach((col: any) => {
+          if (col.id && col.name) {
+            columnIdToName[col.id] = col.name;
+          }
+        });
+
+        // Set primaryKeyPosition for compound primary keys
+        compoundKeys.forEach((ck: any) => {
+          if (ck.is_primary && Array.isArray(ck.column_ids)) {
+            ck.column_ids.forEach((colId: string, position: number) => {
+              const colName = columnIdToName[colId];
+              if (colName) {
+                // Find the property in schemaEntry.properties and set primaryKeyPosition
+                const prop = schemaEntry.properties.find((p: any) => p.name === colName);
+                if (prop) {
+                  prop.primaryKey = true;
+                  prop.primaryKeyPosition = position + 1; // 1-based position per ODCS spec
+                }
+              }
+            });
+          }
+        });
+
+        // Store compound keys in customProperties for full round-trip support
+        // Convert to serializable format using column names instead of IDs
+        const serializedCompoundKeys = compoundKeys.map((ck: any) => ({
+          name: ck.name,
+          columns: (ck.column_ids || [])
+            .map((colId: string) => columnIdToName[colId])
+            .filter(Boolean),
+          is_primary: ck.is_primary ?? false,
+        }));
+
+        // Merge with existing customProperties
+        const existingCustomProps = Array.isArray(schemaEntry.customProperties)
+          ? schemaEntry.customProperties.filter((p: any) => p.property !== 'compoundKeys')
+          : [];
+        schemaEntry.customProperties = [
+          ...existingCustomProps,
+          { property: 'compoundKeys', value: serializedCompoundKeys },
+        ];
+      }
 
       return schemaEntry;
     });
@@ -2180,7 +2230,7 @@ class ODCSService {
       quality_rules: qualityRules,
       is_owned_by_domain: true, // Default to true for imported tables
       // Load compound keys (composite primary/unique keys) from YAML
-      compoundKeys: this.normalizeCompoundKeys(item, tableId, now),
+      compoundKeys: this.normalizeCompoundKeys(item, tableId, now, normalizedColumns),
       created_at: item.created_at || now,
       last_modified_at: item.last_modified_at || now,
     };
@@ -2188,9 +2238,61 @@ class ODCSService {
 
   /**
    * Normalize compound keys from YAML to CompoundKey[] type
+   * Supports multiple formats:
+   * 1. Direct compoundKeys/compound_keys array with column_ids
+   * 2. customProperties with compoundKeys using column names (ODCS export format)
+   * 3. Reconstructed from primaryKeyPosition on columns (ODCS standard)
    */
-  private normalizeCompoundKeys(item: any, tableId: string, now: string): any[] | undefined {
-    const rawKeys = item.compoundKeys || item.compound_keys;
+  private normalizeCompoundKeys(
+    item: any,
+    tableId: string,
+    now: string,
+    columns?: any[]
+  ): any[] | undefined {
+    // First check for direct compound keys
+    let rawKeys = item.compoundKeys || item.compound_keys;
+
+    // If not found, check customProperties for compoundKeys
+    if ((!rawKeys || rawKeys.length === 0) && item.customProperties) {
+      const customPropsArray = Array.isArray(item.customProperties) ? item.customProperties : [];
+      const compoundKeysProp = customPropsArray.find((p: any) => p.property === 'compoundKeys');
+      if (compoundKeysProp?.value && Array.isArray(compoundKeysProp.value)) {
+        // Convert from column names to column IDs
+        const colNameToId: Record<string, string> = {};
+        (columns || item.columns || item.properties || []).forEach((col: any) => {
+          if (col.name) {
+            colNameToId[col.name] = col.id || col.name; // Use name as fallback ID
+          }
+        });
+
+        rawKeys = compoundKeysProp.value.map((ck: any) => ({
+          name: ck.name,
+          column_ids: (ck.columns || [])
+            .map((colName: string) => colNameToId[colName] || colName)
+            .filter(Boolean),
+          is_primary: ck.is_primary ?? false,
+        }));
+      }
+    }
+
+    // If still not found, try to reconstruct from primaryKeyPosition on columns
+    if ((!rawKeys || rawKeys.length === 0) && columns) {
+      const pkColumns = columns
+        .filter((col: any) => col.primaryKeyPosition !== undefined && col.primaryKeyPosition > 0)
+        .sort((a: any, b: any) => a.primaryKeyPosition - b.primaryKeyPosition);
+
+      if (pkColumns.length > 1) {
+        // Multiple columns with primaryKeyPosition = compound primary key
+        rawKeys = [
+          {
+            name: 'Primary Key',
+            column_ids: pkColumns.map((col: any) => col.id || col.name),
+            is_primary: true,
+          },
+        ];
+      }
+    }
+
     if (!Array.isArray(rawKeys) || rawKeys.length === 0) {
       return undefined;
     }

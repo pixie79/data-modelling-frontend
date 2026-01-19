@@ -24,6 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Compound primary keys now display with `PK` indicator and column names joined by `+`
   - Compound unique keys display with `CK` indicator
   - Composite foreign keys display with `FK` indicator (detected from relationships or `is_foreign_key` flags)
+- **Compound Keys Export/Import**: Fixed compound keys not being saved/loaded in ODCS format
+  - Compound primary keys now set `primaryKeyPosition` on columns per ODCS v3.1.0 spec
+  - All compound keys stored in table `customProperties` for full round-trip support
+  - Import reads compound keys from `customProperties` or reconstructs from `primaryKeyPosition`
 - **Data Type Quick Entry**: Removed disconnected data type dropdown from column editor
   - The dropdown was separate from `physicalType` in the Details modal, causing confusion
   - Type is now displayed as read-only; edit via the "Details" button to set physical/logical types
@@ -40,6 +44,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Column Details E2E Test**: Added e2e test for column details modal data persistence
   - Verifies physical/logical type changes are saved and exported correctly
   - Verifies quality rules are preserved in ODCS export
+- **Compound Key Round-Trip Tests**: Added unit tests for compound key export/import
+  - Tests for exporting compound primary keys with `primaryKeyPosition`
+  - Tests for exporting compound unique keys in `customProperties`
+  - Tests for importing compound keys from `customProperties`
+  - Tests for reconstructing compound keys from `primaryKeyPosition`
 
 ## [2.4.1] - 2026-01-14
 

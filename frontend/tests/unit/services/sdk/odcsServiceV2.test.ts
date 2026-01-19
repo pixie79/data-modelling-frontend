@@ -961,3 +961,235 @@ describe('ODCS Field Coverage', () => {
     expect(coverage.length).toBeGreaterThanOrEqual(15);
   });
 });
+
+describe('Compound Key Export/Import', () => {
+  it('should export compound primary key with primaryKeyPosition on columns', async () => {
+    const { odcsService } = await import('@/services/sdk/odcsService');
+
+    const workspace = {
+      tables: [
+        {
+          id: 'table-1',
+          name: 'order_items',
+          columns: [
+            { id: 'col-1', name: 'order_id', logicalType: 'integer', physicalType: 'BIGINT' },
+            { id: 'col-2', name: 'item_id', logicalType: 'integer', physicalType: 'BIGINT' },
+            { id: 'col-3', name: 'quantity', logicalType: 'integer', physicalType: 'INT' },
+          ],
+          compoundKeys: [
+            {
+              id: 'ck-1',
+              table_id: 'table-1',
+              name: 'PK_order_item',
+              column_ids: ['col-1', 'col-2'],
+              is_primary: true,
+              created_at: '2025-01-01T00:00:00Z',
+            },
+          ],
+        },
+      ],
+      relationships: [],
+    };
+
+    const yaml = await odcsService.toYAML(workspace);
+    const { load } = await import('js-yaml');
+    const parsed = load(yaml) as any;
+
+    // Verify primaryKeyPosition is set on columns
+    const orderIdCol = parsed.schema[0].properties.find((p: any) => p.name === 'order_id');
+    const itemIdCol = parsed.schema[0].properties.find((p: any) => p.name === 'item_id');
+
+    expect(orderIdCol.primaryKey).toBe(true);
+    expect(orderIdCol.primaryKeyPosition).toBe(1);
+    expect(itemIdCol.primaryKey).toBe(true);
+    expect(itemIdCol.primaryKeyPosition).toBe(2);
+
+    // Verify compoundKeys is in customProperties
+    const customProps = parsed.schema[0].customProperties;
+    expect(customProps).toBeDefined();
+    const compoundKeysProp = customProps.find((p: any) => p.property === 'compoundKeys');
+    expect(compoundKeysProp).toBeDefined();
+    expect(compoundKeysProp.value).toHaveLength(1);
+    expect(compoundKeysProp.value[0].name).toBe('PK_order_item');
+    expect(compoundKeysProp.value[0].columns).toEqual(['order_id', 'item_id']);
+    expect(compoundKeysProp.value[0].is_primary).toBe(true);
+  });
+
+  it('should export compound unique key in customProperties', async () => {
+    const { odcsService } = await import('@/services/sdk/odcsService');
+
+    const workspace = {
+      tables: [
+        {
+          id: 'table-1',
+          name: 'users',
+          columns: [
+            {
+              id: 'col-1',
+              name: 'user_id',
+              logicalType: 'integer',
+              physicalType: 'BIGINT',
+              is_primary_key: true,
+            },
+            { id: 'col-2', name: 'email', logicalType: 'string', physicalType: 'VARCHAR' },
+            { id: 'col-3', name: 'tenant_id', logicalType: 'string', physicalType: 'VARCHAR' },
+          ],
+          compoundKeys: [
+            {
+              id: 'ck-1',
+              table_id: 'table-1',
+              name: 'UK_email_tenant',
+              column_ids: ['col-2', 'col-3'],
+              is_primary: false, // Unique key, not primary
+              created_at: '2025-01-01T00:00:00Z',
+            },
+          ],
+        },
+      ],
+      relationships: [],
+    };
+
+    const yaml = await odcsService.toYAML(workspace);
+    const { load } = await import('js-yaml');
+    const parsed = load(yaml) as any;
+
+    // Unique compound key should NOT set primaryKeyPosition
+    const emailCol = parsed.schema[0].properties.find((p: any) => p.name === 'email');
+    const tenantCol = parsed.schema[0].properties.find((p: any) => p.name === 'tenant_id');
+
+    expect(emailCol.primaryKeyPosition).toBeUndefined();
+    expect(tenantCol.primaryKeyPosition).toBeUndefined();
+
+    // But should be in customProperties
+    const customProps = parsed.schema[0].customProperties;
+    const compoundKeysProp = customProps.find((p: any) => p.property === 'compoundKeys');
+    expect(compoundKeysProp).toBeDefined();
+    expect(compoundKeysProp.value[0].name).toBe('UK_email_tenant');
+    expect(compoundKeysProp.value[0].is_primary).toBe(false);
+  });
+
+  it('should import compound keys from customProperties', async () => {
+    const { sdkLoader } = await import('@/services/sdk/sdkLoader');
+    const { load } = await import('js-yaml');
+
+    // Mock SDK to return parsed contract with compoundKeys in customProperties
+    const mockContract = {
+      apiVersion: 'v3.1.0',
+      kind: 'DataContract',
+      id: 'test-contract',
+      version: '1.0.0',
+      status: 'draft',
+      schema: [
+        {
+          name: 'order_items',
+          physicalName: 'order_items',
+          physicalType: 'table',
+          customProperties: [
+            {
+              property: 'compoundKeys',
+              value: [
+                {
+                  name: 'PK_order_item',
+                  columns: ['order_id', 'item_id'],
+                  is_primary: true,
+                },
+              ],
+            },
+          ],
+          properties: [
+            {
+              name: 'order_id',
+              logicalType: 'integer',
+              physicalType: 'BIGINT',
+              primaryKey: true,
+              primaryKeyPosition: 1,
+            },
+            {
+              name: 'item_id',
+              logicalType: 'integer',
+              physicalType: 'BIGINT',
+              primaryKey: true,
+              primaryKeyPosition: 2,
+            },
+            { name: 'quantity', logicalType: 'integer', physicalType: 'INT' },
+          ],
+        },
+      ],
+    };
+
+    vi.mocked(sdkLoader.getModule).mockReturnValue({
+      parse_odcs_yaml_v2: vi.fn().mockReturnValue(JSON.stringify(mockContract)),
+    } as any);
+
+    const { odcsService } = await import('@/services/sdk/odcsService');
+
+    const odcsYaml = `apiVersion: v3.1.0\nkind: DataContract\nid: test\nschema: []`;
+    const result = await odcsService.parseYAML(odcsYaml);
+
+    expect(result.tables).toHaveLength(1);
+    const table = result.tables[0];
+
+    // Verify compound keys were imported
+    expect(table.compoundKeys).toBeDefined();
+    expect(table.compoundKeys).toHaveLength(1);
+    expect(table.compoundKeys[0].name).toBe('PK_order_item');
+    expect(table.compoundKeys[0].is_primary).toBe(true);
+    // Column IDs should be resolved (may use column names as IDs if no explicit IDs)
+    expect(table.compoundKeys[0].column_ids).toHaveLength(2);
+  });
+
+  it('should reconstruct compound primary key from primaryKeyPosition', async () => {
+    const { sdkLoader } = await import('@/services/sdk/sdkLoader');
+
+    // Mock SDK to return contract with primaryKeyPosition but no explicit compoundKeys
+    const mockContract = {
+      apiVersion: 'v3.1.0',
+      kind: 'DataContract',
+      id: 'test-contract',
+      version: '1.0.0',
+      status: 'draft',
+      schema: [
+        {
+          name: 'order_items',
+          physicalName: 'order_items',
+          physicalType: 'table',
+          properties: [
+            {
+              name: 'order_id',
+              logicalType: 'integer',
+              physicalType: 'BIGINT',
+              primaryKey: true,
+              primaryKeyPosition: 1,
+            },
+            {
+              name: 'item_id',
+              logicalType: 'integer',
+              physicalType: 'BIGINT',
+              primaryKey: true,
+              primaryKeyPosition: 2,
+            },
+            { name: 'quantity', logicalType: 'integer', physicalType: 'INT' },
+          ],
+        },
+      ],
+    };
+
+    vi.mocked(sdkLoader.getModule).mockReturnValue({
+      parse_odcs_yaml_v2: vi.fn().mockReturnValue(JSON.stringify(mockContract)),
+    } as any);
+
+    const { odcsService } = await import('@/services/sdk/odcsService');
+
+    const odcsYaml = `apiVersion: v3.1.0\nkind: DataContract\nid: test\nschema: []`;
+    const result = await odcsService.parseYAML(odcsYaml);
+
+    expect(result.tables).toHaveLength(1);
+    const table = result.tables[0];
+
+    // Should have reconstructed compound primary key from primaryKeyPosition
+    expect(table.compoundKeys).toBeDefined();
+    expect(table.compoundKeys).toHaveLength(1);
+    expect(table.compoundKeys[0].is_primary).toBe(true);
+    expect(table.compoundKeys[0].column_ids).toHaveLength(2);
+  });
+});

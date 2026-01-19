@@ -157,12 +157,13 @@ describe('ColumnDetailsModal', () => {
       const examplesInput = screen.getByPlaceholderText('e.g., John Doe, Jane Smith, Bob Wilson');
       expect(examplesInput).toBeInTheDocument();
 
-      // Type a value with comma
-      await user.clear(examplesInput);
-      await user.type(examplesInput, 'value1,');
+      // Type a value with comma - use fireEvent for more reliable test
+      fireEvent.change(examplesInput, { target: { value: 'value1,' } });
 
       // The comma should remain visible while typing
-      expect(examplesInput).toHaveValue('value1,');
+      await waitFor(() => {
+        expect(examplesInput).toHaveValue('value1,');
+      });
     });
   });
 

@@ -124,4 +124,166 @@ describe('CanvasNode', () => {
     );
     expect(screen.getByText('PK')).toBeInTheDocument();
   });
+
+  it('should display compound keys in logical view', () => {
+    const tableWithCompoundKey: Table = {
+      ...mockTable,
+      columns: [
+        {
+          id: 'col-1',
+          table_id: 'table-1',
+          name: 'tenant_id',
+          data_type: 'UUID',
+          nullable: false,
+          is_primary_key: false,
+          is_foreign_key: false,
+          order: 0,
+          created_at: '2025-01-01T00:00:00Z',
+        },
+        {
+          id: 'col-2',
+          table_id: 'table-1',
+          name: 'user_id',
+          data_type: 'UUID',
+          nullable: false,
+          is_primary_key: false,
+          is_foreign_key: false,
+          order: 1,
+          created_at: '2025-01-01T00:00:00Z',
+        },
+      ],
+      compoundKeys: [
+        {
+          id: 'ck-1',
+          table_id: 'table-1',
+          name: 'PK_tenant_user',
+          column_ids: ['col-1', 'col-2'],
+          is_primary: true,
+          created_at: '2025-01-01T00:00:00Z',
+        },
+      ],
+    };
+
+    render(
+      <CanvasNode
+        data={{ table: tableWithCompoundKey, modelType: 'logical' }}
+        id="table-1"
+        selected={false}
+      />
+    );
+    // Should show compound key with column names joined by +
+    expect(screen.getByText('tenant_id + user_id')).toBeInTheDocument();
+    // Should show PK indicator for primary compound key
+    expect(screen.getByText('PK')).toBeInTheDocument();
+  });
+
+  it('should display non-primary compound keys with CK indicator', () => {
+    const tableWithUniqueCompoundKey: Table = {
+      ...mockTable,
+      columns: [
+        {
+          id: 'col-1',
+          table_id: 'table-1',
+          name: 'email',
+          data_type: 'VARCHAR',
+          nullable: false,
+          is_primary_key: false,
+          is_foreign_key: false,
+          order: 0,
+          created_at: '2025-01-01T00:00:00Z',
+        },
+        {
+          id: 'col-2',
+          table_id: 'table-1',
+          name: 'domain',
+          data_type: 'VARCHAR',
+          nullable: false,
+          is_primary_key: false,
+          is_foreign_key: false,
+          order: 1,
+          created_at: '2025-01-01T00:00:00Z',
+        },
+      ],
+      compoundKeys: [
+        {
+          id: 'ck-1',
+          table_id: 'table-1',
+          name: 'UK_email_domain',
+          column_ids: ['col-1', 'col-2'],
+          is_primary: false, // Not primary, just unique compound key
+          created_at: '2025-01-01T00:00:00Z',
+        },
+      ],
+    };
+
+    render(
+      <CanvasNode
+        data={{ table: tableWithUniqueCompoundKey, modelType: 'logical' }}
+        id="table-1"
+        selected={false}
+      />
+    );
+    // Should show CK indicator for non-primary compound key
+    expect(screen.getByText('CK')).toBeInTheDocument();
+    expect(screen.getByText('email + domain')).toBeInTheDocument();
+  });
+
+  it('should display composite foreign keys with FK indicator', () => {
+    // Mock store to include a relationship
+    vi.mocked(modelStore.useModelStore).mockReturnValue({
+      selectedTableId: null,
+      selectedDomainId: 'domain-1',
+      setSelectedTable: vi.fn(),
+      relationships: [], // No relationships needed for this test - we'll use is_foreign_key on columns
+    } as any);
+
+    const tableWithCompositeForeignKey: Table = {
+      ...mockTable,
+      columns: [
+        {
+          id: 'col-1',
+          table_id: 'table-1',
+          name: 'parent_tenant_id',
+          data_type: 'UUID',
+          nullable: false,
+          is_primary_key: false,
+          is_foreign_key: true, // FK column
+          order: 0,
+          created_at: '2025-01-01T00:00:00Z',
+        },
+        {
+          id: 'col-2',
+          table_id: 'table-1',
+          name: 'parent_user_id',
+          data_type: 'UUID',
+          nullable: false,
+          is_primary_key: false,
+          is_foreign_key: true, // FK column
+          order: 1,
+          created_at: '2025-01-01T00:00:00Z',
+        },
+      ],
+      compoundKeys: [
+        {
+          id: 'ck-1',
+          table_id: 'table-1',
+          name: 'FK_parent',
+          column_ids: ['col-1', 'col-2'],
+          is_primary: false,
+          created_at: '2025-01-01T00:00:00Z',
+        },
+      ],
+    };
+
+    render(
+      <CanvasNode
+        data={{ table: tableWithCompositeForeignKey, modelType: 'logical' }}
+        id="table-1"
+        selected={false}
+      />
+    );
+    // Should show FK indicator for composite foreign key
+    expect(screen.getByText('FK')).toBeInTheDocument();
+    expect(screen.getByText('parent_tenant_id + parent_user_id')).toBeInTheDocument();
+  });
 });

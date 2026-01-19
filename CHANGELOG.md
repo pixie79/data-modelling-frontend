@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.2] - 2026-01-19
+
+### Fixed
+- **Column Details Modal Persistence**: Fixed ODCS fields not being saved from Column Details Modal
+  - `logicalType`, `physicalType`, `businessName`, `classification`, `quality_rules`, and other ODCS v3.1.0 fields were being ignored when saving
+  - Changed `handleColumnChange` in TableEditor to use spread operator instead of field whitelist
+  - All column properties from the Details modal are now correctly persisted and exported
+- **Comma-Separated Input Fields**: Fixed inability to type commas in comma-separated value inputs
+  - Valid Values (enum), Examples, and Source Objects fields now allow typing commas
+  - Created `CommaSeparatedInput` component that parses values on blur instead of on every keystroke
+- **Compound Keys Display**: Fixed compound keys not showing in logical view on canvas
+  - Compound primary keys now display with `PK` indicator and column names joined by `+`
+  - Compound unique keys display with `CK` indicator
+  - Composite foreign keys display with `FK` indicator (detected from relationships or `is_foreign_key` flags)
+- **Data Type Quick Entry**: Removed disconnected data type dropdown from column editor
+  - The dropdown was separate from `physicalType` in the Details modal, causing confusion
+  - Type is now displayed as read-only; edit via the "Details" button to set physical/logical types
+
+### Added
+- **Column Details Modal Tests**: Added comprehensive unit tests for ColumnDetailsModal
+  - Tests for comma-separated input functionality
+  - Tests for valid values, examples, and source objects fields
+  - Tests for modal rendering and tab navigation
+- **Compound Key Display Tests**: Added unit tests for compound key rendering in CanvasNode
+  - Tests for primary compound keys (PK indicator)
+  - Tests for unique compound keys (CK indicator)
+  - Tests for composite foreign keys (FK indicator)
+- **Column Details E2E Test**: Added e2e test for column details modal data persistence
+  - Verifies physical/logical type changes are saved and exported correctly
+  - Verifies quality rules are preserved in ODCS export
+
 ## [2.4.1] - 2026-01-14
 
 ### Fixed

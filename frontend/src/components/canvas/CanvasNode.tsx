@@ -26,7 +26,7 @@ export const CanvasNode: React.FC<NodeProps<TableNodeData>> = memo(({ data, sele
     isShared = false,
     expandColumns = false,
   } = data;
-  const { selectedDomainId, bpmnProcesses } = useModelStore();
+  const { selectedDomainId, bpmnProcesses, relationships } = useModelStore();
   const isPrimaryDomain = table.primary_domain_id === selectedDomainId;
   const isReadOnly = !isPrimaryDomain || (isOwnedByDomain !== undefined && !isOwnedByDomain);
 
@@ -56,8 +56,14 @@ export const CanvasNode: React.FC<NodeProps<TableNodeData>> = memo(({ data, sele
     let cols: typeof table.columns = [];
     if (modelType === 'logical') {
       // Logical view: show only keys (primary keys, foreign keys, and unique indexes)
+      // Exclude columns that are part of compound keys (they'll be shown separately)
+      const compoundKeyColumnIds = new Set(
+        (table.compoundKeys || []).flatMap((ck) => ck.column_ids)
+      );
       cols = table.columns.filter(
-        (col) => col.is_primary_key || col.is_foreign_key || col.is_unique
+        (col) =>
+          (col.is_primary_key || col.is_foreign_key || col.is_unique) &&
+          !compoundKeyColumnIds.has(col.id)
       );
     } else if (modelType === 'physical') {
       // Physical view: show all columns
@@ -66,7 +72,108 @@ export const CanvasNode: React.FC<NodeProps<TableNodeData>> = memo(({ data, sele
 
     // Sort by order
     return [...cols].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-  }, [table.columns, modelType, showColumns]);
+  }, [table.columns, table.compoundKeys, modelType, showColumns]);
+
+  // Get compound keys for display in logical view
+  const compoundKeys = useMemo(() => {
+    if (!showColumns || modelType !== 'logical') return [];
+
+    // Get compound keys defined on this table (PK/UK)
+    const keys = (table.compoundKeys || []).map((ck) => {
+      const columnNames = ck.column_ids
+        .map((colId) => table.columns.find((c) => c.id === colId)?.name)
+        .filter(Boolean)
+        .join(' + ');
+      return {
+        id: ck.id,
+        name: ck.name || 'Compound Key',
+        columnNames,
+        isPrimary: ck.is_primary,
+        isForeignKey: false,
+      };
+    });
+
+    // Find composite foreign keys: relationships where this table is the source
+    // and the source_key references a compound key
+    const compositeFKs = (relationships || [])
+      .filter((rel) => {
+        // This table is the source of the relationship
+        const isSource = rel.source_id === table.id || rel.source_table_id === table.id;
+        if (!isSource) return false;
+
+        // Check if source_key references a compound key on this table
+        const sourceKey = rel.source_key;
+        if (!sourceKey) return false;
+
+        // If source_key matches a compound key ID, it's a composite FK
+        const isCompoundKey = (table.compoundKeys || []).some((ck) => ck.id === sourceKey);
+        return isCompoundKey;
+      })
+      .map((rel) => {
+        const ck = (table.compoundKeys || []).find((ck) => ck.id === rel.source_key);
+        if (!ck) return null;
+
+        const columnNames = ck.column_ids
+          .map((colId) => table.columns.find((c) => c.id === colId)?.name)
+          .filter(Boolean)
+          .join(' + ');
+
+        return {
+          id: `fk-${rel.id}`,
+          name: ck.name || 'Composite FK',
+          columnNames,
+          isPrimary: false,
+          isForeignKey: true,
+        };
+      })
+      .filter(Boolean) as typeof keys;
+
+    // Also check for columns marked as FK that are part of a compound key
+    // (individual FK columns referencing a compound PK on another table)
+    const compoundKeyColumnIds = new Set((table.compoundKeys || []).flatMap((ck) => ck.column_ids));
+    const fkColumnsInCompoundKeys = table.columns.filter(
+      (col) => col.is_foreign_key && compoundKeyColumnIds.has(col.id)
+    );
+
+    // Group FK columns by their compound key
+    if (fkColumnsInCompoundKeys.length > 0) {
+      for (const ck of table.compoundKeys || []) {
+        const fkColsInThisKey = fkColumnsInCompoundKeys.filter((col) =>
+          ck.column_ids.includes(col.id)
+        );
+        // If all columns in this compound key are FKs, treat it as a composite FK
+        if (fkColsInThisKey.length === ck.column_ids.length && fkColsInThisKey.length > 0) {
+          // Check if we already have this key listed
+          const existingKey = keys.find((k) => k.id === ck.id);
+          if (existingKey) {
+            existingKey.isForeignKey = true;
+          } else {
+            const columnNames = ck.column_ids
+              .map((colId) => table.columns.find((c) => c.id === colId)?.name)
+              .filter(Boolean)
+              .join(' + ');
+            keys.push({
+              id: ck.id,
+              name: ck.name || 'Composite FK',
+              columnNames,
+              isPrimary: false,
+              isForeignKey: true,
+            });
+          }
+        }
+      }
+    }
+
+    // Merge and deduplicate (prefer composite FK designation if both exist)
+    const allKeys = [...keys];
+    for (const fk of compositeFKs) {
+      if (!allKeys.some((k) => k.columnNames === fk.columnNames)) {
+        allKeys.push(fk);
+      }
+    }
+
+    return allKeys;
+  }, [table.compoundKeys, table.columns, table.id, relationships, modelType, showColumns]);
 
   // Get quality tier and determine title bar color
   const qualityTier: QualityTier =
@@ -335,12 +442,46 @@ export const CanvasNode: React.FC<NodeProps<TableNodeData>> = memo(({ data, sele
         <div
           className={`p-2 ${expandColumns ? '' : 'max-h-[300px] overflow-y-auto'} table-columns-scrollable`}
         >
-          {visibleColumns.length === 0 ? (
+          {visibleColumns.length === 0 && compoundKeys.length === 0 ? (
             <div className="text-sm text-gray-400 italic py-2">
               {modelType === 'logical' ? 'No keys' : 'No columns'}
             </div>
           ) : (
             <div className="space-y-1">
+              {/* Compound keys (shown first in logical view) */}
+              {compoundKeys.map((ck) => (
+                <div
+                  key={ck.id}
+                  className="flex items-center gap-2 text-sm py-1 px-2 hover:bg-gray-50 rounded"
+                  title={`${ck.isPrimary ? 'Primary ' : ''}${ck.isForeignKey ? 'Foreign ' : ''}Compound Key: ${ck.columnNames}`}
+                >
+                  <span className="flex-1 truncate">
+                    {ck.isPrimary && (
+                      <span
+                        className="text-yellow-600 font-bold mr-1"
+                        aria-label="Primary compound key"
+                      >
+                        PK
+                      </span>
+                    )}
+                    {ck.isForeignKey && (
+                      <span
+                        className="text-green-600 font-bold mr-1"
+                        aria-label="Foreign compound key"
+                      >
+                        FK
+                      </span>
+                    )}
+                    {!ck.isPrimary && !ck.isForeignKey && (
+                      <span className="text-purple-600 font-bold mr-1" aria-label="Compound key">
+                        CK
+                      </span>
+                    )}
+                    <span className="font-medium text-gray-700">{ck.columnNames}</span>
+                  </span>
+                </div>
+              ))}
+              {/* Individual columns */}
               {visibleColumns
                 .sort((a, b) => a.order - b.order)
                 .map((column) => (

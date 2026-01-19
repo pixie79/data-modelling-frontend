@@ -16,19 +16,6 @@ export interface ColumnEditorProps {
   onDelete?: () => void;
 }
 
-const DATA_TYPES = [
-  'VARCHAR',
-  'INTEGER',
-  'BIGINT',
-  'DECIMAL',
-  'BOOLEAN',
-  'DATE',
-  'TIMESTAMP',
-  'UUID',
-  'TEXT',
-  'BLOB',
-];
-
 export const ColumnEditor: React.FC<ColumnEditorProps> = ({
   column,
   compoundKeys = [],
@@ -37,7 +24,6 @@ export const ColumnEditor: React.FC<ColumnEditorProps> = ({
   onDelete,
 }) => {
   const [name, setName] = useState(column.name);
-  const [dataType, setDataType] = useState(column.data_type);
 
   const [_nullable, setNullable] = useState(column.nullable);
 
@@ -51,18 +37,10 @@ export const ColumnEditor: React.FC<ColumnEditorProps> = ({
     // Only update state if the column prop actually changed
     // This prevents unnecessary re-renders and state conflicts
     setName(column.name);
-    setDataType(column.data_type);
     setNullable(column.nullable);
     setIsPrimaryKey(column.is_primary_key);
     setIsForeignKey(column.is_foreign_key);
-  }, [
-    column.id,
-    column.name,
-    column.data_type,
-    column.nullable,
-    column.is_primary_key,
-    column.is_foreign_key,
-  ]);
+  }, [column.id, column.name, column.nullable, column.is_primary_key, column.is_foreign_key]);
 
   const handleNameChange = (newName: string) => {
     setName(newName);
@@ -72,11 +50,6 @@ export const ColumnEditor: React.FC<ColumnEditorProps> = ({
       setNameError(null);
       onChange({ name: newName });
     }
-  };
-
-  const handleDataTypeChange = (newDataType: string) => {
-    setDataType(newDataType);
-    onChange({ data_type: newDataType });
   };
 
   const handleNullableChange = (newNullable: boolean) => {
@@ -134,18 +107,15 @@ export const ColumnEditor: React.FC<ColumnEditorProps> = ({
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            <select
-              value={dataType}
-              onChange={(e) => handleDataTypeChange(e.target.value)}
-              className="w-28 px-1.5 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              aria-label="Data type"
-            >
-              {DATA_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
+            {/* Display physical/logical type (edit via Details modal) */}
+            <Tooltip content="Edit type via Details button">
+              <span
+                className="w-28 px-1.5 py-1 text-sm bg-gray-50 border border-gray-200 rounded text-gray-600 truncate cursor-help"
+                title={`Physical: ${column.physicalType || column.data_type || 'VARCHAR'}\nLogical: ${column.logicalType || '-'}`}
+              >
+                {column.physicalType || column.data_type || 'VARCHAR'}
+              </span>
+            </Tooltip>
 
             <label className="flex items-center gap-1 text-xs">
               <input

@@ -1350,4 +1350,136 @@ test.describe('ODCS Export', () => {
     expect(usedV2Import).toBe(true);
     expect(usedV2Export).toBe(true);
   });
+
+  test('should preserve column details modal edits in export', async ({ page }) => {
+    // This test verifies that edits made via the Column Details Modal are:
+    // 1. Saved to the table state
+    // 2. Preserved when the table is exported to ODCS format
+
+    // Step 1: Create workspace and import a simple table
+    await createWorkspace(page, `${TEST_WORKSPACE_NAME} - Column Details`);
+    await createSystem(page, TEST_SYSTEM_NAME);
+    await selectSystem(page, TEST_SYSTEM_NAME);
+    await openCreateTableDialog(page);
+
+    // Import a simple ODCS with one table
+    const simpleODCS = `
+apiVersion: v3.1.0
+kind: DataContract
+id: test-contract
+schema:
+  - name: test_table
+    description: Test table for column details
+    properties:
+      - name: id
+        logicalType: string
+        physicalType: VARCHAR
+        description: Test ID column
+      - name: status
+        logicalType: string
+        physicalType: VARCHAR
+        description: Status column
+`;
+    await importODCSContent(page, simpleODCS);
+
+    // Step 2: Open table editor
+    const tableNode = page.locator('.react-flow__node').filter({ hasText: 'test_table' }).first();
+    await expect(tableNode).toBeVisible({ timeout: 10000 });
+    await tableNode.dispatchEvent('click');
+    await page.waitForTimeout(500);
+    await expect(page.locator('h2:has-text("Edit Table")')).toBeVisible({ timeout: 10000 });
+
+    // Step 3: Open Column Details modal for the 'status' column
+    // Find the status column row and click its Details button
+    const statusColumnRow = page.locator('text=status').first();
+    await expect(statusColumnRow).toBeVisible({ timeout: 5000 });
+
+    // Click the Details button for the status column
+    const detailsButton = page
+      .locator('div')
+      .filter({ hasText: /^status/ })
+      .locator('button:has-text("Details")')
+      .first();
+    await detailsButton.click();
+    await page.waitForTimeout(500);
+
+    // Step 4: Navigate to Engineering tab and set Physical/Logical types
+    const engineeringTab = page.locator('button:has-text("Engineering")');
+    await expect(engineeringTab).toBeVisible({ timeout: 5000 });
+    await engineeringTab.click();
+
+    // Set Physical Type
+    const physicalTypeSelect = page
+      .locator('select')
+      .filter({ hasText: /VARCHAR/ })
+      .first();
+    await physicalTypeSelect.selectOption('DECIMAL(10,2)');
+
+    // Set Logical Type
+    const logicalTypeSelect = page.locator('select').filter({ hasText: /Select logical type/ });
+    await logicalTypeSelect.selectOption('number');
+
+    // Step 5: Navigate to Quality tab and add Valid Values rule
+    const qualityTab = page.locator('button:has-text("Quality")');
+    await qualityTab.click();
+
+    // Add valid_values quality rule
+    const ruleSelect = page.locator('select:has-text("Add Quality Rule")');
+    await ruleSelect.selectOption('valid_values');
+
+    // Enter valid values
+    const validValuesInput = page.locator('input[placeholder="active, inactive, pending"]');
+    await expect(validValuesInput).toBeVisible({ timeout: 5000 });
+    await validValuesInput.fill('active, inactive, pending');
+    // Blur to trigger parsing
+    await validValuesInput.blur();
+
+    // Step 6: Save the column details
+    const saveButton = page.locator('button:has-text("Save Changes")');
+    await saveButton.click();
+    await page.waitForTimeout(500);
+
+    // Step 7: Save the table
+    const saveTableButton = page.locator('button:has-text("Save Table")');
+    await saveTableButton.click();
+    await page.waitForTimeout(1000);
+
+    // Step 8: Export the table
+    const exportButton = page.locator('button:has-text("Export")').first();
+    await exportButton.click();
+
+    const downloadPromise = page.waitForEvent('download', { timeout: 30000 });
+    await page.locator('button:has-text("ODCS (Default)")').click();
+
+    const download = await downloadPromise;
+    const downloadPath = await download.path();
+    const exportedContent = fs.readFileSync(downloadPath!, 'utf-8');
+    const exportedParsed = yaml.load(exportedContent) as any;
+
+    // Step 9: Verify the exported data contains our edits
+    const exportedTable = exportedParsed.schema?.[0];
+    expect(exportedTable).toBeDefined();
+    expect(exportedTable.name).toBe('test_table');
+
+    const statusColumn = exportedTable.properties?.find((p: any) => p.name === 'status');
+    expect(statusColumn).toBeDefined();
+
+    // Verify physical type was saved
+    expect(statusColumn.physicalType).toBe('DECIMAL(10,2)');
+
+    // Verify logical type was saved
+    expect(statusColumn.logicalType).toBe('number');
+
+    // Verify quality rules / constraints were saved
+    // Valid values may be in constraints.validValues or in quality array
+    const hasValidValues =
+      statusColumn.constraints?.validValues?.length > 0 ||
+      statusColumn.quality?.some((q: any) => q.implementation?.kwargs?.value_set?.length > 0) ||
+      statusColumn.logicalTypeOptions?.enum?.length > 0;
+
+    expect(hasValidValues).toBe(true);
+
+    console.log('Column Details Modal persistence test passed!');
+    console.log('Exported status column:', JSON.stringify(statusColumn, null, 2));
+  });
 });

@@ -231,32 +231,13 @@ export const TableEditor: React.FC<TableEditorProps> = ({ tableId, workspaceId, 
         });
       }
 
-      // For other updates (nullable, foreign key, etc.), just update the specific column
-      // Ensure we only update the exact column and don't accidentally modify others
-      if ('is_foreign_key' in updates) {
-        console.log('[TableEditor] Setting FK for column:', columnId, 'to', updates.is_foreign_key);
-      }
-      if ('nullable' in updates) {
-        console.log('[TableEditor] Setting nullable for column:', columnId, 'to', updates.nullable);
-      }
-
+      // For other updates, merge all provided fields into the column
+      // This preserves ODCS v3.1.0 fields like logicalType, physicalType, businessName,
+      // classification, quality_rules, constraints, etc.
       return cols.map((col) => {
         if (col.id === columnId) {
-          // Only apply the specific updates, don't spread everything
-          const updatedCol = { ...col };
-          if ('nullable' in updates) updatedCol.nullable = updates.nullable ?? false;
-          if ('is_foreign_key' in updates)
-            updatedCol.is_foreign_key = updates.is_foreign_key ?? false;
-          if ('is_unique' in updates) updatedCol.is_unique = updates.is_unique ?? false;
-          if ('name' in updates) updatedCol.name = updates.name ?? '';
-          if ('data_type' in updates) updatedCol.data_type = updates.data_type ?? 'VARCHAR';
-          if ('description' in updates) updatedCol.description = updates.description;
-          if ('order' in updates) updatedCol.order = updates.order ?? col.order;
-          // Explicitly ensure is_primary_key is NOT changed unless it's in updates
-          if ('is_primary_key' in updates) {
-            updatedCol.is_primary_key = updates.is_primary_key ?? false;
-          }
-          return updatedCol;
+          // Spread all updates into the column to preserve all ODCS fields
+          return { ...col, ...updates };
         }
         return col; // Return unchanged column - CRITICAL: don't modify other columns
       });

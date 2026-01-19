@@ -31,18 +31,22 @@ describe('ColumnEditor', () => {
     expect(screen.getByDisplayValue('id')).toBeInTheDocument();
   });
 
-  it('should render data type selector', () => {
+  it('should display physical type as read-only', () => {
     const onChange = vi.fn();
-    render(<ColumnEditor column={mockColumn} onChange={onChange} />);
-    expect(screen.getByDisplayValue('UUID')).toBeInTheDocument();
+    const columnWithType = {
+      ...mockColumn,
+      physicalType: 'VARCHAR(255)',
+    };
+    render(<ColumnEditor column={columnWithType} onChange={onChange} />);
+    // Type is displayed as read-only text, not an editable select
+    expect(screen.getByText('VARCHAR(255)')).toBeInTheDocument();
   });
 
-  it('should allow changing data type', () => {
+  it('should display data_type when physicalType is not set', () => {
     const onChange = vi.fn();
     render(<ColumnEditor column={mockColumn} onChange={onChange} />);
-    const dataTypeSelect = screen.getByLabelText('Data type');
-    fireEvent.change(dataTypeSelect, { target: { value: 'VARCHAR' } });
-    expect(onChange).toHaveBeenCalled();
+    // Falls back to data_type when physicalType is not set
+    expect(screen.getByText('UUID')).toBeInTheDocument();
   });
 
   it('should render nullable checkbox', () => {
@@ -77,4 +81,3 @@ describe('ColumnEditor', () => {
     expect(onChange).toHaveBeenCalled();
   });
 });
-

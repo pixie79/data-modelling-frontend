@@ -80,6 +80,71 @@ const LabelWithTooltip: React.FC<{ label: string; tooltip: string; required?: bo
   </label>
 );
 
+// Comma-separated input component - uses local state to allow typing commas
+// Parses values on blur to avoid the issue of commas being stripped while typing
+const CommaSeparatedInput: React.FC<{
+  value: string[];
+  onChange: (values: string[]) => void;
+  label: string;
+  tooltip: string;
+  placeholder: string;
+  helpText?: string;
+  inputClassName?: string;
+}> = ({ value, onChange, label, tooltip, placeholder, helpText, inputClassName }) => {
+  const [inputValue, setInputValue] = useState(value.join(', '));
+
+  // Sync local state when external value changes (e.g., on initial load)
+  useEffect(() => {
+    setInputValue(value.join(', '));
+  }, [value]);
+
+  const parseValues = (text: string): string[] => {
+    return text
+      .split(',')
+      .map((v) => v.trim())
+      .filter((v) => v.length > 0);
+  };
+
+  const handleBlur = () => {
+    // Parse and update parent on blur
+    onChange(parseValues(inputValue));
+  };
+
+  return (
+    <div>
+      <LabelWithTooltip label={label} tooltip={tooltip} />
+      <input
+        type="text"
+        value={inputValue}
+        onChange={(e) => setInputValue(e.target.value)}
+        onBlur={handleBlur}
+        className={
+          inputClassName ||
+          'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+        }
+        placeholder={placeholder}
+      />
+      {helpText && <p className="text-xs text-gray-500 mt-1">{helpText}</p>}
+    </div>
+  );
+};
+
+// Convenience wrapper for Valid Values input in Quality Rules (uses smaller styling)
+const ValidValuesInput: React.FC<{
+  value: string[];
+  onChange: (values: string[]) => void;
+}> = ({ value, onChange }) => (
+  <CommaSeparatedInput
+    value={value}
+    onChange={onChange}
+    label="Valid Values"
+    tooltip="List of allowed values (enumeration)"
+    placeholder="active, inactive, pending"
+    helpText="Comma-separated list of valid values"
+    inputClassName="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+  />
+);
+
 // Classification options (ODCS standard)
 const CLASSIFICATION_OPTIONS = [
   { value: '', label: 'Select classification...' },
@@ -653,27 +718,14 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
                 />
               </div>
 
-              <div>
-                <LabelWithTooltip
-                  label="Examples"
-                  tooltip="Example values to help understand the expected data format and content."
-                />
-                <input
-                  type="text"
-                  value={examples.join(', ')}
-                  onChange={(e) =>
-                    setExamples(
-                      e.target.value
-                        .split(',')
-                        .map((s) => s.trim())
-                        .filter((s) => s)
-                    )
-                  }
-                  placeholder="e.g., John Doe, Jane Smith, Bob Wilson"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <p className="text-xs text-gray-500 mt-1">Comma-separated list of example values</p>
-              </div>
+              <CommaSeparatedInput
+                value={examples}
+                onChange={setExamples}
+                label="Examples"
+                tooltip="Example values to help understand the expected data format and content."
+                placeholder="e.g., John Doe, Jane Smith, Bob Wilson"
+                helpText="Comma-separated list of example values"
+              />
             </div>
           )}
 
@@ -994,27 +1046,14 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
                 description="Document how this column is derived or transformed"
               />
 
-              <div>
-                <LabelWithTooltip
-                  label="Source Objects"
-                  tooltip="List of source tables, columns, or objects used to derive this column's value."
-                />
-                <input
-                  type="text"
-                  value={transformSourceObjects.join(', ')}
-                  onChange={(e) =>
-                    setTransformSourceObjects(
-                      e.target.value
-                        .split(',')
-                        .map((s) => s.trim())
-                        .filter((s) => s)
-                    )
-                  }
-                  placeholder="e.g., orders.total_amount, customers.discount_rate"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <p className="text-xs text-gray-500 mt-1">Comma-separated list of source objects</p>
-              </div>
+              <CommaSeparatedInput
+                value={transformSourceObjects}
+                onChange={setTransformSourceObjects}
+                label="Source Objects"
+                tooltip="List of source tables, columns, or objects used to derive this column's value."
+                placeholder="e.g., orders.total_amount, customers.discount_rate"
+                helpText="Comma-separated list of source objects"
+              />
 
               <div>
                 <LabelWithTooltip
@@ -1233,29 +1272,12 @@ export const ColumnDetailsModal: React.FC<ColumnDetailsModalProps> = ({
                       )}
 
                       {rule.type === 'valid_values' && (
-                        <div>
-                          <LabelWithTooltip
-                            label="Valid Values"
-                            tooltip="List of allowed values (enumeration)"
-                          />
-                          <input
-                            type="text"
-                            value={rule.validValues?.join(', ') || ''}
-                            onChange={(e) =>
-                              handleUpdateQualityRule(index, {
-                                validValues: e.target.value
-                                  .split(',')
-                                  .map((v) => v.trim())
-                                  .filter((v) => v.length > 0),
-                              })
-                            }
-                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
-                            placeholder="active, inactive, pending"
-                          />
-                          <p className="text-xs text-gray-500 mt-1">
-                            Comma-separated list of valid values
-                          </p>
-                        </div>
+                        <ValidValuesInput
+                          value={rule.validValues || []}
+                          onChange={(validValues) =>
+                            handleUpdateQualityRule(index, { validValues })
+                          }
+                        />
                       )}
                     </div>
                   ))}

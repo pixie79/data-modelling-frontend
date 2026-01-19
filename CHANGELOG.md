@@ -17,9 +17,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Quality Rules Export**: Fixed quality rules not being exported to ODCS format
   - Quality rules set in Column Details Modal (valid values, min/max, pattern, etc.) are now converted to ODCS great-expectations format during export
   - Added `constraintsToQualityArray` helper to convert constraint objects to ODCS `quality` array format
+  - Fixed ODCS quality rules format to comply with v3.1.0 spec: `type` must be `custom`/`text`/`library`/`sql`, not the GE expectation name
+  - Added required ODCS fields: `dimension`, `name`, `engine`, and moved expectation name to `implementation.expectation`
 - **Comma-Separated Input Fields**: Fixed inability to type commas in comma-separated value inputs
   - Valid Values (enum), Examples, and Source Objects fields now allow typing commas
   - Created `CommaSeparatedInput` component that parses values on blur instead of on every keystroke
+- **Valid Values UX**: Improved Valid Values input in Quality Rules
+  - Changed from comma-separated text input to list-based tag UI for better readability
+  - Values display as removable chips/tags instead of a long comma-separated string
+  - Add values by pressing Enter, comma, or clicking Add button
+  - Support for pasting comma-separated values to add multiple at once
+  - Scrollable list for many values with max height constraint
 - **Compound Keys Display**: Fixed compound keys not showing in logical view on canvas
   - Compound primary keys now display with `PK` indicator and column names joined by `+`
   - Compound unique keys display with `CK` indicator

@@ -42,8 +42,8 @@ describe('ColumnDetailsModal', () => {
     vi.clearAllMocks();
   });
 
-  describe('CommaSeparatedInput - Valid Values', () => {
-    it('should allow typing commas in valid values input', async () => {
+  describe('ValidValuesInput - List-based UI', () => {
+    it('should add value when pressing Enter', async () => {
       const user = userEvent.setup();
       render(<ColumnDetailsModal {...defaultProps} />);
 
@@ -56,18 +56,19 @@ describe('ColumnDetailsModal', () => {
       await user.selectOptions(ruleSelect, 'valid_values');
 
       // Find the valid values input
-      const validValuesInput = screen.getByPlaceholderText('active, inactive, pending');
+      const validValuesInput = screen.getByPlaceholderText('Type a value and press Enter');
       expect(validValuesInput).toBeInTheDocument();
 
-      // Type a value with comma - the comma should remain visible while typing
-      await user.clear(validValuesInput);
-      await user.type(validValuesInput, 'active,');
+      // Type a value and press Enter
+      await user.type(validValuesInput, 'active{Enter}');
 
-      // The comma should still be visible in the input (not stripped while typing)
-      expect(validValuesInput).toHaveValue('active,');
+      // The value should appear as a tag
+      expect(screen.getByText('active')).toBeInTheDocument();
+      // Input should be cleared
+      expect(validValuesInput).toHaveValue('');
     });
 
-    it('should allow typing multiple comma-separated values', async () => {
+    it('should add value when pressing comma', async () => {
       const user = userEvent.setup();
       render(<ColumnDetailsModal {...defaultProps} />);
 
@@ -80,45 +81,19 @@ describe('ColumnDetailsModal', () => {
       await user.selectOptions(ruleSelect, 'valid_values');
 
       // Find the valid values input
-      const validValuesInput = screen.getByPlaceholderText('active, inactive, pending');
+      const validValuesInput = screen.getByPlaceholderText('Type a value and press Enter');
 
-      // Type multiple comma-separated values
-      await user.clear(validValuesInput);
-      await user.type(validValuesInput, 'active, inactive, pending');
+      // Type a value and press comma
+      fireEvent.change(validValuesInput, { target: { value: 'inactive' } });
+      fireEvent.keyDown(validValuesInput, { key: ',' });
 
-      // All values including commas should be visible
-      expect(validValuesInput).toHaveValue('active, inactive, pending');
-    });
-
-    it('should parse values on blur and normalize formatting', async () => {
-      const user = userEvent.setup();
-      render(<ColumnDetailsModal {...defaultProps} />);
-
-      // Navigate to Quality tab
-      const qualityTab = screen.getByRole('button', { name: /quality/i });
-      await user.click(qualityTab);
-
-      // Add a valid_values quality rule
-      const ruleSelect = screen.getByRole('combobox');
-      await user.selectOptions(ruleSelect, 'valid_values');
-
-      // Find the valid values input
-      const validValuesInput = screen.getByPlaceholderText('active, inactive, pending');
-
-      // Type values with inconsistent spacing
-      await user.clear(validValuesInput);
-      await user.type(validValuesInput, 'active,  inactive,pending');
-
-      // Blur the input to trigger parsing
-      fireEvent.blur(validValuesInput);
-
-      // After blur, values should be normalized with consistent spacing
+      // The value should appear as a tag
       await waitFor(() => {
-        expect(validValuesInput).toHaveValue('active, inactive, pending');
+        expect(screen.getByText('inactive')).toBeInTheDocument();
       });
     });
 
-    it('should filter out empty values on blur', async () => {
+    it('should add value when clicking Add button', async () => {
       const user = userEvent.setup();
       render(<ColumnDetailsModal {...defaultProps} />);
 
@@ -131,19 +106,46 @@ describe('ColumnDetailsModal', () => {
       await user.selectOptions(ruleSelect, 'valid_values');
 
       // Find the valid values input
-      const validValuesInput = screen.getByPlaceholderText('active, inactive, pending');
+      const validValuesInput = screen.getByPlaceholderText('Type a value and press Enter');
 
-      // Type values with extra commas that would create empty entries
-      await user.clear(validValuesInput);
-      await user.type(validValuesInput, 'active,,inactive,');
+      // Type a value
+      await user.type(validValuesInput, 'pending');
 
-      // Blur the input to trigger parsing
-      fireEvent.blur(validValuesInput);
+      // Click Add button
+      const addButton = screen.getByRole('button', { name: 'Add' });
+      await user.click(addButton);
 
-      // After blur, empty values should be filtered out
-      await waitFor(() => {
-        expect(validValuesInput).toHaveValue('active, inactive');
-      });
+      // The value should appear as a tag
+      expect(screen.getByText('pending')).toBeInTheDocument();
+      // Input should be cleared
+      expect(validValuesInput).toHaveValue('');
+    });
+
+    it('should remove value when clicking remove button', async () => {
+      const user = userEvent.setup();
+      render(<ColumnDetailsModal {...defaultProps} />);
+
+      // Navigate to Quality tab
+      const qualityTab = screen.getByRole('button', { name: /quality/i });
+      await user.click(qualityTab);
+
+      // Add a valid_values quality rule
+      const ruleSelect = screen.getByRole('combobox');
+      await user.selectOptions(ruleSelect, 'valid_values');
+
+      // Find the valid values input and add a value
+      const validValuesInput = screen.getByPlaceholderText('Type a value and press Enter');
+      await user.type(validValuesInput, 'active{Enter}');
+
+      // Verify value is displayed
+      expect(screen.getByText('active')).toBeInTheDocument();
+
+      // Click remove button
+      const removeButton = screen.getByTitle('Remove value');
+      await user.click(removeButton);
+
+      // Value should be removed
+      expect(screen.queryByText('active')).not.toBeInTheDocument();
     });
   });
 

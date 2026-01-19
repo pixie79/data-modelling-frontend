@@ -129,21 +129,107 @@ const CommaSeparatedInput: React.FC<{
   );
 };
 
-// Convenience wrapper for Valid Values input in Quality Rules (uses smaller styling)
+// List-based Valid Values input component - displays values as removable tags
+// with the ability to add new values via input field
 const ValidValuesInput: React.FC<{
   value: string[];
   onChange: (values: string[]) => void;
-}> = ({ value, onChange }) => (
-  <CommaSeparatedInput
-    value={value}
-    onChange={onChange}
-    label="Valid Values"
-    tooltip="List of allowed values (enumeration)"
-    placeholder="active, inactive, pending"
-    helpText="Comma-separated list of valid values"
-    inputClassName="w-full px-2 py-1 text-sm border border-gray-300 rounded"
-  />
-);
+}> = ({ value, onChange }) => {
+  const [newValue, setNewValue] = useState('');
+
+  const handleAddValue = () => {
+    const trimmed = newValue.trim();
+    if (trimmed && !value.includes(trimmed)) {
+      onChange([...value, trimmed]);
+      setNewValue('');
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddValue();
+    } else if (e.key === ',' && newValue.trim()) {
+      // Allow adding values by typing comma
+      e.preventDefault();
+      handleAddValue();
+    }
+  };
+
+  const handleRemoveValue = (indexToRemove: number) => {
+    onChange(value.filter((_, index) => index !== indexToRemove));
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const pastedText = e.clipboardData.getData('text');
+    // Check if pasted text contains commas (multiple values)
+    if (pastedText.includes(',')) {
+      e.preventDefault();
+      const newValues = pastedText
+        .split(',')
+        .map((v) => v.trim())
+        .filter((v) => v.length > 0 && !value.includes(v));
+      if (newValues.length > 0) {
+        onChange([...value, ...newValues]);
+      }
+    }
+  };
+
+  return (
+    <div>
+      <LabelWithTooltip
+        label="Valid Values"
+        tooltip="List of allowed values (enumeration). Press Enter or comma to add each value."
+      />
+      {/* Display existing values as removable tags */}
+      {value.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-2 p-2 bg-gray-50 rounded border border-gray-200 max-h-32 overflow-y-auto">
+          {value.map((val, index) => (
+            <span
+              key={index}
+              className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full"
+            >
+              <span className="max-w-[150px] truncate" title={val}>
+                {val}
+              </span>
+              <button
+                type="button"
+                onClick={() => handleRemoveValue(index)}
+                className="text-blue-600 hover:text-blue-800 font-bold leading-none"
+                title="Remove value"
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      {/* Input for adding new values */}
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={newValue}
+          onChange={(e) => setNewValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
+          className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+          placeholder="Type a value and press Enter"
+        />
+        <button
+          type="button"
+          onClick={handleAddValue}
+          disabled={!newValue.trim()}
+          className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Add
+        </button>
+      </div>
+      <p className="text-xs text-gray-500 mt-1">
+        Press Enter, comma, or click Add. Paste comma-separated values to add multiple at once.
+      </p>
+    </div>
+  );
+};
 
 // Classification options (ODCS standard)
 const CLASSIFICATION_OPTIONS = [

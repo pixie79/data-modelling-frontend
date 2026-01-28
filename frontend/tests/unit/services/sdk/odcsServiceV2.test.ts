@@ -12,6 +12,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { sdkLoader } from '@/services/sdk/sdkLoader';
 
 // Mock the SDK loader
 vi.mock('@/services/sdk/sdkLoader', () => ({
@@ -661,6 +662,17 @@ describe('Nested Column Processing', () => {
 });
 
 describe('Nested Column Export', () => {
+  beforeEach(async () => {
+    // Mock export_odcs_yaml_v2 to use js-yaml for serialization (simulating SDK behavior)
+    const yaml = await import('js-yaml');
+    vi.mocked(sdkLoader.getModule).mockReturnValue({
+      export_odcs_yaml_v2: vi.fn().mockImplementation((contractJson: string) => {
+        const contract = JSON.parse(contractJson);
+        return yaml.dump(contract, { lineWidth: -1, noRefs: true });
+      }),
+    } as any);
+  });
+
   it('should rebuild items.properties for array type columns on export', async () => {
     // Simulate flat columns with parent_column_id (as stored in the app)
     const flatColumnsWithParent = [
@@ -963,6 +975,18 @@ describe('ODCS Field Coverage', () => {
 });
 
 describe('Compound Key Export/Import', () => {
+  beforeEach(async () => {
+    // Mock export_odcs_yaml_v2 to use js-yaml for serialization (simulating SDK behavior)
+    const yaml = await import('js-yaml');
+    vi.mocked(sdkLoader.getModule).mockReturnValue({
+      export_odcs_yaml_v2: vi.fn().mockImplementation((contractJson: string) => {
+        const contract = JSON.parse(contractJson);
+        return yaml.dump(contract, { lineWidth: -1, noRefs: true });
+      }),
+      parse_odcs_yaml_v2: vi.fn(), // Keep for import tests
+    } as any);
+  });
+
   it('should export compound primary key with primaryKeyPosition on columns', async () => {
     const { odcsService } = await import('@/services/sdk/odcsService');
 

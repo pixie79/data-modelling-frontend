@@ -7,7 +7,7 @@ This file provides context for Large Language Models working with this codebase.
 A domain-centric data modelling application built with React, TypeScript, and Electron.
 Creates data architectures, models, and flow diagrams entirely offline.
 
-**Version**: 2.1.1
+**Version**: 2.4.3
 **License**: ISC
 
 ## Technology Stack
@@ -27,7 +27,7 @@ Creates data architectures, models, and flow diagrams entirely offline.
 - IPC for main/renderer communication
 
 ### WASM Modules
-- **data-modelling-sdk 1.13.3**: YAML parsing, validation, ODCS/ODCL format support, Knowledge Base, Decision Records
+- **data-modelling-sdk 2.0.9**: YAML parsing, validation, ODCS/ODPS/CADS format support, Knowledge Base, Decision Records, stable YAML key ordering
 - **DuckDB-WASM 1.29.0**: In-browser SQL database (DuckDB 1.4.3)
 
 ## Key Features
@@ -103,7 +103,7 @@ dm/
 
 ### Tests
 - `tests/unit/services/database/`: DuckDB unit tests (117 tests)
-- Total test count: 604 tests
+- Total test count: 657 tests
 
 ## Development Commands
 

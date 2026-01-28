@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.3] - 2026-01-28
+
+### Changed
+- **SDK Upgrade**: Upgraded `@offenedatenmodellierung/data-modelling-sdk` from v2.0.6 to v2.0.9
+  - SDK v2.0.9 includes stable YAML key ordering for ODCS, ODPS, and CADS exports
+  - Adds missing `description` field to Workspace struct
+  - Enhanced PDF/Markdown export with comprehensive column details
+
+### Fixed
+- **YAML Export Determinism**: Fixed high git churn from non-deterministic YAML field ordering
+  - ODCS contract export now uses SDK's `export_odcs_yaml_v2()` for consistent field ordering
+  - Workspace export now uses SDK's `export_workspace_to_yaml()` for consistent field ordering
+  - Eliminates unnecessary git diffs when file content hasn't meaningfully changed
+- **Valid Values Input Tests**: Fixed failing tests for ValidValuesInput component
+  - Updated tests to match tag-based UI (add via Enter/comma, values shown as removable tags)
+
 ## [2.4.2] - 2026-01-19
 
 ### Fixed

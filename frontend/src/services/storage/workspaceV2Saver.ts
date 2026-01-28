@@ -10,6 +10,7 @@ import { bpmnService } from '@/services/sdk/bpmnService';
 import { dmnService } from '@/services/sdk/dmnService';
 import { knowledgeService } from '@/services/sdk/knowledgeService';
 import { decisionService } from '@/services/sdk/decisionService';
+import { sdkLoader } from '@/services/sdk/sdkLoader';
 import * as yaml from 'js-yaml';
 import { FileMigration } from '@/utils/fileMigration';
 import type { Workspace, WorkspaceV2 } from '@/types/workspace';
@@ -54,9 +55,20 @@ export class WorkspaceV2Saver {
 
     // 1. Generate workspace.yaml (v2 format) - at root level
     const workspaceV2 = this.convertToWorkspaceV2(workspace, domains, allSystems, allRelationships);
+
+    // Use SDK for deterministic YAML key ordering to reduce git churn
+    let workspaceYamlContent: string;
+    try {
+      const sdk = sdkLoader.getModule();
+      workspaceYamlContent = sdk.export_workspace_to_yaml(JSON.stringify(workspaceV2));
+    } catch {
+      // Fallback to js-yaml if SDK not available
+      workspaceYamlContent = yaml.dump(workspaceV2, { lineWidth: -1, noRefs: true });
+    }
+
     files.push({
       name: `${workspaceName}.workspace.yaml`,
-      content: yaml.dump(workspaceV2, { lineWidth: -1, noRefs: true }),
+      content: workspaceYamlContent,
       directory: '', // Root directory
     });
 

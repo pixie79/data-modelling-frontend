@@ -1230,12 +1230,10 @@ class ODCSService {
       schemaCount: contract.schema?.length || 0,
     });
 
-    // Serialize to YAML
-    const yamlResult = yaml.dump(contract, {
-      lineWidth: -1,
-      noRefs: true,
-      sortKeys: false,
-    });
+    // Serialize to YAML using SDK for deterministic field ordering
+    // This ensures consistent YAML output and reduces git churn
+    const sdk = sdkLoader.getModule();
+    const yamlResult = sdk.export_odcs_yaml_v2(JSON.stringify(contract));
 
     console.log('[ODCSService] V2 export complete, YAML length:', yamlResult.length);
 

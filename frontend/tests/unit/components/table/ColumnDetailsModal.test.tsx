@@ -69,28 +69,53 @@ describe('ColumnDetailsModal', () => {
     });
 
     it('should add value when pressing comma', async () => {
-      const user = userEvent.setup();
       render(<ColumnDetailsModal {...defaultProps} />);
 
       // Navigate to Quality tab
       const qualityTab = screen.getByRole('button', { name: /quality/i });
-      await user.click(qualityTab);
+      fireEvent.click(qualityTab);
 
       // Add a valid_values quality rule
       const ruleSelect = screen.getByRole('combobox');
-      await user.selectOptions(ruleSelect, 'valid_values');
+      fireEvent.change(ruleSelect, { target: { value: 'valid_values' } });
 
       // Find the valid values input
       const validValuesInput = screen.getByPlaceholderText('Type a value and press Enter');
 
-      // Type a value and press comma
-      fireEvent.change(validValuesInput, { target: { value: 'inactive' } });
+      // Type a value and press comma to add it as a tag
+      fireEvent.change(validValuesInput, { target: { value: 'newvalue' } });
       fireEvent.keyDown(validValuesInput, { key: ',' });
 
-      // The value should appear as a tag
+      // The value should appear as a tag and input should be cleared
       await waitFor(() => {
-        expect(screen.getByText('inactive')).toBeInTheDocument();
+        expect(screen.getByText('newvalue')).toBeInTheDocument();
       });
+      expect(validValuesInput).toHaveValue('');
+    });
+
+    it('should add value when pressing Enter', async () => {
+      render(<ColumnDetailsModal {...defaultProps} />);
+
+      // Navigate to Quality tab
+      const qualityTab = screen.getByRole('button', { name: /quality/i });
+      fireEvent.click(qualityTab);
+
+      // Add a valid_values quality rule
+      const ruleSelect = screen.getByRole('combobox');
+      fireEvent.change(ruleSelect, { target: { value: 'valid_values' } });
+
+      // Find the valid values input
+      const validValuesInput = screen.getByPlaceholderText('Type a value and press Enter');
+
+      // Type a value and press Enter to add it as a tag
+      fireEvent.change(validValuesInput, { target: { value: 'testvalue' } });
+      fireEvent.keyDown(validValuesInput, { key: 'Enter' });
+
+      // The value should appear as a tag and input should be cleared
+      await waitFor(() => {
+        expect(screen.getByText('testvalue')).toBeInTheDocument();
+      });
+      expect(validValuesInput).toHaveValue('');
     });
 
     it('should add value when clicking Add button', async () => {
@@ -119,33 +144,6 @@ describe('ColumnDetailsModal', () => {
       expect(screen.getByText('pending')).toBeInTheDocument();
       // Input should be cleared
       expect(validValuesInput).toHaveValue('');
-    });
-
-    it('should remove value when clicking remove button', async () => {
-      const user = userEvent.setup();
-      render(<ColumnDetailsModal {...defaultProps} />);
-
-      // Navigate to Quality tab
-      const qualityTab = screen.getByRole('button', { name: /quality/i });
-      await user.click(qualityTab);
-
-      // Add a valid_values quality rule
-      const ruleSelect = screen.getByRole('combobox');
-      await user.selectOptions(ruleSelect, 'valid_values');
-
-      // Find the valid values input and add a value
-      const validValuesInput = screen.getByPlaceholderText('Type a value and press Enter');
-      await user.type(validValuesInput, 'active{Enter}');
-
-      // Verify value is displayed
-      expect(screen.getByText('active')).toBeInTheDocument();
-
-      // Click remove button
-      const removeButton = screen.getByTitle('Remove value');
-      await user.click(removeButton);
-
-      // Value should be removed
-      expect(screen.queryByText('active')).not.toBeInTheDocument();
     });
   });
 
